@@ -1,0 +1,1 @@
+Los de backend van a montar el proyecto en esta carpeta ./backend
