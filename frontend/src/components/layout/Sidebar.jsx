@@ -20,7 +20,13 @@ const Sidebar = () => { // Componente de barra lateral fija con menú de navegac
           Archivos
         </a>
         <a href="#" className="block px-4 py-3 rounded-md text-gray-300 hover:bg-blue-800 hover:text-white transition">
-          Resultados
+          Docentes
+        </a>
+        <a href="#" className="block px-4 py-3 rounded-md text-gray-300 hover:bg-blue-800 hover:text-white transition">
+          Checklist
+        </a>
+        <a href="#" className="block px-4 py-3 rounded-md text-gray-300 hover:bg-blue-800 hover:text-white transition">
+          Coordinadores
         </a>
       </nav>
 

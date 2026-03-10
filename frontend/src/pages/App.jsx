@@ -1,11 +1,16 @@
 // src/pages/App.jsx
 import React from 'react';
-import Login from './Login';
+import MainLayout from '../components/layout/MainLayout';
+import Dashboard from './Dashboard';
 
 function App() {
-  // Temporalmente renderizamos solo el Login.
-  // Más adelante aquí irá la configuración de <BrowserRouter> y <Routes>
-  return <Login />;
+  // Al envolver el Dashboard con MainLayout, automáticamente 
+  // le ponemos el Sidebar izquierdo y el fondo gris claro.
+  return (
+    <MainLayout>
+      <Dashboard />
+    </MainLayout>
+  );
 }
 
 export default App;
