@@ -1,10 +1,9 @@
-// src/pages/Login.jsx
 import React, { useState } from 'react';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 
 const Login = () => {
-  // Cambiamos 'username' por 'email' para que coincida con el mockup
+ // Estados locales para controlar los valores de los campos del formulario
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
