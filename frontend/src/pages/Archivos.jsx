@@ -1,6 +1,7 @@
-// src/pages/Archivos.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
+import ModalPonderacion from '../components/common/ModalPonderacion';
 
 // Exactamente los 5 criterios mencionados
 const documentos = [
@@ -12,6 +13,9 @@ const documentos = [
 ];
 
 const Archivos = () => {
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-8"> {/* Aumenté el gap general para dar más aire */}
       
@@ -82,16 +86,23 @@ const Archivos = () => {
 
       {/* Botones de acción inferiores */}
       <div className="flex justify-end mt-4 gap-4">
-        {/* Botón de Ponderación (para abrir el modal del siguiente mockup) */}
-        <Button variant="secondary" className="px-6 py-3 text-lg font-bold">
+        {/* Agregamos el onClick aquí */}
+        <Button variant="secondary" className="px-6 py-3 text-lg font-bold" onClick={() => setIsModalOpen(true)}>
           Configurar Ponderación
         </Button>
-        
-        {/* Botón de Procesar */}
         <Button variant="primary" className="px-8 py-3 text-lg shadow-md">
           Procesar Archivos
         </Button>
       </div>
+
+      {/* Invocamos el Modal aquí abajo. Si isModalOpen es falso, no se mostrará */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Modificación de Ponderaciones"
+      >
+        <ModalPonderacion onClose={() => setIsModalOpen(false)} />
+      </Modal>
 
     </div>
   );

@@ -63,7 +63,7 @@ const Login = () => {
 
             {/* Botón Ingresar */}
             <Button variant="primary" className="w-full py-3 mt-2 text-lg">
-              Ingresar al Sistema
+              Iniciar sesión
             </Button>
 
             {/* Enlace de recuperación */}
