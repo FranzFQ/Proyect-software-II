@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import Archivos from './Archivos';
+import Checklist from './Checklist';
 import MainLayout from '../components/layout/MainLayout';
 
 function App() {
@@ -36,7 +37,12 @@ function App() {
 
         {/* Rutas pendientes: Muestran un mensaje temporal mientras las construyes */}
         <Route path="/docentes" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista de Docentes en construcción...</div></MainLayout>} />
-        <Route path="/checklist" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista de Checklist en construcción...</div></MainLayout>} />
+        <Route path="/checklist" element={
+            <MainLayout>
+              <Checklist />
+            </MainLayout>
+          } 
+        />
         <Route path="/coordinadores" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista de Coordinadores en construcción...</div></MainLayout>} />
 
         {/* Redirección por defecto: Si alguien entra a una ruta que no existe o a la raíz ("/"), lo mandamos al Login */}
