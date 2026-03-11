@@ -1,7 +1,7 @@
-// src/components/layout/Sidebar.jsx
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
+// Componente del menú lateral (Sidebar) que se muestra en todas las vistas excepto el Login
 const Sidebar = () => {
   // Esta función decide qué colores ponerle al botón dependiendo de si está "activo" o no
   const getLinkClass = ({ isActive }) => {

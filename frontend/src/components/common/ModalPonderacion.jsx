@@ -1,7 +1,7 @@
-// src/components/common/ModalPonderacion.jsx
 import React, { useState } from 'react';
 import Button from './Button';
 
+// Modal específico para ajustar las ponderaciones de evaluación en el Dashboard
 const ModalPonderacion = ({ onClose }) => {
   // Estado actualizado con los 6 apartados que refleja el Dashboard
   const [ponderaciones, setPonderaciones] = useState({
