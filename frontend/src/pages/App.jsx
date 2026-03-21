@@ -5,6 +5,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import Archivos from './Archivos';
 import Checklist from './Checklist';
+import Docentes from './docentes/Docentes';
 import MainLayout from '../components/layout/MainLayout';
 
 function App() {
@@ -36,7 +37,12 @@ function App() {
         />
 
         {/* Rutas pendientes: Muestran un mensaje temporal mientras las construyes */}
-        <Route path="/docentes" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista de Docentes en construcción...</div></MainLayout>} />
+        <Route path="/docentes" element={
+            <MainLayout>
+              <Docentes />
+            </MainLayout>
+          } 
+        />
         <Route path="/checklist" element={
             <MainLayout>
               <Checklist />
