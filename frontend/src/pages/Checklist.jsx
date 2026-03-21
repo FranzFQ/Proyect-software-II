@@ -122,6 +122,8 @@ export default function Checklist() {
       setChecklists((prev) =>
         prev.map((c) => (c.id === editingChecklist.id ? { ...c, ...data } : c))
       );
+      setShowForm(false);
+      setEditingChecklist(null);
     } else {
       const nueva = {
         ...data,
@@ -131,13 +133,31 @@ export default function Checklist() {
         codigoDocente: `CAT - ${data.codigoDocente}`,
       };
       setChecklists((prev) => [...prev, nueva]);
+      setShowForm(false);
+      setEditingChecklist(null);
+      // Abrir directamente en modo ejecución
+      setModoEdicion(false);
+      setEjecutandoChecklist(nueva);
     }
-    setShowForm(false);
-    setEditingChecklist(null);
   };
 
   const handleGuardarEjecucion = (resultado) => {
-    console.log(resultado);
+    // En modo edición, persiste los criterios modificados en la lista
+    if (modoEdicion && ejecutandoChecklist) {
+      setChecklists((prev) =>
+        prev.map((c) =>
+          c.id === ejecutandoChecklist.id
+            ? {
+                ...c,
+                criteriosList: resultado.criteriosList,
+                criterios: resultado.criteriosList.length,
+              }
+            : c
+        )
+      );
+    }
+
+    console.log("Resultado guardado:", resultado);
     setEjecutandoChecklist(null);
     setModoEdicion(false);
   };
