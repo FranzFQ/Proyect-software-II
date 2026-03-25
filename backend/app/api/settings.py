@@ -42,9 +42,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'evaluaciones',
+    'usuarios',
+    'academico',
+
 ]
 
-AUTH_USER_MODEL = 'evaluaciones.Usuario'
+AUTH_USER_MODEL = 'usuarios.Usuario'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
