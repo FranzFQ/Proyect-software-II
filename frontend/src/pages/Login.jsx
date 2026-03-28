@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 
+import logoUrl from '../assets/logo-url.webp';
+
 // Página de inicio de sesión con diseño dividido y formulario centrado
 const Login = () => {
   const navigate = useNavigate();
@@ -19,12 +21,14 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       <div className="hidden md:flex md:w-1/2 bg-url-blue items-center justify-center p-12">
-        <div className="text-white text-center">
-          <div className="border border-white/20 p-8 rounded-lg shadow-lg">
-            <h1 className="text-4xl font-serif border-b border-white pb-2 mb-2">Universidad</h1>
-            <h2 className="text-5xl font-serif mb-2">Rafael Landívar</h2>
-            <p className="text-sm font-light tracking-widest uppercase">Identidad Jesuita en Guatemala</p>
-          </div>
+        <div className="text-white text-center flex flex-col items-center">
+  
+          {/* NOTA: La clase "brightness-0 invert" convierte el logo a color blanco puro. Si tu logo ya es blanco, quita esas dos palabras */}
+          <img 
+            src={logoUrl} 
+            alt="Universidad Rafael Landívar" 
+            className="w-64 mb-8 brightness-0 invert opacity-90"
+          />
         </div>
       </div>
 

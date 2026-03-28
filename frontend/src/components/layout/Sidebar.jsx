@@ -13,6 +13,8 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
+import logoUrl from '../../assets/logo-url.webp';
+
 // Componente de Sidebar con navegación y perfil de usuario
 const Sidebar = ({ onClose = () => {} }) => {
   const navigate = useNavigate();
@@ -34,11 +36,13 @@ const Sidebar = ({ onClose = () => {} }) => {
 
   return (
     <aside className="w-64 bg-url-blue text-white min-h-screen flex flex-col shadow-lg">
-      <div className="p-6 border-b border-blue-900 flex justify-between items-center">
-        <div className="text-url-yellow font-bold text-xl text-center w-full">
-          SISTEMA<br/>EVALUACIÓN
-        </div>
-        <button onClick={onClose} className="lg:hidden text-gray-300 hover:text-white">
+      <div className="p-6 border-b border-blue-900 flex justify-center items-center h-28 relative">
+        <img 
+          src={logoUrl} 
+          alt="Logo URL" 
+          className="max-h-full max-w-full object-contain brightness-0 invert"
+        />
+        <button onClick={onClose} className="lg:hidden absolute right-4 text-gray-300 hover:text-white">
           <XMarkIcon className="w-6 h-6" />
         </button>
       </div>
