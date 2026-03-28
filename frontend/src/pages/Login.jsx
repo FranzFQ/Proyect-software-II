@@ -3,23 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 
-// Página de inicio de sesión con formulario controlado y navegación simulada al dashboard
+// Página de inicio de sesión con diseño dividido y formulario centrado
 const Login = () => {
-  const navigate = useNavigate(); // <-- Agregado para navegar
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Enviando credenciales:', { email, password });
-    // Simulamos un inicio de sesión exitoso redirigiendo al dashboard
+    // Simula el inicio de sesión
     navigate('/dashboard');
   };
 
+  // Diseño dividido: lado izquierdo con información institucional y lado derecho con el formulario de login
   return (
     <div className="min-h-screen flex">
-      
-      {/* LADO IZQUIERDO */}
       <div className="hidden md:flex md:w-1/2 bg-url-blue items-center justify-center p-12">
         <div className="text-white text-center">
           <div className="border border-white/20 p-8 rounded-lg shadow-lg">
@@ -30,10 +28,8 @@ const Login = () => {
         </div>
       </div>
 
-      {/* LADO DERECHO */}
       <div className="w-full md:w-1/2 bg-[#F8FAFC] flex flex-col justify-center items-center p-8 lg:p-16">
         <div className="w-full max-w-md">
-          
           <h2 className="text-3xl font-bold text-url-blue mb-2">Bienvenido de vuelta</h2>
           <p className="text-gray-500 mb-8 text-sm">
             Ingresa tus credenciales institucionales para continuar
@@ -48,7 +44,6 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-
             <Input 
               id="password"
               type="password"
@@ -58,25 +53,13 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
             />
 
-            <Button variant="primary" className="w-full py-3 mt-2 text-lg">
+            {/* Ya no hay botón de recuperar contraseña aquí */}
+            <Button variant="primary" className="w-full py-3 mt-4 text-lg">
               Ingresar al Sistema
             </Button>
-
-            <div className="text-center mt-4">
-              {/* <-- Cambiado a botón para usar navigate() --> */}
-              <button 
-                type="button"
-                onClick={() => navigate('/recuperar-password')}
-                className="text-sm text-url-yellow hover:text-yellow-600 hover:underline font-semibold transition-colors"
-              >
-                ¿Olvidaste tu contraseña? Recuperar acceso &rarr;
-              </button>
-            </div>
-
           </form>
         </div>
       </div>
-      
     </div>
   );
 };
