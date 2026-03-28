@@ -41,6 +41,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    #librerías de terceros
+    'rest_framework',
+    'django_filters',
+    'drf_spectacular',
+
+    # Aplicaciones del proyecto
     'evaluaciones',
     'usuarios',
     'academico',
@@ -112,6 +119,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Evaluaciones Docentes',
+    'DESCRIPTION': 'Documentación de endpoints del sistema académico',
+    'VERSION': '1.0.0',
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
