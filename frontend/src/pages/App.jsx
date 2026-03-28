@@ -11,6 +11,8 @@ import Archivos from './Archivos';
 import Docentes from './Docentes';
 import DocentePerfil from './DocentePerfil';
 import MainLayout from '../components/layout/MainLayout';
+import Coordinadores from './Coordinadores';
+import CoordinadorPerfil from './CoordinadorPerfil';
 
 function App() {
   return (
@@ -25,8 +27,9 @@ function App() {
           <Route path="/docentes/:id" element={<MainLayout><DocentePerfil /></MainLayout>} />
 
           <Route path="/checklist" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista en construcción...</div></MainLayout>} />
-          <Route path="/coordinadores" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista en construcción...</div></MainLayout>} />
-
+          <Route path="/coordinadores" element={<MainLayout><Coordinadores /></MainLayout>} />
+          <Route path="/coordinadores/:id" element={<MainLayout><CoordinadorPerfil /></MainLayout>} />
+          
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

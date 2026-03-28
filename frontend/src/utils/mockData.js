@@ -107,11 +107,10 @@ export const detalleDocenteMarta = {
 // --- DATOS DEL MÓDULO DE COORDINADORES ---
 
 export const listaCoordinadores = [
-  { id: 1, nombre: "Ing. Roberto Carlos Martínez", codigo: "COORD-001", iniciales: "RM", facultad: "Ingeniería", docentesEvaluados: 15, promedio: 8.9, estado: "Buena" },
-  { id: 2, nombre: "Licda. Ana Sofía Rodríguez", codigo: "COORD-002", iniciales: "AR", facultad: "Ingeniería", docentesEvaluados: 12, promedio: 9.3, estado: "Excelente" },
-  { id: 3, nombre: "Dr. Luis Fernando Gómez", codigo: "COORD-003", iniciales: "LG", facultad: "Ingeniería", docentesEvaluados: 20, promedio: 6.5, estado: "Deficiente" }
+  { id: 1, nombre: "Ing. Roberto Carlos Martínez", codigo: "COORD-001", iniciales: "RM", facultad: "Ingeniería", carrera: "Ingeniería en Sistemas", correo: "rmartinez@url.edu.gt" },
+  { id: 2, nombre: "Licda. Ana Sofía Rodríguez", codigo: "COORD-002", iniciales: "AR", facultad: "Ingeniería", carrera: "Ingeniería Industrial", correo: "arodriguez@url.edu.gt" },
+  { id: 3, nombre: "Dr. Luis Fernando Gómez", codigo: "COORD-003", iniciales: "LG", facultad: "Ingeniería", carrera: "Ingeniería Civil", correo: "lgomez@url.edu.gt" }
 ];
-
 export const detalleCoordinador = {
   id: 1,
   nombre: "Ing. Roberto Carlos Martínez",
