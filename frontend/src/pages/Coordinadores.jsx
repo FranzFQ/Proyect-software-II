@@ -65,7 +65,7 @@ const Coordinadores = () => {
       {/* Encabezado y Botones */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-url-blue mb-2 font-serif">Coordinadores</h1>
+          <h1 className="text-3xl font-bold text-url-blue mb-2">Coordinadores</h1>
           <p className="text-gray-500">
             Gestión de coordinadores y asignación de pensum
           </p>

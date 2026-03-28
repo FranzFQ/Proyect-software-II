@@ -78,7 +78,7 @@ const Docentes = () => {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-url-blue mb-2 font-serif">Lista de Docentes</h1>
+          <h1 className="text-3xl font-bold text-url-blue mb-2">Lista de Docentes</h1>
           <p className="text-gray-500">
             Mostrando {docentesFiltrados.length} de {docentes.length} docentes · Semestre I - 2025
           </p>
@@ -117,12 +117,13 @@ const Docentes = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-[#112240] text-white">
               <tr>
-                <th className="py-4 px-6 font-semibold text-sm">Nombre / Código</th>
-                <th className="py-4 px-6 font-semibold text-sm text-center">Cursos</th>
-                <th className="py-4 px-6 font-semibold text-sm text-center">Facultad</th>
-                <th className="py-4 px-6 font-semibold text-sm text-center">Ponderación</th>
-                <th className="py-4 px-6 font-semibold text-sm text-center">Estado</th>
-                <th className="py-4 px-6 font-semibold text-sm text-center">Acciones</th>
+                {/* Redujimos el padding y el tamaño de texto en móviles (px-3 py-3 text-xs) */}
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm">Nombre / Código</th>
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Cursos</th>
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Facultad</th>
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Ponderación</th>
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Estado</th>
+                <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -135,34 +136,38 @@ const Docentes = () => {
               ) : (
                 docentesFiltrados.map((doc, index) => (
                   <tr key={doc.id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${doc.estado === 'Excelente' ? 'bg-url-yellow' : 'bg-url-blue'}`}>
+                    
+                    {/* Aplicamos la misma reducción al cuerpo de la tabla */}
+                    <td className="py-2 px-3 md:py-4 md:px-6">
+                      <div className="flex items-center gap-2 md:gap-4">
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-white text-xs md:text-base ${doc.estado === 'Excelente' ? 'bg-url-yellow' : 'bg-url-blue'}`}>
                           {doc.iniciales}
                         </div>
                         <div>
-                          <h4 className="font-bold text-url-blue">{doc.nombre}</h4>
-                          <p className="text-xs text-gray-400">{doc.codigo}</p>
+                          <h4 className="font-bold text-url-blue text-sm md:text-base">{doc.nombre}</h4>
+                          <p className="text-[10px] md:text-xs text-gray-400">{doc.codigo}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-center font-bold text-url-blue">{doc.cursos}</td>
-                    <td className="py-4 px-6 text-center text-url-blue font-semibold">{doc.facultad}</td>
-                    <td className="py-4 px-6 text-center text-gray-600 font-bold">{doc.ponderacion}</td>
-                    <td className="py-4 px-6 text-center">
+
+                    <td className="py-2 px-3 md:py-4 md:px-6 text-center font-bold text-url-blue text-sm md:text-base">{doc.cursos}</td>
+                    <td className="py-2 px-3 md:py-4 md:px-6 text-center text-url-blue font-semibold text-xs md:text-sm">{doc.facultad}</td>
+                    <td className="py-2 px-3 md:py-4 md:px-6 text-center text-gray-600 font-bold text-sm md:text-base">{doc.ponderacion}</td>
+                    <td className="py-2 px-3 md:py-4 md:px-6 text-center">
                       {renderEstado(doc.estado)}
                     </td>
-                    <td className="py-4 px-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => navigate(`/docentes/${doc.id}`)} className="w-8 h-8 border-2 border-url-yellow text-url-yellow rounded-md flex items-center justify-center hover:bg-url-yellow hover:text-white transition-colors" title="Ver perfil">
-                          <EyeIcon className="w-4 h-4" />
+
+                    <td className="py-2 px-3 md:py-4 md:px-6 text-center">
+                      <div className="flex items-center justify-center gap-1 md:gap-2">
+                        {/* Botones más pequeños en móvil (w-7 h-7) */}
+                        <button onClick={() => navigate(`/docentes/${doc.id}`)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-url-yellow text-url-yellow rounded-md flex items-center justify-center hover:bg-url-yellow hover:text-white transition-colors">
+                          <EyeIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
-                        {/* NUEVO: Botón Editar */}
-                        <button onClick={() => abrirFormulario(doc)} className="w-8 h-8 border-2 border-blue-400 text-blue-500 rounded-md flex items-center justify-center hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-colors" title="Editar docente">
-                          <PencilSquareIcon className="w-4 h-4" />
+                        <button onClick={() => abrirFormulario(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-blue-400 text-blue-500 rounded-md flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors">
+                          <PencilSquareIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
-                        <button onClick={() => confirmarEliminacion(doc)} className="w-8 h-8 border-2 border-red-200 text-red-500 rounded-md flex items-center justify-center hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors" title="Eliminar docente">
-                          <TrashIcon className="w-4 h-4" />
+                        <button onClick={() => confirmarEliminacion(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-red-200 text-red-500 rounded-md flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">
+                          <TrashIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
                       </div>
                     </td>

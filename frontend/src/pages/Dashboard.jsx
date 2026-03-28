@@ -44,7 +44,7 @@ const Dashboard = () => {
       
       <div className="flex justify-between items-center relative">
         <div>
-          <h1 className="text-3xl font-bold text-url-blue">Dashboard de Evaluación</h1>
+          <h1 className="text-3xl font-bold text-url-blue">Dashboard</h1>
           <p className="text-gray-500">Resumen del rendimiento docente del semestre actual</p>
         </div>
         

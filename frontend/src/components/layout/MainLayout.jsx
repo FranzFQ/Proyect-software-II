@@ -20,7 +20,7 @@ const MainLayout = ({ children }) => {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="lg:hidden bg-url-blue text-white p-4 flex justify-between items-center shadow-md">
+        <div className="sticky top-0 z-40 lg:hidden bg-url-blue text-white p-4 flex justify-between items-center shadow-md">
           <span className="font-bold text-url-yellow text-lg">SISTEMA EVALUACIÓN</span>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
