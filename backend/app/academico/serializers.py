@@ -1,4 +1,4 @@
-ffrom rest_framework import serializers
+from rest_framework import serializers
 from .models import Carrera, Pensum, Semestre, Curso
 
 class CarreraSerializer(serializers.ModelSerializer):
