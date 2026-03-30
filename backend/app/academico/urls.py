@@ -1,7 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
  
-from .views import CarreraViewSet, PensumViewSet, SemestreViewSet, CursoViewSet
+
+from .interface.viewsets.carrera_viewset import CarreraViewSet
+from .interface.viewsets.pensum_viewset import PensumViewSet
+from .interface.viewsets.semestre_viewset import SemestreViewSet
+from .interface.viewsets.curso_viewset import CursoViewSet
  
 router = DefaultRouter()
 router.register(r'carreras',  CarreraViewSet,  basename='carrera')
