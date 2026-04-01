@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
-from models import Curso
-from serializers import CursoSerializer
+from academico.models import Curso
+from academico.serializers import CursoSerializer
 
 class CursoViewSet(viewsets.ModelViewSet):
     queryset = Curso.objects.all()

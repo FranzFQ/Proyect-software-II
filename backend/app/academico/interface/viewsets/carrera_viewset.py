@@ -2,8 +2,8 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from models import Carrera
-from serializers import CarreraSerializer, PensumSerializer
+from academico.models import Carrera
+from academico.serializers import CarreraSerializer, PensumSerializer
 
 class CarreraViewSet(viewsets.ModelViewSet):
     queryset = Carrera.objects.all()

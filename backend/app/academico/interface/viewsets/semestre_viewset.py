@@ -2,8 +2,8 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from models import Semestre
-from serializers import SemestreSerializer, CursoSerializer
+from academico.models import Semestre
+from academico.serializers import SemestreSerializer, CursoSerializer
 
 class SemestreViewSet(viewsets.ModelViewSet):
     queryset = Semestre.objects.all()
