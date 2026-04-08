@@ -1,4 +1,3 @@
-// src/pages/Docentes.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
@@ -16,7 +15,6 @@ const Docentes = () => {
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   
-  // Estados para Modales
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCargarDocentesOpen, setIsCargarDocentesOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -49,7 +47,6 @@ const Docentes = () => {
     setFiltroEstado(filtroEstado === estado ? '' : estado);
   };
 
-  // --- ELIMINAR ---
   const confirmarEliminacion = (docente) => {
     setDocenteActual(docente);
     setIsDeleteModalOpen(true);
@@ -61,7 +58,6 @@ const Docentes = () => {
     setDocenteActual(null);
   };
 
-  // --- AGREGAR / EDITAR ---
   const abrirFormulario = (docente = null) => {
     setDocenteActual(docente);
     setIsFormModalOpen(true);
@@ -74,7 +70,8 @@ const Docentes = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Agregamos min-h para empujar la paginación
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -112,12 +109,12 @@ const Docentes = () => {
         </div>
       </div>
 
+      {/* Contenedor de la tabla */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead className="bg-[#112240] text-white">
               <tr>
-                {/* Redujimos el padding y el tamaño de texto en móviles (px-3 py-3 text-xs) */}
                 <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm">Nombre / Código</th>
                 <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Cursos</th>
                 <th className="py-3 px-3 md:py-4 md:px-6 font-semibold text-xs md:text-sm text-center">Facultad</th>
@@ -136,8 +133,6 @@ const Docentes = () => {
               ) : (
                 docentesFiltrados.map((doc, index) => (
                   <tr key={doc.id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
-                    
-                    {/* Aplicamos la misma reducción al cuerpo de la tabla */}
                     <td className="py-2 px-3 md:py-4 md:px-6">
                       <div className="flex items-center gap-2 md:gap-4">
                         <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-white text-xs md:text-base ${doc.estado === 'Excelente' ? 'bg-url-yellow' : 'bg-url-blue'}`}>
@@ -149,24 +144,21 @@ const Docentes = () => {
                         </div>
                       </div>
                     </td>
-
                     <td className="py-2 px-3 md:py-4 md:px-6 text-center font-bold text-url-blue text-sm md:text-base">{doc.cursos}</td>
                     <td className="py-2 px-3 md:py-4 md:px-6 text-center text-url-blue font-semibold text-xs md:text-sm">{doc.facultad}</td>
                     <td className="py-2 px-3 md:py-4 md:px-6 text-center text-gray-600 font-bold text-sm md:text-base">{doc.ponderacion}</td>
                     <td className="py-2 px-3 md:py-4 md:px-6 text-center">
                       {renderEstado(doc.estado)}
                     </td>
-
                     <td className="py-2 px-3 md:py-4 md:px-6 text-center">
                       <div className="flex items-center justify-center gap-1 md:gap-2">
-                        {/* Botones más pequeños en móvil (w-7 h-7) */}
-                        <button onClick={() => navigate(`/docentes/${doc.id}`)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-url-yellow text-url-yellow rounded-md flex items-center justify-center hover:bg-url-yellow hover:text-white transition-colors">
+                        <button onClick={() => navigate(`/teachers/${doc.id}`)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-url-yellow text-url-yellow rounded-md flex items-center justify-center hover:bg-url-yellow hover:text-white transition-colors" title="Ver perfil">
                           <EyeIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
-                        <button onClick={() => abrirFormulario(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-blue-400 text-blue-500 rounded-md flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors">
+                        <button onClick={() => abrirFormulario(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-blue-400 text-blue-500 rounded-md flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors" title="Editar docente">
                           <PencilSquareIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
-                        <button onClick={() => confirmarEliminacion(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-red-200 text-red-500 rounded-md flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">
+                        <button onClick={() => confirmarEliminacion(doc)} className="w-7 h-7 md:w-8 md:h-8 border-2 border-red-200 text-red-500 rounded-md flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" title="Eliminar docente">
                           <TrashIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </button>
                       </div>
@@ -179,7 +171,17 @@ const Docentes = () => {
         </div>
       </div>
 
-      {/* MODAL: AGREGAR / EDITAR DOCENTE */}
+      {/* PAGINACIÓN AL FONDO */}
+      <div className="mt-auto flex justify-end items-center pt-4 pb-2 text-sm text-gray-500 font-semibold gap-2">
+         <span className="text-[#112240] font-bold text-lg">1</span>
+         <button className="hover:text-url-blue transition-colors">2</button>
+         <button className="hover:text-url-blue transition-colors">3</button>
+         <span>.......</span>
+         <button className="hover:text-url-blue transition-colors">20</button>
+         <button className="hover:text-url-blue ml-2 transition-colors">Siguiente -&gt;</button>
+      </div>
+
+      {/* MODALES ... (se mantienen iguales) */}
       <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={docenteActual ? "Editar Docente" : "Agregar Nuevo Docente"}>
         <form onSubmit={guardarDocente} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,7 +202,6 @@ const Docentes = () => {
               <input type="number" min="0" defaultValue={docenteActual?.cursos || 0} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-url-blue" required />
             </div>
           </div>
-          
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
             <Button type="button" variant="secondary" onClick={() => setIsFormModalOpen(false)}>Cancelar</Button>
             <Button type="submit" variant="primary">{docenteActual ? "Guardar Cambios" : "Agregar Docente"}</Button>
@@ -208,7 +209,6 @@ const Docentes = () => {
         </form>
       </Modal>
 
-      {/* MODAL: CARGAR DOCENTES MASIVAMENTE */}
       <Modal isOpen={isCargarDocentesOpen} onClose={() => setIsCargarDocentesOpen(false)} title="Cargar Listado de Docentes">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-500">
@@ -246,7 +246,6 @@ const Docentes = () => {
         </div>
       </Modal>
 
-      {/* MODAL ELIMINAR DOCENTE */}
       <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirmar Eliminación">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4 text-gray-700">

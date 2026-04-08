@@ -1,24 +1,19 @@
-// src/pages/Dashboard.jsx
-import React, { useState, useContext } from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppContext } from '../context/AppContext'; // Usamos el contexto global
+import { AppContext } from '../context/AppContext'; 
 import Card from '../components/common/Card';
-import Button from '../components/common/Button';
-
-import { ArrowRightIcon, DocumentArrowDownIcon, DocumentTextIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  // Extraemos TODO del contexto
-  const { ponderaciones, docentes, evaluacionesCompletadas } = useContext(AppContext);
-  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  // Asumimos que tienes una variable 'semestreActivo' en tu AppContext. 
+  // Si no la tienes, aquí la simulamos. En el futuro vendrá del backend.
+  const { ponderaciones, docentes, evaluacionesCompletadas, semestreActivo = "Semestre I - año 2025" } = useContext(AppContext);
 
   // --- CÁLCULOS DINÁMICOS PARA LAS TARJETAS ---
   const totalDocentes = docentes.length;
-  // Calculamos el promedio sumando las ponderaciones y dividiendo entre el total
   const sumaPonderaciones = docentes.reduce((acc, doc) => acc + doc.ponderacion, 0);
   const promedioGeneral = totalDocentes > 0 ? (sumaPonderaciones / totalDocentes).toFixed(1) : 0;
-  // Buscamos los que están en Deficiente (Riesgo)
   const docentesRiesgo = docentes.filter(d => d.estado === 'Deficiente').length;
 
   const renderEstado = (estado) => {
@@ -34,36 +29,15 @@ const Dashboard = () => {
     );
   };
 
-  const handleExport = (formato) => {
-    setIsExportMenuOpen(false);
-    alert(`Generando archivo ${formato}...`);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       
+      {/* ENCABEZADO ACTUALIZADO */}
       <div className="flex justify-between items-center relative">
         <div>
+          {/* Título y subtítulo actualizados según tu solicitud */}
           <h1 className="text-3xl font-bold text-url-blue">Dashboard</h1>
-          <p className="text-gray-500">Resumen del rendimiento docente del semestre actual</p>
-        </div>
-        
-        <div className="relative">
-          <Button variant="primary" onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} className="flex items-center gap-2">
-            <DocumentArrowDownIcon className="w-5 h-5" />
-            Exportar Reporte
-          </Button>
-          
-          {isExportMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl border border-gray-100 z-10 overflow-hidden">
-              <button onClick={() => handleExport('PDF')} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <DocumentTextIcon className="w-5 h-5 text-red-500" /> Exportar como PDF
-              </button>
-              <button onClick={() => handleExport('Excel')} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-50">
-                <TableCellsIcon className="w-5 h-5 text-green-600" /> Exportar como Excel
-              </button>
-            </div>
-          )}
+          <p className="text-gray-500 font-semibold mt-1">Semestre actual: {semestreActivo}</p>
         </div>
       </div>
 
@@ -78,7 +52,7 @@ const Dashboard = () => {
           <p className="text-3xl font-bold text-url-blue">{promedioGeneral}</p>
         </Card>
         <Card className="text-center border-l-4 border-l-status-danger">
-          <p className="text-sm text-gray-500 font-semibold uppercase">Bajo Rendimiento</p>
+          <p className="text-sm text-gray-500 font-semibold uppercase">En Riesgo</p>
           <p className="text-3xl font-bold text-status-danger">{docentesRiesgo}</p>
         </Card>
         <Card className="text-center border-l-4 border-l-url-yellow">
@@ -89,11 +63,11 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Rendimiento por Docente (Ahora lee de la lista real) */}
+        {/* Rendimiento por Docente */}
         <div className="lg:col-span-2">
           <Card title="Rendimiento por Docente">
             <div className="flex flex-col gap-4">
-              {docentes.slice(0, 4).map((doc) => ( // Mostramos solo los 4 primeros para no saturar el dashboard
+              {docentes.slice(0, 4).map((doc) => ( 
                 <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white ${doc.estado === 'Excelente' ? 'bg-url-yellow' : 'bg-url-blue'}`}>
@@ -115,7 +89,8 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
-            <button onClick={() => navigate('/docentes')} className="w-full text-center mt-4 text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors">
+            {/* Aquí también cambiamos la ruta a inglés de paso */}
+            <button onClick={() => navigate('/teachers')} className="w-full text-center mt-4 text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors">
               Ver todos los docentes &rarr;
             </button>
           </Card>
@@ -126,13 +101,14 @@ const Dashboard = () => {
           <Card className="h-full">
             <div className="flex justify-between items-start mb-6">
               <h3 className="text-xl font-bold text-url-blue">% Ponderación</h3>
-              <button onClick={() => navigate('/archivos')} className="text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors flex items-center gap-1 mt-1">
+              {/* Cambiamos la ruta a inglés */}
+              <button onClick={() => navigate('/files')} className="text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors flex items-center gap-1 mt-1">
                 Agregar archivos <ArrowRightIcon className="w-4 h-4" />
               </button>
             </div>
 
             <div className="bg-[#F4F7FE] border border-blue-100 rounded-md p-3 mb-6 text-center shadow-inner">
-              <span className="font-bold text-url-blue">Primer Semestre 2026</span>
+              <span className="font-bold text-url-blue">{semestreActivo}</span>
             </div>
 
             <div className="flex flex-col gap-5">

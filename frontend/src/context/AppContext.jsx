@@ -1,21 +1,17 @@
 // src/context/AppContext.jsx
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState } from 'react';
-import { listaDocentesGlobal, listaCoordinadores} from '../utils/mockData';
+import { listaDocentesGlobal, listaCoordinadores, listaSemestres } from '../utils/mockData';
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  // 1. Estado de Ponderaciones
-  const [ponderaciones, setPonderaciones] = useState({
-    estudiantil: 30,
-    ceat: 20,
-    autoevaluacion: 10,
-    coordinador: 20,
-    visitas: 10,
-    apoyo: 10,
+  // SIMULAMOS EL USUARIO LOGUEADO (Si cambias 'rol' a 'Coordinador', el menú desaparecerá)
+  const [currentUser, setCurrentUser] = useState({
+    nombre: "Juan Rodríguez", iniciales: "JR", rol: "Administrador" 
   });
 
-  // 2. Estado de Archivos Cargados
+  const [ponderaciones, setPonderaciones] = useState({ estudiantil: 30, ceat: 20, autoevaluacion: 10, coordinador: 20, visitas: 10, apoyo: 10 });
   const [documentos, setDocumentos] = useState([
     { id: 'estudiantil', titulo: 'Evaluación Estudiantil', estado: 'pendiente', nombreArchivo: '' },
     { id: 'autoevaluacion', titulo: 'Autoevaluaciones', estado: 'pendiente', nombreArchivo: '' },
@@ -23,23 +19,22 @@ export const AppProvider = ({ children }) => {
     { id: 'ceat', titulo: 'Evaluaciones CEAT', estado: 'pendiente', nombreArchivo: '' }, 
     { id: 'apoyo', titulo: 'Apoyo y Colaboración', estado: 'pendiente', nombreArchivo: '' },
   ]);
-
-  // 3. Estado del Porcentaje de Evaluación (para el Dashboard)
   const [evaluacionesCompletadas, setEvaluacionesCompletadas] = useState("0%");
-
-  // 4. Estado de los Docentes (Lista Global)
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
-
-  // 5. Estado de los Coordinadores (Lista Global)
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
+  
+  // NUEVO: Estado para Semestres
+  const [semestres, setSemestres] = useState(listaSemestres);
 
   return (
     <AppContext.Provider value={{ 
+      currentUser, setCurrentUser,
       ponderaciones, setPonderaciones,
       documentos, setDocumentos,
       evaluacionesCompletadas, setEvaluacionesCompletadas,
       docentes, setDocentes,
-      coordinadores, setCoordinadores
+      coordinadores, setCoordinadores,
+      semestres, setSemestres
     }}>
       {children}
     </AppContext.Provider>

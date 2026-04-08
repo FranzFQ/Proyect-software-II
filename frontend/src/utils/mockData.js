@@ -107,10 +107,12 @@ export const detalleDocenteMarta = {
 // --- DATOS DEL MÓDULO DE COORDINADORES ---
 
 export const listaCoordinadores = [
-  { id: 1, nombre: "Ing. Roberto Carlos Martínez", codigo: "COORD-001", iniciales: "RM", facultad: "Ingeniería", carrera: "Ingeniería en Sistemas", correo: "rmartinez@url.edu.gt" },
-  { id: 2, nombre: "Licda. Ana Sofía Rodríguez", codigo: "COORD-002", iniciales: "AR", facultad: "Ingeniería", carrera: "Ingeniería Industrial", correo: "arodriguez@url.edu.gt" },
-  { id: 3, nombre: "Dr. Luis Fernando Gómez", codigo: "COORD-003", iniciales: "LG", facultad: "Ingeniería", carrera: "Ingeniería Civil", correo: "lgomez@url.edu.gt" }
+  { id: 1, nombre: "Juan Rodríguez", iniciales: "JR", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "jrodriguez@univ.edu.gt", esAdmin: true },
+  { id: 2, nombre: "Ana Mendoza", iniciales: "AM", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "amendoza@univ.edu.gt", esAdmin: false },
+  { id: 3, nombre: "Pedro García", iniciales: "PG", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "pgarcia@univ.edu.gt", esAdmin: false },
+  { id: 4, nombre: "Sandra López", iniciales: "SL", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "slopez@univ.edu.gt", esAdmin: false }
 ];
+
 export const detalleCoordinador = {
   id: 1,
   nombre: "Ing. Roberto Carlos Martínez",
@@ -133,3 +135,10 @@ export const detalleCoordinador = {
     { semestre: "Sem. I 2024", promedio: 8.2, docentesEvaluados: 12 }
   ]
 };
+
+export const listaSemestres = [
+  { id: 1, semestre: "Semestre II", anio: "2026", estado: "Proximo" },
+  { id: 2, semestre: "Semestre I", anio: "2026", estado: "Activo" },
+  { id: 3, semestre: "Semestre II", anio: "2025", estado: "Finalizado" },
+  { id: 4, semestre: "Semestre I", anio: "2025", estado: "Finalizado" },
+];
