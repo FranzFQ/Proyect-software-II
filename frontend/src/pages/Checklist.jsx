@@ -1,37 +1,44 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
+import { AppContext } from "../context/AppContext";
 import ChecklistForm from "../components/checklist/ChecklistForm";
 import ChecklistEjecucion from "../components/checklist/ChecklistEjecucion";
 
-const MOCK_CHECKLISTS = [
+const CHECKLISTS_INICIALES = [
   {
     id: 1,
     nombre: "Observacion Pedagogica",
-    docente: "Nombre del docente",
-    codigoDocente: "CAT - 1038462",
-    criterios: 8,
-    punteo: 7.5,
+    docente: "Marta Alvarado Fuentes",
+    docenteId: 1,
+    codigoDocente: "CAT - 9831751",
+    nombreCurso: "Redes y telecomunicaciones",
+    criterios: 6,
+    punteo: 8.8,
     color: "#F5C518",
-    criteriosList: ["Claridad en la explicacion", "Dominio del contenido", "Interaccion con estudiantes", "Uso de recursos didacticos", "Puntualidad y orden", "Evaluacion formativa", "Retroalimentacion al grupo", "Cumplimiento del programa"],
+    criteriosList: ["Claridad en la explicacion", "Dominio del contenido", "Interaccion con estudiantes", "Uso de recursos didacticos", "Puntualidad y orden", "Evaluacion formativa"],
   },
   {
     id: 2,
     nombre: "Manejo de Aula",
-    docente: "Nombre del docente",
-    codigoDocente: "CAT - 1038462",
+    docente: "Marta Alvarado Fuentes",
+    docenteId: 1,
+    codigoDocente: "CAT - 9831751",
+    nombreCurso: "Programación web",
     criterios: 6,
-    punteo: 9.4,
+    punteo: 9.1,
     color: "#22c55e",
-    criteriosList: [],
+    criteriosList: ["Control del grupo", "Clima de aula", "Gestion del tiempo", "Disciplina positiva", "Participacion estudiantil", "Ambiente inclusivo"],
   },
   {
     id: 3,
     nombre: "Uso de Tecnologia",
-    docente: "Nombre del docente",
-    codigoDocente: "CAT - 1038462",
+    docente: "Pedro José García Moreno",
+    docenteId: 3,
+    codigoDocente: "CAT - 9831730",
+    nombreCurso: "Física I",
     criterios: 5,
-    punteo: 7.2,
+    punteo: 6.5,
     color: "#1a2744",
-    criteriosList: [],
+    criteriosList: ["Uso de proyector", "Recursos digitales", "Plataforma virtual", "Material de apoyo", "Interactividad digital"],
   },
 ];
 
@@ -39,21 +46,15 @@ function ScoreBar({ punteo, color }) {
   const pct = (punteo / 10) * 100;
   return (
     <div className="w-full h-1.5 bg-gray-200 rounded overflow-hidden">
-      <div
-        className="h-full rounded transition-all duration-500"
-        style={{ width: `${pct}%`, background: color }}
-      />
+      <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
     </div>
   );
 }
 
 function ChecklistCard({ checklist, onEditar, onEjecutar }) {
   const scoreColor =
-    checklist.punteo >= 9
-      ? "text-green-600"
-      : checklist.punteo >= 7
-      ? "text-yellow-500"
-      : "text-red-500";
+    checklist.punteo >= 9 ? "text-green-600" :
+    checklist.punteo >= 7 ? "text-yellow-500" : "text-red-500";
 
   return (
     <div
@@ -64,6 +65,9 @@ function ChecklistCard({ checklist, onEditar, onEjecutar }) {
       <div>
         <h3 className="font-bold text-gray-800 text-base">{checklist.nombre}</h3>
         <p className="text-sm text-gray-500">Docente: {checklist.docente}</p>
+        {checklist.nombreCurso && (
+          <p className="text-xs text-gray-400">Curso: {checklist.nombreCurso}</p>
+        )}
       </div>
 
       <div className="flex justify-between text-sm text-gray-500">
@@ -81,10 +85,7 @@ function ChecklistCard({ checklist, onEditar, onEjecutar }) {
           {checklist.codigoDocente}
         </span>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditar(checklist);
-          }}
+          onClick={(e) => { e.stopPropagation(); onEditar(checklist); }}
           className="bg-[#1a2744] text-white px-4 py-1.5 rounded text-sm font-semibold hover:bg-[#2d3e6e]"
         >
           Editar
@@ -95,11 +96,13 @@ function ChecklistCard({ checklist, onEditar, onEjecutar }) {
 }
 
 export default function Checklist() {
-  const [checklists, setChecklists] = useState(MOCK_CHECKLISTS);
-  const [showForm, setShowForm] = useState(false);
-  const [editingChecklist, setEditingChecklist] = useState(null);
+  const { guardarVisitaEnDocente, docentes } = useContext(AppContext);
+
+  const [checklists,          setChecklists]          = useState(CHECKLISTS_INICIALES);
+  const [showForm,            setShowForm]            = useState(false);
+  const [editingChecklist,    setEditingChecklist]    = useState(null);
   const [ejecutandoChecklist, setEjecutandoChecklist] = useState(null);
-  const [modoEdicion, setModoEdicion] = useState(false);
+  const [modoEdicion,         setModoEdicion]         = useState(false);
 
   const handleNuevaChecklist = () => {
     setEditingChecklist(null);
@@ -122,42 +125,76 @@ export default function Checklist() {
       setChecklists((prev) =>
         prev.map((c) => (c.id === editingChecklist.id ? { ...c, ...data } : c))
       );
-      setShowForm(false);
-      setEditingChecklist(null);
     } else {
       const nueva = {
         ...data,
         id: Date.now(),
         punteo: 0,
         color: "#F5C518",
-        codigoDocente: `CAT - ${data.codigoDocente}`,
       };
       setChecklists((prev) => [...prev, nueva]);
       setShowForm(false);
       setEditingChecklist(null);
-      // Abrir directamente en modo ejecución
       setModoEdicion(false);
       setEjecutandoChecklist(nueva);
+      return;
     }
+    setShowForm(false);
+    setEditingChecklist(null);
   };
 
   const handleGuardarEjecucion = (resultado) => {
-    // En modo edición, persiste los criterios modificados en la lista
-    if (modoEdicion && ejecutandoChecklist) {
+    const { criteriosList, evaluaciones, observaciones } = resultado;
+
+    // Calcular punteo promedio de las evaluaciones completadas
+    const completadas = evaluaciones.filter((e) => e.completado && e.score !== null);
+    const punteoCalculado = completadas.length
+      ? parseFloat((completadas.reduce((a, e) => a + e.score, 0) / completadas.length).toFixed(1))
+      : ejecutandoChecklist.punteo;
+
+    // Actualizar checklist en la lista local
+    if (modoEdicion) {
       setChecklists((prev) =>
         prev.map((c) =>
           c.id === ejecutandoChecklist.id
-            ? {
-                ...c,
-                criteriosList: resultado.criteriosList,
-                criterios: resultado.criteriosList.length,
-              }
+            ? { ...c, criteriosList, criterios: criteriosList.length, punteo: punteoCalculado }
+            : c
+        )
+      );
+    } else {
+      setChecklists((prev) =>
+        prev.map((c) =>
+          c.id === ejecutandoChecklist.id
+            ? { ...c, punteo: punteoCalculado }
             : c
         )
       );
     }
 
-    console.log("Resultado guardado:", resultado);
+    // Persistir la visita en el docente del contexto global
+    if (ejecutandoChecklist.docenteId) {
+      const docente = docentes.find((d) => String(d.id) === String(ejecutandoChecklist.docenteId));
+      const visitasActuales = docente?.visitas || [];
+      const numeroVisita = visitasActuales.length + 1;
+
+      const visitaGuardada = {
+        id: ejecutandoChecklist.id,
+        numero: numeroVisita,
+        nombre: ejecutandoChecklist.nombre,
+        fecha: new Date().toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" }),
+        materia: ejecutandoChecklist.nombreCurso || "",
+        punteo: punteoCalculado,
+        codigoDocente: ejecutandoChecklist.codigoDocente,
+        color: ejecutandoChecklist.color || "#F5C518",
+        criteriosList,
+        criterios: criteriosList.length,
+        evaluacionesGuardadas: evaluaciones,
+        observacionesGuardadas: observaciones,
+      };
+
+      guardarVisitaEnDocente(ejecutandoChecklist.docenteId, visitaGuardada);
+    }
+
     setEjecutandoChecklist(null);
     setModoEdicion(false);
   };
@@ -168,10 +205,7 @@ export default function Checklist() {
         checklist={ejecutandoChecklist}
         modoEdicion={modoEdicion}
         onGuardar={handleGuardarEjecucion}
-        onCancelar={() => {
-          setEjecutandoChecklist(null);
-          setModoEdicion(false);
-        }}
+        onCancelar={() => { setEjecutandoChecklist(null); setModoEdicion(false); }}
       />
     );
   }
@@ -187,7 +221,7 @@ export default function Checklist() {
         </div>
         <div className="flex gap-3 flex-wrap">
           <button
-            onClick={() => {/* lógica de cargar */}}
+            onClick={() => {}}
             className="bg-[#1a2744] text-white px-5 py-2 rounded font-bold text-sm hover:bg-[#2d3e6e]"
           >
             Cargar
@@ -216,10 +250,7 @@ export default function Checklist() {
         <ChecklistForm
           checklist={editingChecklist}
           onGuardar={handleGuardarChecklist}
-          onCancelar={() => {
-            setShowForm(false);
-            setEditingChecklist(null);
-          }}
+          onCancelar={() => { setShowForm(false); setEditingChecklist(null); }}
         />
       )}
     </div>

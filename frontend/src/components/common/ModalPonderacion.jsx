@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
+import React, { useContext } from 'react';
+import { AppContext } from '../../context/AppContext'; // Importamos el contexto global
 import Button from './Button';
 
-// Modal específico para ajustar las ponderaciones de evaluación en el Dashboard
+
+// Modal para ajustar las ponderaciones de evaluación, ahora conectado al contexto global
 const ModalPonderacion = ({ onClose }) => {
-  // Estado actualizado con los 6 apartados que refleja el Dashboard
-  const [ponderaciones, setPonderaciones] = useState({
-    estudiantil: 30,
-    ceat: 20,
-    autoevaluacion: 10,
-    coordinador: 20,
-    visitas: 10,
-    apoyo: 10,
-  });
+  // Consumimos el contexto global en lugar de usar un useState local
+  const { ponderaciones, setPonderaciones } = useContext(AppContext);
 
   const handleChange = (criterio, valor) => {
     setPonderaciones({
@@ -22,12 +17,13 @@ const ModalPonderacion = ({ onClose }) => {
 
   const total = Object.values(ponderaciones).reduce((acc, curr) => acc + curr, 0);
 
+   // Al guardar, el Dashboard se actualizará automáticamente gracias al contexto global
   const handleGuardar = () => {
     if (total !== 100) {
       alert("La suma de las ponderaciones debe ser exactamente 100%");
       return;
     }
-    console.log("Guardando ponderaciones:", ponderaciones);
+    // ¡Al guardar, el Dashboard se actualizará automáticamente!
     onClose();
   };
 
@@ -37,7 +33,6 @@ const ModalPonderacion = ({ onClose }) => {
         Ajuste los porcentajes para cada criterio de evaluación. La suma total debe ser obligatoriamente 100%.
       </p>
 
-      {/* Lista de inputs actualizada */}
       <div className="space-y-3">
         {Object.entries({
           estudiantil: 'Evaluación Estudiantil',
@@ -64,7 +59,6 @@ const ModalPonderacion = ({ onClose }) => {
         ))}
       </div>
 
-      {/* Total calculador */}
       <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg ${total === 100 ? 'bg-blue-50 text-url-blue' : 'bg-red-50 text-status-danger'}`}>
         <span>Total Ponderación:</span>
         <span>{total}%</span>

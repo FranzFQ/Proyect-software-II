@@ -1,17 +1,30 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
+import { AppContext } from "../../context/AppContext";
 
 export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
-  const [nombre, setNombre] = useState(checklist?.nombre || "");
-  const [codigoDocente, setCodigoDocente] = useState(checklist?.codigoDocente || "");
-  const [nombreCurso, setNombreCurso] = useState(checklist?.nombreCurso || "");
-  const [criterios, setCriterios] = useState(checklist?.criteriosList || []);
+  const { docentes } = useContext(AppContext);
+
+  const [nombre,        setNombre]        = useState(checklist?.nombre        || "");
+  const [docenteId,     setDocenteId]     = useState(checklist?.docenteId     || "");
+  const [cursoNombre,   setCursoNombre]   = useState(checklist?.nombreCurso   || "");
+  const [criterios,     setCriterios]     = useState(checklist?.criteriosList || []);
   const [nuevoCriterio, setNuevoCriterio] = useState("");
-  const [mostrarInput, setMostrarInput] = useState(false);
+  const [mostrarInput,  setMostrarInput]  = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
     if (mostrarInput) inputRef.current?.focus();
   }, [mostrarInput]);
+
+  // Cursos del docente seleccionado
+  const docenteSeleccionado = docentes.find((d) => String(d.id) === String(docenteId));
+  const cursosDisponibles   = docenteSeleccionado?.cursosActuales || [];
+
+  // Si cambia el docente, limpiar el curso seleccionado
+  const handleDocenteChange = (e) => {
+    setDocenteId(e.target.value);
+    setCursoNombre("");
+  };
 
   const agregarCriterio = () => {
     if (!nuevoCriterio.trim()) return;
@@ -35,20 +48,24 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
   };
 
   const handleGuardar = () => {
-    if (!nombre.trim()) return;
+    if (!nombre.trim() || !docenteId) return;
     onGuardar({
       nombre,
-      codigoDocente,
-      nombreCurso,
+      docenteId,
+      codigoDocente: docenteSeleccionado?.codigo || "",
+      docente:       docenteSeleccionado?.nombre  || "",
+      nombreCurso:   cursoNombre,
       criteriosList: criterios,
-      criterios: criterios.length,
-      docente: "Nombre del docente",
+      criterios:     criterios.length,
     });
   };
+
+  const selectClass = "border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white w-full";
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden">
+
         {/* Header */}
         <div className="border-b px-6 py-5">
           <h2 className="text-xl font-extrabold text-[#1a2744]">
@@ -60,8 +77,10 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
         </div>
 
         <div className="px-6 py-5 space-y-5">
-          {/* Fields */}
+          {/* Fila 1: nombre + docente + curso */}
           <div className="grid gap-4 md:grid-cols-3">
+
+            {/* Nombre de la checklist */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                 Nombre de la Checklist
@@ -73,34 +92,53 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
                 onChange={(e) => setNombre(e.target.value)}
               />
             </div>
+
+            {/* Select Docente */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                Codigo Docente
+                Docente
               </label>
-              <input
-                placeholder="Ej. 1037492"
-                className="border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                value={codigoDocente}
-                onChange={(e) => setCodigoDocente(e.target.value)}
-              />
+              <select
+                className={selectClass}
+                value={docenteId}
+                onChange={handleDocenteChange}
+              >
+                <option value="">Seleccionar docente...</option>
+                {docentes.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {/* Select Curso */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                Nombre del Curso
+                Curso
               </label>
-              <input
-                placeholder="Ej. Progra web"
-                className="border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                value={nombreCurso}
-                onChange={(e) => setNombreCurso(e.target.value)}
-              />
+              <select
+                className={selectClass}
+                value={cursoNombre}
+                onChange={(e) => setCursoNombre(e.target.value)}
+                disabled={!docenteId}
+              >
+                <option value="">
+                  {docenteId ? "Seleccionar curso..." : "Primero selecciona docente"}
+                </option>
+                {cursosDisponibles.map((c) => (
+                  <option key={c.id} value={c.nombre}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           {/* Criterios */}
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
-              Criterios de Evaluacion (arrastra para reordenar):
+              Criterios de Evaluacion:
             </label>
             <div className="flex flex-wrap gap-2 min-h-[40px] items-center">
               {criterios.map((c, i) => (
@@ -160,7 +198,8 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
         <div className="px-6 py-4 bg-gray-50 border-t flex gap-3">
           <button
             onClick={handleGuardar}
-            className="bg-[#F5C518] text-[#1a2744] px-6 py-2.5 rounded-lg font-extrabold hover:bg-yellow-400 transition"
+            disabled={!nombre.trim() || !docenteId}
+            className="bg-[#F5C518] text-[#1a2744] px-6 py-2.5 rounded-lg font-extrabold hover:bg-yellow-400 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Guardar Checklist
           </button>
