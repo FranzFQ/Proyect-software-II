@@ -16,7 +16,8 @@ class CursoDado(models.Model):
     docente = models.ForeignKey('usuarios.Docente', on_delete=models.CASCADE, related_name='asignaciones')
     semestre = models.ForeignKey('academico.Semestre', on_delete=models.CASCADE)
     seccion = models.CharField(max_length=10)
-
+    jornada = models.CharField(max_length=50, null=True, blank=True) 
+    
     class Meta:
         verbose_name_plural = "Cursos Dados"
 
