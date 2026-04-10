@@ -1,55 +1,35 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
-// Importamos el Contexto de Ponderaciones para que esté disponible en toda la aplicación
-import { AppProvider } from '../context/AppContext';
-
-// Importamos las páginas principales (con los nuevos nombres en inglés)
-import Login from './Login';
-import Dashboard from './Dashboard';
-import Files from './Files'; // Antes Archivos
-import Teachers from './Teachers'; // Antes Docentes
-import TeacherProfile from './TeacherProfile'; // Antes DocentePerfil
-import MainLayout from '../components/layout/MainLayout';
-import Coordinators from './Coordinators'; // Antes Coordinadores
-import CoordinatorProfile from './CoordinatorProfile'; // Antes CoordinadorPerfil
-import Semesters from './Semesters'; // Antes Semestres
-import CourseDetail from './CourseDetail'; // Antes CursoDetalle
-import TeacherHistory from './TeacherHistory'; // Antes DocenteHistorico
-import TeacherComparison from './TeacherComparison'; // Antes DocenteComparacion
-import TeacherChecklists from './TeacherChecklists'; // Antes DocenteChecklists
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import './App.css'
 
 function App() {
+  const [count, setCount] = useState(0)
+
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-
-          <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
-          
-          {/* Rutas en inglés */}
-          <Route path="/files" element={<MainLayout><Files /></MainLayout>} />
-          
-          <Route path="/teachers" element={<MainLayout><Teachers /></MainLayout>} />
-          <Route path="/teachers/:id" element={<MainLayout><TeacherProfile /></MainLayout>} />
-          <Route path="/teachers/:id/course/:cursoId" element={<MainLayout><CourseDetail /></MainLayout>} />
-          <Route path="/teachers/:id/history" element={<MainLayout><TeacherHistory /></MainLayout>} />
-          <Route path="/teachers/:id/comparison" element={<MainLayout><TeacherComparison /></MainLayout>} />
-          <Route path="/teachers/:id/checklists" element={<MainLayout><TeacherChecklists /></MainLayout>} />
-
-          <Route path="/checklist" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista en construcción...</div></MainLayout>} />
-          
-          <Route path="/coordinators" element={<MainLayout><Coordinators /></MainLayout>} />
-          <Route path="/coordinators/:id" element={<MainLayout><CoordinatorProfile /></MainLayout>} />
-          
-          <Route path="/semesters" element={<MainLayout><Semesters /></MainLayout>} />
-          
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
-  );
+    <>
+      <div>
+        <a href="https://vite.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
 }
 
-export default App;
+export default App
