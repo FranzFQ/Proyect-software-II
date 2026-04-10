@@ -1,19 +1,13 @@
 import os
 from django.core.management.base import BaseCommand
 from academico.models import Semestre
-from evaluaciones.views import (
-    procesar_ceat_logic, 
-    procesar_evaluacion_docente_logic, 
-    procesar_control_docente_logic
-)
+from evaluaciones.services.ingesta_service import IngestaService
 
 class Command(BaseCommand):
     help = 'Importa datos de archivos Excel locales en la carpeta backend/Excels/'
 
     def handle(self, *args, **options):
         # 1. Obtener la ruta de la carpeta Excels
-        # Estamos en: backend/app/evaluaciones/management/commands/importar_excels.py
-        # Subimos 5 niveles para llegar a la carpeta 'backend/'
         backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
         excels_dir = os.path.join(backend_dir, 'Excels')
 
@@ -27,9 +21,9 @@ class Command(BaseCommand):
 
         # 3. Procesar archivos específicos
         archivos = {
-            'CEAT.xlsx': procesar_ceat_logic,
-            'Evaluación Docente.xlsx': procesar_evaluacion_docente_logic,
-            'Control docente.xlsx': procesar_control_docente_logic,
+            'CEAT.xlsx': IngestaService.procesar_ceat,
+            'Evaluación Docente.xlsx': IngestaService.procesar_evaluacion_docente,
+            'Control docente.xlsx': IngestaService.procesar_control_docente,
         }
 
         for nombre, funcion in archivos.items():
