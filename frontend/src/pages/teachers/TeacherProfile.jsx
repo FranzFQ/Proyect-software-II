@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { detalleDocenteMarta } from '../utils/mockData';
+import { detalleDocenteMarta } from '../../utils/mockData';
 
 const DocentePerfil = () => {
   const navigate = useNavigate();

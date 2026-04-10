@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { detalleDocenteMarta } from '../utils/mockData';
+import { detalleDocenteMarta } from '../../utils/mockData';
 // Importamos los iconos de flechas
 import { ChevronUpIcon, ChevronDownIcon, MinusIcon } from '@heroicons/react/24/outline';
 

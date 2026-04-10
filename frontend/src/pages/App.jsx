@@ -8,16 +8,17 @@ import { AppProvider } from '../context/AppContext';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import Files from './Files'; // Antes Archivos
+import Checklist from './Checklist'; // Antes ListaVerificacion
 import Teachers from './Teachers'; // Antes Docentes
-import TeacherProfile from './TeacherProfile'; // Antes DocentePerfil
+import TeacherProfile from './teachers/TeacherProfile'; // Antes DocentePerfil
 import MainLayout from '../components/layout/MainLayout';
 import Coordinators from './Coordinators'; // Antes Coordinadores
 import CoordinatorProfile from './CoordinatorProfile'; // Antes CoordinadorPerfil
 import Semesters from './Semesters'; // Antes Semestres
 import CourseDetail from './CourseDetail'; // Antes CursoDetalle
-import TeacherHistory from './TeacherHistory'; // Antes DocenteHistorico
-import TeacherComparison from './TeacherComparison'; // Antes DocenteComparacion
-import TeacherChecklists from './TeacherChecklists'; // Antes DocenteChecklists
+import TeacherHistory from './teachers/TeacherHistory' // Antes DocenteHistorico
+import TeacherComparison from './teachers/TeacherComparison'; // Antes DocenteComparacion
+import TeacherChecklists from './teachers/TeacherChecklists'; // Antes DocenteChecklists
 
 function App() {
   return (
@@ -38,7 +39,7 @@ function App() {
           <Route path="/teachers/:id/comparison" element={<MainLayout><TeacherComparison /></MainLayout>} />
           <Route path="/teachers/:id/checklists" element={<MainLayout><TeacherChecklists /></MainLayout>} />
 
-          <Route path="/checklist" element={<MainLayout><div className="text-2xl font-bold text-gray-400 p-8">Vista en construcción...</div></MainLayout>} />
+          <Route path="/checklist" element={<MainLayout><Checklist /></MainLayout>} />
           
           <Route path="/coordinators" element={<MainLayout><Coordinators /></MainLayout>} />
           <Route path="/coordinators/:id" element={<MainLayout><CoordinatorProfile /></MainLayout>} />

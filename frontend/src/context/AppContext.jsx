@@ -6,35 +6,52 @@ import { listaDocentesGlobal, listaCoordinadores, listaSemestres } from '../util
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  // SIMULAMOS EL USUARIO LOGUEADO (Si cambias 'rol' a 'Coordinador', el menú desaparecerá)
   const [currentUser, setCurrentUser] = useState({
-    nombre: "Juan Rodríguez", iniciales: "JR", rol: "Administrador" 
+    nombre: "Juan Rodríguez", iniciales: "JR", rol: "Administrador"
   });
 
-  const [ponderaciones, setPonderaciones] = useState({ estudiantil: 30, ceat: 20, autoevaluacion: 10, coordinador: 20, visitas: 10, apoyo: 10 });
+  const [ponderaciones, setPonderaciones] = useState({
+    estudiantil: 30, ceat: 20, autoevaluacion: 10, coordinador: 20, visitas: 10, apoyo: 10
+  });
+
   const [documentos, setDocumentos] = useState([
-    { id: 'estudiantil', titulo: 'Evaluación Estudiantil', estado: 'pendiente', nombreArchivo: '' },
-    { id: 'autoevaluacion', titulo: 'Autoevaluaciones', estado: 'pendiente', nombreArchivo: '' },
-    { id: 'coordinador', titulo: 'Criterios de Coordinador', estado: 'pendiente', nombreArchivo: '' },
-    { id: 'ceat', titulo: 'Evaluaciones CEAT', estado: 'pendiente', nombreArchivo: '' }, 
-    { id: 'apoyo', titulo: 'Apoyo y Colaboración', estado: 'pendiente', nombreArchivo: '' },
+    { id: 'estudiantil',   titulo: 'Evaluación Estudiantil',   estado: 'pendiente', nombreArchivo: '' },
+    { id: 'autoevaluacion',titulo: 'Autoevaluaciones',         estado: 'pendiente', nombreArchivo: '' },
+    { id: 'coordinador',   titulo: 'Criterios de Coordinador', estado: 'pendiente', nombreArchivo: '' },
+    { id: 'ceat',          titulo: 'Evaluaciones CEAT',        estado: 'pendiente', nombreArchivo: '' },
+    { id: 'apoyo',         titulo: 'Apoyo y Colaboración',     estado: 'pendiente', nombreArchivo: '' },
   ]);
+
   const [evaluacionesCompletadas, setEvaluacionesCompletadas] = useState("0%");
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
-  
-  // NUEVO: Estado para Semestres
   const [semestres, setSemestres] = useState(listaSemestres);
 
+  // Agrega o actualiza una visita en el docente correspondiente
+  const guardarVisitaEnDocente = (docenteId, visita) => {
+    setDocentes((prev) =>
+      prev.map((d) => {
+        if (String(d.id) !== String(docenteId)) return d;
+        const visitasActuales = d.visitas || [];
+        const existe = visitasActuales.find((v) => v.id === visita.id);
+        const nuevasVisitas = existe
+          ? visitasActuales.map((v) => (v.id === visita.id ? visita : v))
+          : [...visitasActuales, visita];
+        return { ...d, visitas: nuevasVisitas };
+      })
+    );
+  };
+
   return (
-    <AppContext.Provider value={{ 
+    <AppContext.Provider value={{
       currentUser, setCurrentUser,
       ponderaciones, setPonderaciones,
       documentos, setDocumentos,
       evaluacionesCompletadas, setEvaluacionesCompletadas,
       docentes, setDocentes,
       coordinadores, setCoordinadores,
-      semestres, setSemestres
+      semestres, setSemestres,
+      guardarVisitaEnDocente,
     }}>
       {children}
     </AppContext.Provider>
