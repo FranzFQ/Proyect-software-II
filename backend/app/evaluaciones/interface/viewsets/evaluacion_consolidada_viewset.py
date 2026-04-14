@@ -16,7 +16,6 @@ class EvaluacionConsolidadaViewSet(viewsets.ModelViewSet):
     queryset = (
         EvaluacionConsolidada.objects
         .select_related('docente', 'semestre')
-        .prefetch_related('gotas_curso', 'detalles_globales')
         .all()
         .order_by('semestre', 'docente__nombre_completo')
     )

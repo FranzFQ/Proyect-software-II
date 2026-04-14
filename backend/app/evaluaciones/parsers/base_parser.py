@@ -3,7 +3,7 @@ import re
 from usuarios.models import Docente
 from evaluaciones.models import (
     CursoDado, CriterioEvaluacion, 
-    EvaluacionConsolidada, EvaluacionCurso, DetalleCriterio
+    EvaluacionConsolidada, EvaluacionCurso
 )
 
 class BaseParser:
@@ -38,16 +38,12 @@ class BaseParser:
             print(f"  [!] ERROR: Criterio '{nombre_criterio}' no existe en la BD")
             return
 
+        # Nota: Ya no se guarda en DetalleCriterio porque la tabla fue eliminada.
+        # Se mantiene la lógica de obtener/crear EvaluacionConsolidada y EvaluacionCurso por si se desea extender después.
+        
         eval_consolidada, _ = EvaluacionConsolidada.objects.get_or_create(docente=docente, semestre=semestre)
 
-        if criterio.alcance == 'GLOBAL':
-            DetalleCriterio.objects.create(
-                criterio=criterio,
-                evaluacion_global=eval_consolidada,
-                nota_bruta=float(nota)
-            )
-        
-        elif criterio.alcance == 'CURSO':
+        if criterio.alcance == 'CURSO':
             query_curso = CursoDado.objects.filter(docente=docente, semestre=semestre)
             if nombre_curso:
                 query_curso = query_curso.filter(curso__nombre_curso__icontains=str(nombre_curso).strip())
@@ -57,12 +53,7 @@ class BaseParser:
             
             curso_dado = query_curso.first()
             if curso_dado:
+                # Se quitó evaluacion_consolidada de EvaluacionCurso
                 eval_curso, _ = EvaluacionCurso.objects.get_or_create(
-                    evaluacion_consolidada=eval_consolidada,
                     curso_dado=curso_dado
-                )
-                DetalleCriterio.objects.create(
-                    criterio=criterio,
-                    evaluacion_curso=eval_curso,
-                    nota_bruta=float(nota)
                 )

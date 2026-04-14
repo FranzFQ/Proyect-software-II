@@ -45,23 +45,25 @@ class EvaluacionConsolidada(models.Model):
         return f"Consolidado: {self.docente.nombre_completo} - {self.semestre}"
 
 class EvaluacionCurso(models.Model):
-    evaluacion_consolidada = models.ForeignKey('evaluaciones.EvaluacionConsolidada', on_delete=models.CASCADE, related_name='gotas_curso')
     curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE)
     puntaje_curso = models.FloatField(default=0.0)
 
     def __str__(self):
         return f"Nota Curso: {self.curso_dado.curso.nombre_curso} - {self.puntaje_curso}"
 
-class DetalleCriterio(models.Model):
-    criterio = models.ForeignKey('evaluaciones.CriterioEvaluacion', on_delete=models.CASCADE)
-    evaluacion_global = models.ForeignKey('evaluaciones.EvaluacionConsolidada', on_delete=models.CASCADE, null=True, blank=True, related_name='detalles_globales')
-    evaluacion_curso = models.ForeignKey('evaluaciones.EvaluacionCurso', on_delete=models.CASCADE, null=True, blank=True, related_name='detalles_curso')
-    nota_bruta = models.FloatField()
-    comentarios = models.TextField(null=True, blank=True)
+class Tipo(models.Model):
+    nombre = models.CharField(max_length=255)
 
     def __str__(self):
-        alcance = "Global" if self.evaluacion_global else "Curso"
-        return f"{self.criterio.nombre} ({alcance}): {self.nota_bruta}"
+        return self.nombre
+
+class AnalisisTexto(models.Model):
+    contenido = models.JSONField()
+    curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE)
+    tipo = models.ForeignKey('evaluaciones.Tipo', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Análisis {self.tipo.nombre} - {self.curso_dado}"
 
 class ChecklistObservation(models.Model):
     curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE, related_name='checklists_realizadas')
