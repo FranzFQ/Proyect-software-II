@@ -17,12 +17,10 @@ const ModalPonderacion = ({ onClose, onError }) => {
 
   const handleGuardar = () => {
     if (total !== 100) {
-      // Disparamos el error hacia el modal estético del padre (Files.jsx)
-      // ESTO NO CIERRA este modal de ponderación.
       onError(`La suma de las ponderaciones debe ser exactamente 100%. Actualmente suma ${total}%.`);
       return;
     }
-    onClose();
+    onClose("¡Ponderaciones actualizadas correctamente!");
   };
 
   return (

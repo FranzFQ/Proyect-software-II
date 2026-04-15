@@ -1,3 +1,4 @@
+// src/pages/Coordinators.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
@@ -21,19 +22,20 @@ const Coordinators = () => {
   const [passwordValue, setPasswordValue] = useState('');
   const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
 
-  // ESTADO PARA LA ALERTA ESTÉTICA
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState('success'); // 'success' o 'error'
+  const [alertType, setAlertType] = useState('success'); 
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   const handleSearch = () => { setCurrentPage(1); };
 
+  // AHORA TAMBIÉN BUSCA POR USERNAME
   const coordinadoresFiltrados = coordinadores.filter((coord) => 
     coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||
     coord.carrera.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-    coord.correo.toLowerCase().includes(filtroTexto.toLowerCase())
+    coord.correo.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    (coord.username && coord.username.toLowerCase().includes(filtroTexto.toLowerCase()))
   );
 
   const totalPages = Math.ceil(coordinadoresFiltrados.length / itemsPerPage) || 1;
@@ -87,11 +89,10 @@ const Coordinators = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
-        {/* BOTÓN DE BÚSQUEDA PEGADO AL INPUT */}
         <div className="flex w-full md:w-1/2">
           <input 
             type="text" 
-            placeholder="Búsqueda por nombre, email o carrera..." 
+            placeholder="Búsqueda por nombre, usuario, email o carrera..." 
             className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#112240]"
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
@@ -124,9 +125,32 @@ const Coordinators = () => {
                 currentItems.map((coord, index) => (
                   <tr key={coord.id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
                     <td className="py-4 px-6">
-                      <div className="flex items-center justify-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 ${coord.esAdmin ? 'bg-url-yellow' : 'bg-url-blue'}`}>{coord.iniciales}</div>
-                        <div className="text-left"><h4 className="font-bold text-url-blue text-sm">{coord.nombre}</h4><p className="text-[11px] text-gray-400">{coord.correo}</p></div>
+                      <div className="flex items-center gap-4">
+                        {/* Avatar */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ${coord.esAdmin ? 'bg-url-yellow' : 'bg-url-blue'}`}>
+                          {coord.iniciales}
+                        </div>
+    
+                        {/* Información de texto */}
+                        <div className="flex flex-col">
+                          <h4 className="font-bold text-url-blue text-sm leading-tight">
+                            {coord.nombre}
+                          </h4>
+                          
+                          <div className="flex items-center gap-2 mt-1.5">
+                            {/* Username con ancho fijo para alinear el correo */}
+                            <div className="w-28 shrink-0"> 
+                              <span className="text-[10px] font-bold bg-blue-50 text-url-blue px-2 py-0.5 rounded-md border border-blue-100 inline-block w-full text-center">
+                                @{coord.username || coord.correo.split('@')[0]}
+                              </span>
+                            </div>
+                            
+                            {/* Correo - Ahora todos empezarán en el mismo punto vertical */}
+                            <p className="text-[11px] text-gray-400 font-medium italic">
+                              {coord.correo}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="py-4 px-6 text-center text-url-blue font-bold text-sm">{coord.facultad}</td>
@@ -151,7 +175,6 @@ const Coordinators = () => {
          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors">Siguiente &rarr;</button>
       </div>
 
-      {/* Formulario Modal */}
       <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={coordinadorActual ? "Editar Información" : "Agregar Nuevo perfil"}>
         <form onSubmit={guardarCoordinador} className="flex flex-col gap-5">
           <div className="flex justify-end items-center gap-3">
@@ -160,11 +183,33 @@ const Coordinators = () => {
                 {esAdminForm && <div className="w-2 h-2 bg-white rounded-full"></div>}
              </button>
           </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1"><label className="text-xs font-bold text-gray-500 uppercase">Nombre Completo</label><input type="text" placeholder="Ej. María Elizabet" defaultValue={coordinadorActual?.nombre} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required /></div>
-            <div className="flex flex-col gap-1"><label className="text-xs font-bold text-gray-500 uppercase">Carrera</label><input type="text" placeholder="Ej. Informática y sistemas" defaultValue={coordinadorActual?.carrera} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required /></div>
-            <div className="flex flex-col gap-1"><label className="text-xs font-bold text-gray-500 uppercase">Facultad</label><input type="text" placeholder="Ej. Ingeniería" defaultValue={coordinadorActual?.facultad} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required /></div>
-            <div className="flex flex-col gap-1"><label className="text-xs font-bold text-gray-500 uppercase">Correo Institucional</label><input type="email" placeholder="Ej. mtorres@univ.edu.gt" defaultValue={coordinadorActual?.correo} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required /></div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">Nombre Completo</label>
+              <input type="text" placeholder="Ej. María Elizabet" defaultValue={coordinadorActual?.nombre} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">Nombre de Usuario</label>
+              <input type="text" placeholder="Ej. melizabet" defaultValue={coordinadorActual?.username} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">Correo Institucional</label>
+              <input type="email" placeholder="Ej. mtorres@univ.edu.gt" defaultValue={coordinadorActual?.correo} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">Facultad</label>
+              <input type="text" placeholder="Ej. Ingeniería" defaultValue={coordinadorActual?.facultad} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+            </div>
+
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-xs font-bold text-gray-500 uppercase">Carrera</label>
+              <input type="text" placeholder="Ej. Informática y sistemas" defaultValue={coordinadorActual?.carrera} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+            </div>
+
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">Contraseña</label>
               <div className="relative">
@@ -199,7 +244,6 @@ const Coordinators = () => {
          </div>
       </Modal>
 
-      {/* ALERTA ESTÉTICA */}
       <Modal isOpen={!!alertMessage} onClose={() => setAlertMessage('')} title="Aviso del Sistema" zIndex="z-[60]">
          <div className="flex flex-col items-center justify-center py-4 px-2">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${alertType === 'error' ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>

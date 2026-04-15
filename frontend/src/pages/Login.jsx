@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext'; 
@@ -10,7 +11,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { setCurrentUser } = useContext(AppContext); 
   
-  const [email, setEmail] = useState('');
+  const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,8 +21,8 @@ const Login = () => {
     e.preventDefault();
     setError('');
 
-    if (!email || !password) {
-      setError('Por favor, ingresa tu correo y contraseña.');
+    if (!loginInput || !password) {
+      setError('Por favor, ingresa tu credencial y contraseña.');
       return;
     }
 
@@ -30,56 +31,59 @@ const Login = () => {
     setTimeout(() => {
       setIsLoading(false);
       
-      const emailLower = email.toLowerCase().trim();
+      const inputLower = loginInput.toLowerCase().trim();
 
-      // VALIDACIÓN DE ROLES (Super Admin vs Coordinador)
-      if (emailLower === 'admin@url.edu.gt' && password === 'admin123') {
+      // VALIDACIÓN: Acepta tanto el username como el correo completo
+      if ((inputLower === 'admin@url.edu.gt' || inputLower === 'admin') && password === 'admin123') {
         setCurrentUser({ 
           nombre: 'Juan Rodríguez', 
+          username: 'admin',
           iniciales: 'JR', 
           rol: 'Administrador', 
-          correo: emailLower 
+          correo: 'admin@url.edu.gt' 
         });
         navigate('/dashboard');
       } 
-      else if (emailLower === 'coord@url.edu.gt' && password === 'coord123') {
+      else if ((inputLower === 'coord@url.edu.gt' || inputLower === 'coord') && password === 'coord123') {
         setCurrentUser({ 
           nombre: 'Ana Mendoza', 
+          username: 'coord',
           iniciales: 'AM', 
           rol: 'Coordinador', 
-          correo: emailLower 
+          correo: 'coord@url.edu.gt' 
         });
         navigate('/dashboard');
       } 
       else {
-        setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        setError('Credenciales incorrectas. Verifica tu usuario/correo y contraseña.');
       }
     }, 1500); 
   };
 
   return (
     <div className="min-h-screen flex">
-      {/* SECCIÓN IZQUIERDA (Logo institucional) */}
       <div className="hidden md:flex md:w-1/2 bg-url-blue items-center justify-center p-12">
         <div className="text-white text-center flex flex-col items-center">
           <img src={logoUrl} alt="Universidad Rafael Landívar" className="w-80 lg:w-96 mb-8 brightness-0 invert opacity-90" />
         </div>
       </div>
 
-      {/* SECCIÓN DERECHA (Formulario de Login) */}
       <div className="w-full md:w-1/2 bg-[#F8FAFC] flex flex-col justify-center items-center p-8 lg:p-16">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-url-blue mb-2">Bienvenido de vuelta</h2>
           <p className="text-gray-500 mb-8 text-sm">Ingresa tus credenciales institucionales para continuar</p>
 
-          {/* MENSAJE DE ERROR */}
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm font-semibold border border-red-200">{error}</div>}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {/* CAMPO ACTUALIZADO: Acepta texto general en lugar de solo type="email" */}
             <Input 
-              id="email" type="email" label="CORREO INSTITUCIONAL" 
-              placeholder="Ej. admin@url.edu.gt" 
-              value={email} onChange={(e) => setEmail(e.target.value)} 
+              id="loginInput" 
+              type="text" 
+              label="CORREO INSTITUCIONAL O USUARIO" 
+              placeholder="Ej. admin o admin@url.edu.gt" 
+              value={loginInput} 
+              onChange={(e) => setLoginInput(e.target.value)} 
               disabled={isLoading} 
             />
             

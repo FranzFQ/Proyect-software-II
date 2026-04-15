@@ -68,7 +68,7 @@ const Semesters = () => {
           <button onClick={() => navigate('/coordinators')} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
             &larr; Volver a Coordinadores
           </button>
-          <h1 className="text-3xl font-bold text-url-blue font-serif">Semestres</h1>
+          <h1 className="text-3xl font-bold text-url-blue">Semestres</h1>
           <p className="text-gray-500">Semestres registrados - {semestres.length}</p>
         </div>
 

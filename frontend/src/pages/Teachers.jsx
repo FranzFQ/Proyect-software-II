@@ -170,11 +170,12 @@ const Teachers = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">Plan Docente</label>
-              <select className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required defaultValue={docenteActual?.tipo || "Tiempo Completo"}>
-                <option value="Tiempo Completo">Tiempo Completo</option>
-                <option value="Tiempo Parcial">Tiempo Parcial</option>
-                <option value="Por Horas">Por Horas</option>
-              </select>
+              <input 
+              type="text" 
+              placeholder="Ej. Plan Diario / Fin de Semana" 
+              defaultValue={docenteActual?.tipo} 
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" 
+              required />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">Carrera</label>

@@ -243,7 +243,13 @@ const Files = () => {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Modificación de Ponderaciones">
-        <ModalPonderacion onClose={() => setIsModalOpen(false)} onError={(msg) => setAlertMessage(msg)} />
+        <ModalPonderacion 
+        onClose={(msg) => {
+          setIsModalOpen(false);
+          if (msg) setAlertMessage(msg); // Si hay mensaje de éxito, lo muestra el modal de alerta
+          }} 
+          onError={(msg) => setAlertMessage(msg)} 
+        />
       </Modal>
 
       {/* UN SOLO MODAL DE CARGA UNIFICADO (Sirve para todo, incluyendo Pensum y Docentes) */}

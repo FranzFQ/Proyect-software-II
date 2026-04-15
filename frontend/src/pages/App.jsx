@@ -1,7 +1,9 @@
+// src/pages/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import { AppProvider } from '../context/AppContext';
+import ProtectedRoute from '../components/auth/ProtectedRoute'; // Importamos el protector
 
 import Login from './Login';
 import Dashboard from './Dashboard';
@@ -24,27 +26,31 @@ function App() {
     <AppProvider>
       <BrowserRouter>
         <Routes>
+          {/* RUTA PÚBLICA (Sin protección) */}
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
-          <Route path="/files" element={<MainLayout><Files /></MainLayout>} />
-          
-          <Route path="/teachers" element={<MainLayout><Teachers /></MainLayout>} />
-          <Route path="/teachers/:id" element={<MainLayout><TeacherProfile /></MainLayout>} />
-          <Route path="/teachers/:id/semester/:semesterId" element={<MainLayout><TeacherProfile /></MainLayout>} />
-          
-          <Route path="/teachers/:id/course/:cursoId" element={<MainLayout><CourseDetail /></MainLayout>} />
-          <Route path="/teachers/:id/history" element={<MainLayout><TeacherHistory /></MainLayout>} />
-          <Route path="/teachers/:id/comparison" element={<MainLayout><TeacherComparison /></MainLayout>} />
-          <Route path="/teachers/:id/checklists" element={<MainLayout><TeacherChecklists /></MainLayout>} />
-          <Route path="/checklist" element={<MainLayout><Checklist /></MainLayout>} />
-          
-          <Route path="/coordinators" element={<MainLayout><Coordinators /></MainLayout>} />
-          <Route path="/coordinators/:id" element={<MainLayout><CoordinatorProfile /></MainLayout>} />
-          <Route path="/semesters" element={<MainLayout><Semesters /></MainLayout>} />
-          
-          <Route path="*" element={<Navigate to="/login" replace />} />
 
-          <Route path="/profile-settings" element={<MainLayout><ProfileSettings /></MainLayout>} />
+          {/* RUTAS PROTEGIDAS (Envueltas en ProtectedRoute) */}
+          <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+          <Route path="/files" element={<ProtectedRoute><MainLayout><Files /></MainLayout></ProtectedRoute>} />
+          
+          <Route path="/teachers" element={<ProtectedRoute><MainLayout><Teachers /></MainLayout></ProtectedRoute>} />
+          <Route path="/teachers/:id" element={<ProtectedRoute><MainLayout><TeacherProfile /></MainLayout></ProtectedRoute>} />
+          <Route path="/teachers/:id/semester/:semesterId" element={<ProtectedRoute><MainLayout><TeacherProfile /></MainLayout></ProtectedRoute>} />
+          
+          <Route path="/teachers/:id/course/:cursoId" element={<ProtectedRoute><MainLayout><CourseDetail /></MainLayout></ProtectedRoute>} />
+          <Route path="/teachers/:id/history" element={<ProtectedRoute><MainLayout><TeacherHistory /></MainLayout></ProtectedRoute>} />
+          <Route path="/teachers/:id/comparison" element={<ProtectedRoute><MainLayout><TeacherComparison /></MainLayout></ProtectedRoute>} />
+          <Route path="/teachers/:id/checklists" element={<ProtectedRoute><MainLayout><TeacherChecklists /></MainLayout></ProtectedRoute>} />
+          <Route path="/checklist" element={<ProtectedRoute><MainLayout><Checklist /></MainLayout></ProtectedRoute>} />
+          
+          <Route path="/coordinators" element={<ProtectedRoute><MainLayout><Coordinators /></MainLayout></ProtectedRoute>} />
+          <Route path="/coordinators/:id" element={<ProtectedRoute><MainLayout><CoordinatorProfile /></MainLayout></ProtectedRoute>} />
+          <Route path="/semesters" element={<ProtectedRoute><MainLayout><Semesters /></MainLayout></ProtectedRoute>} />
+          
+          <Route path="/profile-settings" element={<ProtectedRoute><MainLayout><ProfileSettings /></MainLayout></ProtectedRoute>} />
+
+          {/* RUTA DE CAPTURA (Si pone una URL que no existe o la raíz, lo manda al login) */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AppProvider>

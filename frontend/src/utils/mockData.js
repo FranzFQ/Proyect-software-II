@@ -132,14 +132,14 @@ export const listaDocentesGlobal = [
 export const detalleDocenteMarta = listaDocentesGlobal[0];
 
 export const listaCoordinadores = [
-  { id: 1, nombre: "Juan Rodríguez", iniciales: "JR", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "jrodriguez@univ.edu.gt", esAdmin: true },
-  { id: 2, nombre: "Ana Mendoza", iniciales: "AM", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "amendoza@univ.edu.gt", esAdmin: false },
-  { id: 3, nombre: "Pedro García", iniciales: "PG", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "pgarcia@univ.edu.gt", esAdmin: false },
-  { id: 4, nombre: "Sandra López", iniciales: "SL", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "slopez@univ.edu.gt", esAdmin: false },
-  { id: 5, nombre: "Carlos Méndez", iniciales: "CM", facultad: "Arquitectura", carrera: "Diseño Industrial", correo: "cmendez@univ.edu.gt", esAdmin: false },
-  { id: 6, nombre: "Lucía Pineda", iniciales: "LP", facultad: "Ciencias Económicas", carrera: "Administración de Empresas", correo: "lpineda@univ.edu.gt", esAdmin: true },
-  { id: 7, nombre: "Marcos Aguilar", iniciales: "MA", facultad: "Humanidades", carrera: "Psicología Clínica", correo: "maguilar@univ.edu.gt", esAdmin: false },
-  { id: 8, nombre: "Sofía Reyes", iniciales: "SR", facultad: "Derecho", carrera: "Ciencias Jurídicas", correo: "sreyes@univ.edu.gt", esAdmin: false }
+  { id: 1, nombre: "Juan Rodríguez", username: "jrodriguez", iniciales: "JR", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "jrodriguez@univ.edu.gt", esAdmin: true },
+  { id: 2, nombre: "Ana Mendoza", username: "amendoza", iniciales: "AM", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "amendoza@univ.edu.gt", esAdmin: false },
+  { id: 3, nombre: "Pedro García", username: "pgarcia", iniciales: "PG", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "pgarcia@univ.edu.gt", esAdmin: false },
+  { id: 4, nombre: "Sandra López", username: "slopez", iniciales: "SL", facultad: "Ingeniería", carrera: "Informática y sistemas", correo: "slopez@univ.edu.gt", esAdmin: false },
+  { id: 5, nombre: "Carlos Méndez", username: "cmendez", iniciales: "CM", facultad: "Arquitectura", carrera: "Diseño Industrial", correo: "cmendez@univ.edu.gt", esAdmin: false },
+  { id: 6, nombre: "Lucía Pineda", username: "lpineda", iniciales: "LP", facultad: "Ciencias Económicas", carrera: "Administración de Empresas", correo: "lpineda@univ.edu.gt", esAdmin: true },
+  { id: 7, nombre: "Marcos Aguilar", username: "maguilar", iniciales: "MA", facultad: "Humanidades", carrera: "Psicología Clínica", correo: "maguilar@univ.edu.gt", esAdmin: false },
+  { id: 8, nombre: "Sofía Reyes", username: "sreyes", iniciales: "SR", facultad: "Derecho", carrera: "Ciencias Jurídicas", correo: "sreyes@univ.edu.gt", esAdmin: false }
 ];
 
 export const detalleCoordinador = {
