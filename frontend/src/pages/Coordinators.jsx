@@ -1,15 +1,27 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
+=======
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
 import {
   getUsuarios,
   createUsuario,
   updateUsuario,
   deleteUsuario,
   normalizeCoordinador,
+<<<<<<< HEAD
 } from "../services/user_service";
 import Modal from "../components/common/Modal";
 import Button from "../components/common/Button";
+=======
+} from '../services/user_service'; 
+import Modal from '../components/common/Modal';
+import Button from '../components/common/Button';
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
 import {
   CheckCircleIcon as CheckCircleSolid,
   XCircleIcon as XCircleSolid,
@@ -28,9 +40,13 @@ import {
 const Coordinators = () => {
   const navigate = useNavigate();
   const { coordinadores, setCoordinadores } = useContext(AppContext);
+<<<<<<< HEAD
 
   // ─── Estados de UI ─────────────────────────────────────────────────────────
   const [filtroTexto, setFiltroTexto] = useState("");
+=======
+  const [filtroTexto, setFiltroTexto]           = useState('');
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCargarPensumOpen, setIsCargarPensumOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -39,6 +55,7 @@ const Coordinators = () => {
   const [esAdminForm, setEsAdminForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+<<<<<<< HEAD
   const [passwordValue, setPasswordValue] = useState("");
   const [confirmPasswordValue, setConfirmPasswordValue] = useState("");
 
@@ -48,23 +65,24 @@ const Coordinators = () => {
   const [isDeleting, setIsDeleting] = useState(false); // eliminar
   const [listError, setListError] = useState("");
   const [formError, setFormError] = useState("");
+=======
+  const [passwordValue, setPasswordValue]       = useState('');
+  const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
+  const [isLoadingList, setIsLoadingList] = useState(true);   
+  const [isSaving, setIsSaving]           = useState(false);  
+  const [isDeleting, setIsDeleting]       = useState(false);  
+  const [listError, setListError]         = useState('');
+  const [formError, setFormError]         = useState('');
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
 
-  // ─── 1. CARGAR LISTA AL MONTAR ─────────────────────────────────────────────
-  // useEffect con [] como dependencia se ejecuta UNA sola vez cuando el
-  // componente aparece en pantalla. Aquí pedimos la lista real al backend.
   useEffect(() => {
     const cargarCoordinadores = async () => {
       setIsLoadingList(true);
       setListError("");
       try {
-        // getUsuarios() hace GET /api/usuarios/
-        // El ViewSet de Django devuelve todos los usuarios paginados (o no,
-        // según tu configuración).
+        // conexion al backend para obtener los usuarios
         const data = await getUsuarios();
-
-        // data puede ser un array directo o { results: [...] } si usas paginación
         const lista = Array.isArray(data) ? data : data.results || [];
-
         // Normalizamos cada usuario al formato que espera el componente
         setCoordinadores(lista.map(normalizeCoordinador));
       } catch (err) {
@@ -77,8 +95,9 @@ const Coordinators = () => {
     };
 
     cargarCoordinadores();
-  }, []); // ← Array vacío = solo al montar
+  }, []); 
 
+<<<<<<< HEAD
   // ─── Filtrado local (sin llamar al backend) ────────────────────────────────
   // Filtramos la lista que ya tenemos en memoria. Para búsquedas más pesadas
   // podrías pasar el texto como parámetro a getUsuarios({ search: filtroTexto })
@@ -92,23 +111,34 @@ const Coordinators = () => {
   );
 
   // ─── 2. ABRIR MODAL DE ELIMINACIÓN ────────────────────────────────────────
+=======
+  const coordinadoresFiltrados = coordinadores.filter((coord) =>
+    coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    coord.carrera.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+    coord.correo.toLowerCase().includes(filtroTexto.toLowerCase())
+  );
+
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const confirmarEliminacion = (coord) => {
     setCoordinadorActual(coord);
     setIsDeleteModalOpen(true);
   };
 
-  // ─── 3. EJECUTAR ELIMINACIÓN ──────────────────────────────────────────────
   const ejecutarEliminacion = async () => {
     setIsDeleting(true);
     try {
-      // deleteUsuario() hace DELETE /api/usuarios/{id}/
+      // Ejecuta eliminar usuario
       await deleteUsuario(coordinadorActual.id);
+<<<<<<< HEAD
 
       // ★ Actualización optimista: quitamos el coordinador del estado local
       // sin recargar toda la lista. La UI responde instantáneamente.
       setCoordinadores((prev) =>
         prev.filter((c) => c.id !== coordinadorActual.id),
       );
+=======
+      setCoordinadores(prev => prev.filter(c => c.id !== coordinadorActual.id));
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       setIsDeleteModalOpen(false);
       setCoordinadorActual(null);
     } catch (err) {
@@ -118,7 +148,10 @@ const Coordinators = () => {
     }
   };
 
+<<<<<<< HEAD
   // ─── 4. ABRIR FORMULARIO ──────────────────────────────────────────────────
+=======
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const abrirFormulario = (coord = null) => {
     setCoordinadorActual(coord);
     setEsAdminForm(coord ? coord.esAdmin : false);
@@ -130,7 +163,10 @@ const Coordinators = () => {
     setIsFormModalOpen(true);
   };
 
+<<<<<<< HEAD
   // ─── 5. GUARDAR (CREAR O EDITAR) ──────────────────────────────────────────
+=======
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const guardarCoordinador = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -141,22 +177,28 @@ const Coordinators = () => {
       return;
     }
 
-    // Leemos los valores del formulario usando FormData para no necesitar
-    // un estado por cada campo del formulario.
+    // Leemos los valores del formulario usando FormData
     const formData = new FormData(e.target);
 
-    // Construimos el objeto que espera el backend (campos del serializer)
+    // Construimos el objeto que espera el backend
     const payload = {
+<<<<<<< HEAD
       first_name: formData.get("first_name"),
       last_name: formData.get("last_name"),
       email: formData.get("email"),
       // username: usamos el email como username (práctica común)
       username: formData.get("email"),
       is_staff: esAdminForm,
+=======
+      first_name: formData.get('first_name'),
+      last_name:  formData.get('last_name'),
+      email:      formData.get('email'),
+      // username: usamos el email como username
+      username:   formData.get('email'),
+      is_staff:   esAdminForm,
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
     };
 
-    // Solo incluimos la contraseña si el usuario escribió una
-    // (en edición, campo vacío = no cambiar contraseña)
     if (passwordValue) {
       payload.password = passwordValue;
     }
@@ -164,37 +206,53 @@ const Coordinators = () => {
     setIsSaving(true);
     try {
       if (coordinadorActual) {
-        // ─── EDITAR ─────────────────────────────────────────────────────────
-        // updateUsuario() hace PATCH /api/usuarios/{id}/
         const updated = await updateUsuario(coordinadorActual.id, payload);
         const normalizado = normalizeCoordinador(updated);
 
+<<<<<<< HEAD
         // Reemplazamos el coordinador en la lista local
         setCoordinadores((prev) =>
           prev.map((c) => (c.id === normalizado.id ? normalizado : c)),
+=======
+        setCoordinadores(prev =>
+          prev.map(c => c.id === normalizado.id ? normalizado : c)
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
         );
       } else {
-        // ─── CREAR ──────────────────────────────────────────────────────────
-        // createUsuario() hace POST /api/usuarios/
         const created = await createUsuario(payload);
         const normalizado = normalizeCoordinador(created);
 
+<<<<<<< HEAD
         // Añadimos el nuevo coordinador al final de la lista local
         setCoordinadores((prev) => [...prev, normalizado]);
+=======
+        setCoordinadores(prev => [...prev, normalizado]);
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       }
 
       setIsFormModalOpen(false);
     } catch (err) {
+<<<<<<< HEAD
       // Mostramos el error dentro del modal (no como alert)
       setFormError(err.message || "Ocurrió un error. Intenta de nuevo.");
+=======
+      setFormError(err.message || 'Ocurrió un error. Intenta de nuevo.');
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
     } finally {
       setIsSaving(false);
     }
   };
 
+<<<<<<< HEAD
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
+=======
+  return (
+    <div className="flex flex-col gap-6">
+
+      {/* Cabecera */}
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue mb-2">
@@ -222,6 +280,10 @@ const Coordinators = () => {
         </div>
       </div>
 
+<<<<<<< HEAD
+=======
+      {/* Buscador */}
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="flex w-full md:w-1/2">
           <input
@@ -243,6 +305,7 @@ const Coordinators = () => {
         </div>
       </div>
 
+<<<<<<< HEAD
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-2">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -264,6 +327,30 @@ const Coordinators = () => {
             </thead>
             <tbody>
               {currentItems.length === 0 ? (
+=======
+      {/* Estados de carga / error */}
+      {isLoadingList && (
+        <div className="flex justify-center py-12">
+          <svg className="animate-spin h-8 w-8 text-url-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        </div>
+      )}
+
+      {listError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg text-sm font-semibold">
+          {listError}
+        </div>
+      )}
+
+      {/* Tabla */}
+      {!isLoadingList && !listError && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-2">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-[#112240] text-white">
+>>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
                 <tr>
                   <td
                     colSpan="4"

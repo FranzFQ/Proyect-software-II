@@ -1,21 +1,7 @@
-// src/pages/Login.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// LOGIN CONECTADO AL BACKEND
-//
-// Cambios respecto a la versión con mock:
-//
-//  1. Se importa el AppContext para poder guardar el usuario en el estado global.
-//  2. Se importa login() de authService.js. Esa función hace el POST al backend,
-//     guarda el token en sessionStorage y retorna los datos del usuario.
-//  3. El handleSubmit ya NO tiene el setTimeout; llama al servicio real.
-//  4. Si el login es exitoso, guardamos el usuario en el contexto Y navegamos.
-//  5. Si falla, mostramos el mensaje de error que viene del backend.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { login } from '../services/auth_service';   // ← NUEVO
+import { login } from '../services/auth_service';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import logoUrl from '../assets/logo-url.webp';
@@ -24,7 +10,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 const Login = () => {
   const navigate = useNavigate();
 
-  // ★ NUEVO: necesitamos setCurrentUser para guardar el usuario en el contexto
+  // Se Usa un setCurrentUser para guardar el usuario en el contexto
   const { setCurrentUser } = useContext(AppContext);
 
   const [email, setEmail] = useState('');
@@ -33,12 +19,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // ─── handleSubmit conectado al backend ──────────────────────────────────────
+  // conexion al backend 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Validación básica en frontend (igual que antes)
+    // Validación básica en frontend
     if (!email || !password) {
       setError('Por favor, ingresa tu correo y contraseña.');
       return;
@@ -51,23 +37,16 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // ★ LLAMADA REAL AL BACKEND
-      // login() hace:
-      //   1. POST /api/token/ → obtiene el JWT
-      //   2. GET  /api/usuarios/me/ → obtiene los datos del usuario
-      //   3. Guarda token + usuario en sessionStorage
-      //   4. Devuelve { token, user }
+      // LLAMADA REAL AL BACKEND
       const { user } = await login(email, password);
-      // ★ Guardamos el usuario en el contexto global de React.
-      //   Esto hace que el Sidebar, el Dashboard, etc. puedan leer currentUser
-      //   sin tener que volver a llamar al backend.
+      // Guardamos el usuario en el contexto global de React.
       setCurrentUser(user);
 
       // Redirigimos al dashboard
       navigate('/dashboard');
 
     } catch (err) {
-      // err.message viene de authService → handleResponse → errorData.detail
+      // Mensaje de error del backend o de validacion
       setError(err.message || 'Ocurrió un error al iniciar sesión. Intenta de nuevo.');
     } finally {
       // Siempre apagamos el spinner, haya error o no

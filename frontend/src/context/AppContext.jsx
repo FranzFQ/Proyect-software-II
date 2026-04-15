@@ -2,7 +2,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { getSavedUser } from '../services/auth_service';
 
-// 🔥 MOCK DATA (tu archivo actual)
 import {
   listaDocentesGlobal,
   listaCoordinadores,
@@ -13,15 +12,12 @@ export const AppContext = createContext(null);
 
 export const AppProvider = ({ children }) => {
 
-  // ─── USUARIO (LOGIN) ─────────────────────────────
   const [currentUser, setCurrentUser] = useState(() => getSavedUser());
 
-  // ─── DATOS PRINCIPALES (MOCK) ────────────────────
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
   const [semestres, setSemestres] = useState(listaSemestres);
 
-  // ─── CONFIGURACIÓN ───────────────────────────────
   const [ponderaciones, setPonderaciones] = useState({
     estudiantil: 30,
     ceat: 20,
@@ -43,7 +39,6 @@ export const AppProvider = ({ children }) => {
 
   const [evaluacionesCompletadas, setEvaluacionesCompletadas] = useState("0%");
 
-  // ─── LÓGICA ORIGINAL (VISITAS) ───────────────────
   const guardarVisitaEnDocente = (docenteId, visita) => {
     setDocentes((prev) =>
       prev.map((d) => {
@@ -61,7 +56,6 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  // ─── SESSION STORAGE ─────────────────────────────
   useEffect(() => {
     if (currentUser) {
       sessionStorage.setItem('auth_user', JSON.stringify(currentUser));
@@ -71,33 +65,21 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // ─── CONTEXTO GLOBAL ─────────────────────────────
   const contextValue = {
-    // Usuario
     currentUser,
     setCurrentUser,
-
-    // Datos
     docentes,
     setDocentes,
-
     coordinadores,
     setCoordinadores,
-
     semestres,
     setSemestres,
-
-    // Configuración
     ponderaciones,
     setPonderaciones,
-
     documentos,
     setDocumentos,
-
     evaluacionesCompletadas,
     setEvaluacionesCompletadas,
-
-    // Funciones
     guardarVisitaEnDocente,
   };
 
