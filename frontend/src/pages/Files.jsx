@@ -48,21 +48,58 @@ const Files = () => {
     setIsUploadModalOpen(true); 
   };
   
-  const procesarCargaArchivo = () => {
+  const procesarCargaArchivo = async () => {
     if (!archivoTemporal) return setAlertMessage("Por favor selecciona un archivo.");
     
     const fileName = archivoTemporal.name.toLowerCase();
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
-      setDocumentos(docs => docs.map(doc => 
-        doc.id === activeUploadId 
-          ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } 
-          : doc
-      ));
-      setIsUploadModalOpen(false); 
-      setArchivoTemporal(null);
-    } else { 
-      setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx, .xls o .csv"); 
+    const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv');
+    
+    if (!isValidFormat) {
+      return setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx, .xls o .csv");
     }
+
+    // --- CARGA INMEDIATA PARA NÓMINA Y PENSUM ---
+    if (activeUploadId === 'nomina' || activeUploadId === 'pensum') {
+      setCargando(true);
+      const formData = new FormData();
+      formData.append('archivo', archivoTemporal);
+      formData.append('tipo', mapIdToOrigen(activeUploadId));
+
+      try {
+        const response = await fetch(`${API_URL}evaluaciones/ingesta/subir-archivo/`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          setDocumentos(docs => docs.map(doc => 
+            doc.id === activeUploadId 
+              ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null } // file: null porque ya se subió
+              : doc
+          ));
+          setAlertMessage(`¡${activeUploadId.toUpperCase()} cargado con éxito!`);
+          setIsUploadModalOpen(false);
+        } else {
+          setAlertMessage(`Error al cargar ${activeUploadId}: ${data.error || "Error desconocido"}`);
+        }
+      } catch (error) {
+        setAlertMessage(`Error de conexión al cargar ${activeUploadId}`);
+      } finally {
+        setCargando(false);
+        setArchivoTemporal(null);
+      }
+      return;
+    }
+
+    // --- CARGA DIFERIDA PARA EL RESTO (EVALUACIONES) ---
+    setDocumentos(docs => docs.map(doc => 
+      doc.id === activeUploadId 
+        ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } 
+        : doc
+    ));
+    setIsUploadModalOpen(false); 
+    setArchivoTemporal(null);
   };
 
   const handleEliminar = (e, id) => { 

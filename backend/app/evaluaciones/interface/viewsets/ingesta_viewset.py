@@ -38,6 +38,10 @@ class IngestaViewSet(viewsets.ViewSet):
                 IngestaService.procesar_evaluacion_docente(archivo, semestre)
             elif tipo == 'control_docente':
                 IngestaService.procesar_control_docente(archivo, semestre)
+            elif tipo == 'nomina':
+                IngestaService.procesar_nomina(archivo, semestre)
+            elif tipo == 'pensum':
+                IngestaService.procesar_pensum(archivo)
             else:
                 return Response(
                     {'error': f'El tipo de archivo "{tipo}" no está soportado aún por el motor de ingesta.'}, 
@@ -45,7 +49,7 @@ class IngestaViewSet(viewsets.ViewSet):
                 )
 
             return Response(
-                {'message': f'Archivo de {tipo} procesado exitosamente para el semestre {semestre}.'}, 
+                {'message': f'Archivo de {tipo} procesado exitosamente.'}, 
                 status=status.HTTP_201_CREATED
             )
         except Exception as e:

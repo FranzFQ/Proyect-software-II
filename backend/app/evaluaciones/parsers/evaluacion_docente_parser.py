@@ -4,18 +4,28 @@ from evaluaciones.parsers.base_parser import BaseParser
 class EvaluacionDocenteParser(BaseParser):
     @classmethod
     def procesar(cls, archivo, semestre):
+        # El archivo Evaluación Docente.xlsx empieza en la fila 11 (headers)
         df = pd.read_excel(archivo, skiprows=11)
+        
         for _, fila in df.iterrows():
-            col_codigo = ' Código' if ' Código' in df.columns else 'Código'
-            col_resultado = 'Resultado' if 'Resultado' in df.columns else ' Resultado'
-            col_seccion = ' Sección' if ' Sección' in df.columns else 'Sección'
+            # Limpiamos nombres de columnas quitando espacios para búsqueda flexible
+            # Pero mantenemos acceso directo si conocemos el nombre exacto del Excel inspeccionado
+            codigo_raw = fila.get(' Código') or fila.get('Código')
+            codigo = cls.extraer_codigo_docente(codigo_raw)
             
-            codigo = cls.extraer_codigo_docente(fila.get(col_codigo))
-            nombre = fila.get('Nombre') or fila.get('Docente') or fila.get(' Nombres y Apellidos')
-            nota = fila.get(col_resultado)
+            nombre = fila.get('Catedrático') or fila.get('Nombre') or fila.get('Docente')
+            nota = fila.get('Resultado') or fila.get(' Resultado')
             
             if codigo and not pd.isna(nota):
                 curso = fila.get('Curso')
-                seccion = fila.get(col_seccion)
-                cls.guardar_nota_en_bd(codigo, 'Evaluaciones Estudiantes', nota, semestre, 
-                                  nombre_curso=curso, seccion=seccion, docente_obj=nombre)
+                seccion = fila.get(' Sección') or fila.get('Sección')
+                
+                cls.guardar_nota_en_bd(
+                    codigo, 
+                    'Evaluaciones Estudiantes', 
+                    nota, 
+                    semestre, 
+                    nombre_curso=curso, 
+                    seccion=seccion, 
+                    docente_obj=nombre
+                )

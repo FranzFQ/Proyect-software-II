@@ -5,29 +5,48 @@ class ControlDocenteParser(BaseParser):
     @classmethod
     def procesar(cls, archivo, semestre):
         df = pd.read_excel(archivo)
-        cols_asistencia = [
-            'Asistencia reunón facultad 19 junio', 'Programa actualizado\n8 de julio',
-            'Configuración de notas\n8 de julio', 'Asistencia actualizada por sesión en el portal',
-            'Uso del portal académico ', 'Zonas al 20%\n23 de agosto',
-            'Zonas al 30%\n17 de septiembre', 'Zonas al 40%\n27 de septiembre',
-            'Zonas al 60%\n24 de octubre', 'Envío de propuestas de examen\n3 días hábiles',
-            'Actas de primera y segunda convocatoria\n3 días hábiles'
-        ]
+        
+        # Palabras clave para identificar columnas de calificación (asistencia, tareas, etc.)
+        keywords = ['asistencia', 'zonas', 'programa', 'portal', 'actas', 'propuesta']
+        
         for _, fila in df.iterrows():
             nombre_docente = fila.get('Docente')
             if pd.isna(nombre_docente): continue
             
-            # Intentar buscar un código en el Excel (a veces se llama 'Carné' o 'Código')
-            codigo = fila.get('Código') or fila.get('Código Docente') or fila.get('Carné')
+            # 1. Buscar Código
+            codigo_raw = fila.get('Código') or fila.get('Código Docente') or fila.get('Carné')
+            codigo = cls.extraer_codigo_docente(codigo_raw)
             
-            # Calculamos el promedio de asistencia
-            valores = pd.to_numeric([fila.get(c) for c in cols_asistencia if c in fila], errors='coerce')
-            valores_validos = valores[~pd.isna(valores)]
-            promedio = valores_validos.mean() if len(valores_validos) > 0 else 0
+            # 2. Calcular promedio de columnas de control dinámicamente
+            notas_control = []
+            for col in df.columns:
+                col_lower = col.lower()
+                # Si la columna contiene alguna palabra clave, tomamos su valor
+                if any(k in col_lower for k in keywords):
+                    val = pd.to_numeric(fila.get(col), errors='coerce')
+                    if not pd.isna(val):
+                        notas_control.append(val)
             
+            # Promedio de las columnas de control encontradas
+            promedio_control = sum(notas_control) / len(notas_control) if notas_control else 0
+            
+            # Prioridad: Si ya existe una columna de "Evaluación" ya calculada, la usamos
+            # (A veces los coordinadores ya ponen el total ahí)
+            nota_final = fila.get('Evaluación desde la coordinación') or fila.get('Evaluación del desempeño') or promedio_control
+            
+            if pd.isna(nota_final):
+                nota_final = promedio_control
+
+            # 3. Guardar en BD
             curso = fila.get('Curso')
-            seccion = fila.get('Sección')
+            seccion = str(fila.get('Sección')).split('.')[0] if not pd.isna(fila.get('Sección')) else None
             
-            # Pasamos nombre_docente como docente_obj para que BaseParser lo cree si no existe
-            cls.guardar_nota_en_bd(codigo, 'Control Docente', promedio, semestre, 
-                              nombre_curso=curso, seccion=seccion, docente_obj=nombre_docente)
+            cls.guardar_nota_en_bd(
+                codigo, 
+                'Control Docente', 
+                nota_final, 
+                semestre, 
+                nombre_curso=curso, 
+                seccion=seccion, 
+                docente_obj=nombre_docente
+            )
