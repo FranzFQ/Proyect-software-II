@@ -1,10 +1,17 @@
 from rest_framework import serializers
-from .models import Carrera, Pensum, Semestre, Curso
+from .models import Carrera, Pensum, Semestre, Curso, Facultad
+
+class FacultadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Facultad
+        fields = ['id', 'nombre']
 
 class CarreraSerializer(serializers.ModelSerializer):
+    FacultadNombre = serializers.CharField(source='facultad.nombre', read_only=True)
+
     class Meta:
         model = Carrera
-        fields = ['id', 'nombre']
+        fields = ['id', 'nombre', 'facultad', 'FacultadNombre']
 
 class PensumSerializer(serializers.ModelSerializer):
     CarreraNombre = serializers.CharField(source='carrera.nombre', read_only=True)
