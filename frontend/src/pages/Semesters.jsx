@@ -3,20 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
-import { HandThumbUpIcon, HandThumbDownIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { HandThumbUpIcon, HandThumbDownIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'; // Iconos para la alerta
 
-const Semestres = () => {
+const Semesters = () => {
   const navigate = useNavigate();
   const { semestres, setSemestres } = useContext(AppContext);
   
-  // Modal de confirmación de estado
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [semestreSeleccionado, setSemestreSeleccionado] = useState(null);
 
-  // Modal de agregar semestre
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [nuevoPeriodo, setNuevoPeriodo] = useState('Semestre I');
   const [nuevoAnio, setNuevoAnio] = useState(new Date().getFullYear().toString());
+  
+  // NUEVO ESTADO: Para el modal estético de alerta
+  const [alertMessage, setAlertMessage] = useState('');
 
   const abrirConfirmacion = (sem) => {
     setSemestreSeleccionado(sem);
@@ -35,16 +37,27 @@ const Semestres = () => {
 
   const agregarSemestre = (e) => {
     e.preventDefault();
+    
+    // VALIDACIÓN: Verificamos si ya existe el mismo semestre y año
+    const existeSemestre = semestres.some(s => s.semestre === nuevoPeriodo && s.anio === nuevoAnio);
+    
+    if (existeSemestre) {
+      setAlertMessage(`Error: El ${nuevoPeriodo} del año ${nuevoAnio} ya existe en el sistema.`);
+      return;
+    }
+
     const nuevo = {
-      id: Date.now(), // Generamos un ID temporal
+      id: Date.now(), 
       semestre: nuevoPeriodo,
       anio: nuevoAnio,
-      estado: 'Proximo' // Por defecto entra como próximo
+      estado: 'Proximo'
     };
-    // Lo agregamos al inicio de la lista
+    
     setSemestres([nuevo, ...semestres]);
     setIsAddModalOpen(false);
-    alert("Semestre agregado con éxito");
+    
+    // Reemplazamos alert() por nuestra alerta estética
+    setAlertMessage("¡Semestre agregado con éxito!");
   };
 
   return (
@@ -55,11 +68,10 @@ const Semestres = () => {
           <button onClick={() => navigate('/coordinators')} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
             &larr; Volver a Coordinadores
           </button>
-          <h1 className="text-3xl font-bold text-url-blue font-serif">Semestres</h1>
+          <h1 className="text-3xl font-bold text-url-blue">Semestres</h1>
           <p className="text-gray-500">Semestres registrados - {semestres.length}</p>
         </div>
 
-        {/* NUEVO BOTÓN: Agregar Semestre */}
         <Button variant="primary" className="flex items-center gap-2" onClick={() => setIsAddModalOpen(true)}>
           <PlusIcon className="w-5 h-5" />
           Agregar Semestre
@@ -95,6 +107,11 @@ const Semestres = () => {
                           <HandThumbDownIcon className="w-5 h-5" />
                         </button>
                       )}
+                      {sem.estado === 'Finalizado' && (
+                        <button onClick={() => abrirConfirmacion(sem)} className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition" title="Reactivar Semestre">
+                          <ArrowPathIcon className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -104,7 +121,6 @@ const Semestres = () => {
         </div>
       </div>
 
-      {/* Modal Agregar Semestre */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Agregar Nuevo Semestre">
         <form onSubmit={agregarSemestre} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
@@ -138,11 +154,10 @@ const Semestres = () => {
         </form>
       </Modal>
 
-      {/* Modal Confirmación de Estado */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="">
          <div className="flex flex-col items-center text-center gap-4 py-4">
             <h2 className="text-2xl font-bold text-[#112240] font-serif px-8">
-              Seguro que desea {semestreSeleccionado?.estado === 'Activo' ? 'deshabilitar' : 'habilitar'} el semestre:
+              Seguro que desea {semestreSeleccionado?.estado === 'Activo' ? 'deshabilitar' : semestreSeleccionado?.estado === 'Finalizado' ? 'reactivar' : 'habilitar'} el semestre:
             </h2>
             <div className="mt-4">
                <h3 className="text-xl font-bold text-[#112240]">{semestreSeleccionado?.semestre}</h3>
@@ -155,7 +170,19 @@ const Semestres = () => {
          </div>
       </Modal>
 
+      {/* NUEVO: ALERTA ESTÉTICA DE ERROR O ÉXITO */}
+      <Modal isOpen={!!alertMessage} onClose={() => setAlertMessage('')} title="Aviso del Sistema" zIndex="z-[60]">
+         <div className="flex flex-col items-center justify-center py-4 px-2">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${alertMessage.includes('éxito') ? 'bg-green-100 text-green-500' : 'bg-red-100 text-red-500'}`}>
+               {alertMessage.includes('éxito') ? <CheckCircleIcon className="w-8 h-8" /> : <XCircleIcon className="w-8 h-8" />}
+            </div>
+            <p className="text-lg text-[#112240] text-center font-bold">{alertMessage}</p>
+            <Button variant="primary" className="mt-8 w-full py-3" onClick={() => setAlertMessage('')}>Aceptar</Button>
+         </div>
+      </Modal>
+
     </div>
   );
 };
-export default Semestres;
+
+export default Semesters;

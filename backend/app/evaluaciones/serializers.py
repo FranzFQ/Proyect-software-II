@@ -5,8 +5,9 @@ from .models import (
     ConfiguracionPonderacion,
     EvaluacionConsolidada,
     EvaluacionCurso,
-    DetalleCriterio,
     ChecklistObservation,
+    Tipo,
+    AnalisisTexto,
 )
 
 
@@ -47,41 +48,21 @@ class ConfiguracionPonderacionSerializer(serializers.ModelSerializer):
         ]
 
 
-class DetalleCriterioSerializer(serializers.ModelSerializer):
-    CriterioNombre = serializers.CharField(source='criterio.nombre', read_only=True)
-
-    class Meta:
-        model = DetalleCriterio
-        fields = [
-            'id',
-            'criterio', 'CriterioNombre',
-            'evaluacion_global',
-            'evaluacion_curso',
-            'nota_bruta',
-            'comentarios',
-        ]
-
-
 class EvaluacionCursoSerializer(serializers.ModelSerializer):
     CursoNombre = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
-    DetallesCurso = DetalleCriterioSerializer(many=True, read_only=True)
 
     class Meta:
         model = EvaluacionCurso
         fields = [
             'id',
-            'evaluacion_consolidada',
             'curso_dado', 'CursoNombre',
             'puntaje_curso',
-            'DetallesCurso',
         ]
 
 
 class EvaluacionConsolidadaSerializer(serializers.ModelSerializer):
     DocenteNombre  = serializers.CharField(source='docente.nombre_completo', read_only=True)
     SemestreStr    = serializers.CharField(source='semestre.__str__', read_only=True)
-    CursosEvaluados = EvaluacionCursoSerializer(many=True, read_only=True)
-    DetallesGlobales = DetalleCriterioSerializer(many=True, read_only=True)
 
     class Meta:
         model = EvaluacionConsolidada
@@ -91,8 +72,26 @@ class EvaluacionConsolidadaSerializer(serializers.ModelSerializer):
             'semestre', 'SemestreStr',
             'puntaje_final',
             'resumen_ia',
-            'CursosEvaluados',
-            'DetallesGlobales',
+        ]
+
+
+class TipoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tipo
+        fields = ['id', 'nombre']
+
+
+class AnalisisTextoSerializer(serializers.ModelSerializer):
+    TipoNombre = serializers.CharField(source='tipo.nombre', read_only=True)
+    CursoDadoStr = serializers.CharField(source='curso_dado.__str__', read_only=True)
+
+    class Meta:
+        model = AnalisisTexto
+        fields = [
+            'id',
+            'contenido',
+            'curso_dado', 'CursoDadoStr',
+            'tipo', 'TipoNombre'
         ]
 
 

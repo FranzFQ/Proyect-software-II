@@ -21,6 +21,8 @@ class Command(BaseCommand):
 
         # 3. Procesar archivos específicos
         archivos = {
+            'Pensum.xlsx': IngestaService.procesar_pensum,
+            'Nomina.xlsx': IngestaService.procesar_nomina,
             'CEAT.xlsx': IngestaService.procesar_ceat,
             'Evaluación Docente.xlsx': IngestaService.procesar_evaluacion_docente,
             'Control docente.xlsx': IngestaService.procesar_control_docente,
@@ -31,8 +33,13 @@ class Command(BaseCommand):
             if os.path.exists(ruta):
                 self.stdout.write(self.style.MIGRATE_HEADING(f'\n>>> IMPORTANDO: {nombre}'))
                 try:
-                    funcion(ruta, semestre)
-                    self.stdout.write(self.style.SUCCESS(f'Completado: {nombre}'))
+                    # Pensum no requiere semestre, los demas si
+                    if nombre == 'Pensum.xlsx':
+                        resultado = funcion(ruta)
+                    else:
+                        resultado = funcion(ruta, semestre)
+                    
+                    self.stdout.write(self.style.SUCCESS(f'Completado: {nombre} ({resultado or ""})'))
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Error en {nombre}: {e}'))
             else:

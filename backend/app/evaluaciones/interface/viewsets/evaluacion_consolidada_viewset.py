@@ -16,7 +16,6 @@ class EvaluacionConsolidadaViewSet(viewsets.ModelViewSet):
     queryset = (
         EvaluacionConsolidada.objects
         .select_related('docente', 'semestre')
-        .prefetch_related('gotas_curso', 'detalles_globales')
         .all()
         .order_by('semestre', 'docente__nombre_completo')
     )
@@ -51,6 +50,12 @@ class EvaluacionConsolidadaViewSet(viewsets.ModelViewSet):
                 IngestaService.procesar_evaluacion_docente(archivo, semestre_actual)
             elif origen == 'Control Docente':
                 IngestaService.procesar_control_docente(archivo, semestre_actual)
+            elif origen == 'PENSUM':
+                msg = IngestaService.procesar_pensum(archivo)
+                return Response({'status': 'success', 'message': msg})
+            elif origen == 'NOMINA':
+                msg = IngestaService.procesar_nomina(archivo, semestre_actual)
+                return Response({'status': 'success', 'message': msg})
             else:
                 return Response(
                     {'error': f'Origen "{origen}" no soportado.'}, 

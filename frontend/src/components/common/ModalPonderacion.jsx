@@ -1,11 +1,9 @@
+// src/components/common/ModalPonderacion.jsx
 import React, { useContext } from 'react';
-import { AppContext } from '../../context/AppContext'; // Importamos el contexto global
+import { AppContext } from '../../context/AppContext';
 import Button from './Button';
 
-
-// Modal para ajustar las ponderaciones de evaluación, ahora conectado al contexto global
-const ModalPonderacion = ({ onClose }) => {
-  // Consumimos el contexto global en lugar de usar un useState local
+const ModalPonderacion = ({ onClose, onError }) => {
   const { ponderaciones, setPonderaciones } = useContext(AppContext);
 
   const handleChange = (criterio, valor) => {
@@ -17,14 +15,12 @@ const ModalPonderacion = ({ onClose }) => {
 
   const total = Object.values(ponderaciones).reduce((acc, curr) => acc + curr, 0);
 
-   // Al guardar, el Dashboard se actualizará automáticamente gracias al contexto global
   const handleGuardar = () => {
     if (total !== 100) {
-      alert("La suma de las ponderaciones debe ser exactamente 100%");
+      onError(`La suma de las ponderaciones debe ser exactamente 100%. Actualmente suma ${total}%.`);
       return;
     }
-    // ¡Al guardar, el Dashboard se actualizará automáticamente!
-    onClose();
+    onClose("¡Ponderaciones actualizadas correctamente!");
   };
 
   return (
@@ -59,12 +55,12 @@ const ModalPonderacion = ({ onClose }) => {
         ))}
       </div>
 
-      <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg ${total === 100 ? 'bg-blue-50 text-url-blue' : 'bg-red-50 text-status-danger'}`}>
+      <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg transition-colors ${total === 100 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
         <span>Total Ponderación:</span>
         <span>{total}%</span>
       </div>
 
-      <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+      <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-gray-100">
         <Button variant="secondary" onClick={onClose}>
           Cancelar
         </Button>

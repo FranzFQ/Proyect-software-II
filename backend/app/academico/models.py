@@ -1,7 +1,14 @@
 from django.db import models
 
+class Facultad(models.Model):
+    nombre = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.nombre
+
 class Carrera(models.Model):
     nombre = models.CharField(max_length=255)
+    facultad = models.ForeignKey(Facultad, on_delete=models.CASCADE, related_name='carreras', null=True, blank=True)
 
     def __str__(self):
         return self.nombre

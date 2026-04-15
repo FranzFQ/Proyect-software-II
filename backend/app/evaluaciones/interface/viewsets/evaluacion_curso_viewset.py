@@ -11,12 +11,11 @@ from evaluaciones.serializers import (
 class EvaluacionCursoViewSet(viewsets.ModelViewSet):
     queryset = (
         EvaluacionCurso.objects
-        .select_related('evaluacion_consolidada', 'curso_dado__curso')
-        .prefetch_related('detalles_curso')
+        .select_related('curso_dado__curso')
         .all()
     )
     serializer_class = EvaluacionCursoSerializer
     filter_backends = [DjangoFilterBackend]
 
-    # Opcion de filtrado para las evaluaciones cd curso
-    filterset_fields = ['evaluacion_consolidada', 'curso_dado']
+    # Opcion de filtrado para las evaluaciones de curso
+    filterset_fields = ['curso_dado']
