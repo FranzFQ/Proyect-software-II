@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 import ChecklistForm from "../components/checklist/ChecklistForm";
 import ChecklistEjecucion from "../components/checklist/ChecklistEjecucion";
+import Button from "../components/common/Button";
 
 const CHECKLISTS_INICIALES = [
   {
@@ -25,7 +26,7 @@ const CHECKLISTS_INICIALES = [
     nombreCurso: "Programación web",
     criterios: 6,
     punteo: 9.1,
-    color: "#22c55e",
+    color: "bg-green-500",
     criteriosList: ["Control del grupo", "Clima de aula", "Gestion del tiempo", "Disciplina positiva", "Participacion estudiantil", "Ambiente inclusivo"],
   },
   {
@@ -58,12 +59,12 @@ function ChecklistCard({ checklist, onEditar, onEjecutar }) {
 
   return (
     <div
-      className="bg-white rounded-lg p-5 shadow-sm hover:shadow-lg transition flex flex-col gap-3 border-t-4 cursor-pointer"
-      style={{ borderColor: checklist.color }}
+      className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition flex flex-col gap-3 border border-gray-200 border-t-4 cursor-pointer"
+      style={{ borderTopColor: checklist.color }}
       onClick={() => onEjecutar(checklist)}
     >
       <div>
-        <h3 className="font-bold text-gray-800 text-base">{checklist.nombre}</h3>
+        <h3 className="font-bold text-url-blue text-base">{checklist.nombre}</h3>
         <p className="text-sm text-gray-500">Docente: {checklist.docente}</p>
         {checklist.nombreCurso && (
           <p className="text-xs text-gray-400">Curso: {checklist.nombreCurso}</p>
@@ -80,16 +81,16 @@ function ChecklistCard({ checklist, onEditar, onEjecutar }) {
 
       <ScoreBar punteo={checklist.punteo} color={checklist.color} />
 
-      <div className="flex justify-between items-center pt-2">
-        <span className="bg-[#1a2744] text-white text-xs px-3 py-1 rounded font-semibold">
+      <div className="flex justify-between items-center pt-1">
+        <span className="bg-url-blue text-white text-xs px-3 py-1 rounded font-semibold">
           {checklist.codigoDocente}
         </span>
-        <button
+        <Button
+          variant="secondary"
           onClick={(e) => { e.stopPropagation(); onEditar(checklist); }}
-          className="bg-[#1a2744] text-white px-4 py-1.5 rounded text-sm font-semibold hover:bg-[#2d3e6e]"
         >
           Editar
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -146,13 +147,11 @@ export default function Checklist() {
   const handleGuardarEjecucion = (resultado) => {
     const { criteriosList, evaluaciones, observaciones } = resultado;
 
-    // Calcular punteo promedio de las evaluaciones completadas
     const completadas = evaluaciones.filter((e) => e.completado && e.score !== null);
     const punteoCalculado = completadas.length
       ? parseFloat((completadas.reduce((a, e) => a + e.score, 0) / completadas.length).toFixed(1))
       : ejecutandoChecklist.punteo;
 
-    // Actualizar checklist en la lista local
     if (modoEdicion) {
       setChecklists((prev) =>
         prev.map((c) =>
@@ -171,7 +170,6 @@ export default function Checklist() {
       );
     }
 
-    // Persistir la visita en el docente del contexto global
     if (ejecutandoChecklist.docenteId) {
       const docente = docentes.find((d) => String(d.id) === String(ejecutandoChecklist.docenteId));
       const visitasActuales = docente?.visitas || [];
@@ -211,28 +209,17 @@ export default function Checklist() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[#1a2744]">Checklists</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-3xl font-bold text-url-blue">Checklists</h1>
+          <p className="text-gray-500">
             Semestre I — 2025 · <strong>{checklists.length} activos</strong>
           </p>
         </div>
-        <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={() => {}}
-            className="bg-[#1a2744] text-white px-5 py-2 rounded font-bold text-sm hover:bg-[#2d3e6e]"
-          >
-            Cargar
-          </button>
-          <button
-            onClick={handleNuevaChecklist}
-            className="bg-[#F5C518] text-[#1a2744] px-5 py-2 rounded font-bold text-sm hover:bg-yellow-500"
-          >
-            + Nueva Checklist
-          </button>
-        </div>
+        <Button variant="primary" onClick={handleNuevaChecklist}>
+          + Nueva Checklist
+        </Button>
       </div>
 
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -80,7 +80,7 @@ export const listaDocentesGlobal = [
             creditos: 4,
             punteoFinal: 9.2,
             ponderaciones: [
-              { nombre: "Eval. Estudiantes", valor: 9.4, color: "#FFD700" },
+              { nombre: "Eval. Estudiantes", valor: 9.5, color: "#FFD700" },
               { nombre: "Autoevaluación", valor: 9.5, color: "#1a2a4a" },
               { nombre: "Coordinador", valor: 9.1, color: "#FFD700" },
               { nombre: "Checklist", valor: 8.6, color: "#6b7280" },
@@ -93,6 +93,31 @@ export const listaDocentesGlobal = [
       {
         id: "s1-2025",
         label: "Semestre I - 2025",
+        calificacion: 6.5,
+        nivel: "Buena",
+        cursos: [
+          {
+            codigo: "CS301",
+            nombre: "Estructuras de Datos",
+            creditos: 3,
+            punteoFinal: 9.3,
+            ponderaciones: [
+              { nombre: "Eval. Estudiantes", valor: 9.6, color: "#FFD700" },
+              { nombre: "Autoevaluación", valor: 9.8, color: "#1a2a4a" },
+              { nombre: "Coordinador", valor: 9.0, color: "#FFD700" },
+              { nombre: "Checklist", valor: 8.8, color: "#6b7280" },
+            ],
+            comentarios: [
+              "Excelente docente, explica con mucha claridad.",
+              "Buen manejo del tiempo, clase organizada.",
+            ],
+            sugerencias: ["Cuenta con la experiencia necesaria para impartir el curso."],
+          },
+        ],
+      },
+      {
+        id: "s2-2025",
+        label: "Semestre II - 2025",
         calificacion: 5.6,
         nivel: "Buena",
         cursos: [
@@ -212,7 +237,27 @@ export const listaDocentesGlobal = [
       },
     ],
     visitas: [],
-    comparacion: { anterior: null, actual: null }
+    comparacion: {
+      anterior: {
+        semestre: "Sem. II 2024", punteo: 9.0,
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.0 }, { label: 'Autoevaluación', score: 9.2 },
+          { label: 'Coordinador', score: 8.8 }, { label: 'CEAT', score: 8.6 },
+          { label: 'Apoyo Univ.', score: 9.2 }, { label: 'Checklist', score: 9.2 }
+        ]
+      },
+      actual: {
+        semestre: "Sem. I 2025", punteo: 9.4, variacionTotal: "+0.4",
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.6, variacion: "+0.6" },
+          { label: 'Autoevaluación', score: 9.8, variacion: "+0.6" },
+          { label: 'Coordinador', score: 9.0, variacion: "+0.2" },
+          { label: 'CEAT', score: 9.1, variacion: "+0.5" },
+          { label: 'Apoyo Univ.', score: 9.5, variacion: "+0.3" },
+          { label: 'Checklist', score: 9.5, variacion: "+0.3" }
+        ]
+      }
+    }
   },
   {
     id: 3,
@@ -278,7 +323,27 @@ export const listaDocentesGlobal = [
         observacionesGuardadas: "Buen conocimiento del tema, mejorar didáctica.",
       },
     ],
-    comparacion: { anterior: null, actual: null }
+    comparacion: {
+      anterior: {
+        semestre: "Sem. II 2024", punteo: 9.0,
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.0 }, { label: 'Autoevaluación', score: 9.2 },
+          { label: 'Coordinador', score: 8.8 }, { label: 'CEAT', score: 8.6 },
+          { label: 'Apoyo Univ.', score: 9.2 }, { label: 'Checklist', score: 9.2 }
+        ]
+      },
+      actual: {
+        semestre: "Sem. I 2025", punteo: 9.4, variacionTotal: "+0.4",
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.6, variacion: "+0.6" },
+          { label: 'Autoevaluación', score: 9.8, variacion: "+0.6" },
+          { label: 'Coordinador', score: 9.0, variacion: "+0.2" },
+          { label: 'CEAT', score: 9.1, variacion: "+0.5" },
+          { label: 'Apoyo Univ.', score: 9.5, variacion: "+0.3" },
+          { label: 'Checklist', score: 9.5, variacion: "+0.3" }
+        ]
+      }
+    }
   },
   {
     id: 4,
@@ -329,7 +394,27 @@ export const listaDocentesGlobal = [
       },
     ],
     visitas: [],
-    comparacion: { anterior: null, actual: null }
+    comparacion: {
+      anterior: {
+        semestre: "Sem. II 2024", punteo: 9.0,
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.0 }, { label: 'Autoevaluación', score: 9.2 },
+          { label: 'Coordinador', score: 8.8 }, { label: 'CEAT', score: 8.6 },
+          { label: 'Apoyo Univ.', score: 9.2 }, { label: 'Checklist', score: 9.2 }
+        ]
+      },
+      actual: {
+        semestre: "Sem. I 2025", punteo: 9.4, variacionTotal: "+0.4",
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.6, variacion: "+0.6" },
+          { label: 'Autoevaluación', score: 9.8, variacion: "+0.6" },
+          { label: 'Coordinador', score: 9.0, variacion: "+0.2" },
+          { label: 'CEAT', score: 9.1, variacion: "+0.5" },
+          { label: 'Apoyo Univ.', score: 9.5, variacion: "+0.3" },
+          { label: 'Checklist', score: 9.5, variacion: "+0.3" }
+        ]
+      }
+    }
   },
   {
     id: 5,
@@ -394,7 +479,27 @@ export const listaDocentesGlobal = [
         observacionesGuardadas: "Buen manejo del grupo, continuar con la metodología.",
       },
     ],
-    comparacion: { anterior: null, actual: null }
+    comparacion: {
+      anterior: {
+        semestre: "Sem. II 2024", punteo: 9.0,
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.0 }, { label: 'Autoevaluación', score: 9.2 },
+          { label: 'Coordinador', score: 8.8 }, { label: 'CEAT', score: 8.6 },
+          { label: 'Apoyo Univ.', score: 9.2 }, { label: 'Checklist', score: 9.2 }
+        ]
+      },
+      actual: {
+        semestre: "Sem. I 2025", punteo: 9.4, variacionTotal: "+0.4",
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.6, variacion: "+0.6" },
+          { label: 'Autoevaluación', score: 9.8, variacion: "+0.6" },
+          { label: 'Coordinador', score: 9.0, variacion: "+0.2" },
+          { label: 'CEAT', score: 9.1, variacion: "+0.5" },
+          { label: 'Apoyo Univ.', score: 9.5, variacion: "+0.3" },
+          { label: 'Checklist', score: 9.5, variacion: "+0.3" }
+        ]
+      }
+    }
   },
   {
     id: 6,
@@ -446,7 +551,27 @@ export const listaDocentesGlobal = [
       },
     ],
     visitas: [],
-    comparacion: { anterior: null, actual: null }
+    comparacion: {
+      anterior: {
+        semestre: "Sem. II 2024", punteo: 9.0,
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.0 }, { label: 'Autoevaluación', score: 9.2 },
+          { label: 'Coordinador', score: 8.8 }, { label: 'CEAT', score: 8.6 },
+          { label: 'Apoyo Univ.', score: 9.2 }, { label: 'Checklist', score: 9.2 }
+        ]
+      },
+      actual: {
+        semestre: "Sem. I 2025", punteo: 9.4, variacionTotal: "+0.4",
+        desglose: [
+          { label: 'Eval. Estudiantes', score: 9.6, variacion: "+0.6" },
+          { label: 'Autoevaluación', score: 9.8, variacion: "+0.6" },
+          { label: 'Coordinador', score: 9.0, variacion: "+0.2" },
+          { label: 'CEAT', score: 9.1, variacion: "+0.5" },
+          { label: 'Apoyo Univ.', score: 9.5, variacion: "+0.3" },
+          { label: 'Checklist', score: 9.5, variacion: "+0.3" }
+        ]
+      }
+    }
   },
 ];
 

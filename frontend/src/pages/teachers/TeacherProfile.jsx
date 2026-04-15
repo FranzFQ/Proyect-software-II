@@ -1,10 +1,13 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { listaDocentesGlobal } from '../../utils/mockData';
 import { detalleDocenteMarta } from '../../utils/mockData';
 
 const DocentePerfil = () => {
   const navigate = useNavigate();
-  const { id = 1 } = useParams(); 
-  const docente = detalleDocenteMarta;
+  const { id } = useParams();
+  const docentes = listaDocentesGlobal;
+  const docente = docentes.find((d) => String(d.id) === String(id)) ?? docentes[0];
+  //const docente = detalleDocenteMarta;
 
   // Lógica de colores según lo solicitado
   const getColorEstado = (estado) => {

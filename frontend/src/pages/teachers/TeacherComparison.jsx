@@ -1,13 +1,14 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { detalleDocenteMarta } from '../../utils/mockData';
+import { listaDocentesGlobal } from '../../utils/mockData';
 // Importamos los iconos de flechas
 import { ChevronUpIcon, ChevronDownIcon, MinusIcon } from '@heroicons/react/24/outline';
 
 const DocenteComparacion = () => {
   const navigate = useNavigate();
-  const { id = 1 } = useParams();
-  const docente = detalleDocenteMarta;
+  const { id } = useParams();
+  const docentes = listaDocentesGlobal;
+  const docente = docentes.find((d) => String(d.id) === String(id)) ?? docentes[0];
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,9 +29,11 @@ const DocenteComparacion = () => {
            <span>Período de Comparación:</span>
            <select className="bg-[#8b9bb4] text-white font-semibold px-4 py-2 rounded-md outline-none border-none cursor-pointer">
              <option>Sem. I 2025</option>
+             <option>Sem. II 2025</option>
            </select>
            <span className="text-url-yellow">VS</span>
            <select className="bg-[#112240] text-white font-semibold px-4 py-2 rounded-md outline-none border-none cursor-pointer">
+             <option>Sem. I 2024</option>
              <option>Sem. II 2024</option>
            </select>
         </div>

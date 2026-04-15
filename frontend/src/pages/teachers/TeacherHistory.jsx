@@ -44,12 +44,6 @@ const TeacherHistory = () => {
             <h1 className="text-4xl font-bold text-[#112240] font-serif mb-1">Histórico</h1>
             <p className="text-gray-500">{docente.nombre}</p>
           </div>
-          <button
-            onClick={() => navigate(`/teachers/${id}/checklists`)}
-            className="bg-url-yellow text-url-blue font-bold px-5 py-2 rounded-lg text-sm hover:opacity-85 transition"
-          >
-            Ver Checklists
-          </button>
         </div>
       </div>
 
@@ -112,7 +106,7 @@ const TeacherHistory = () => {
                   </span>
                   {sem.cursos?.[0] && (
                     <button
-                      onClick={() => navigate(`/teachers/${id}/curso/${sem.cursos[0].codigo}`)}
+                      onClick={() => navigate(`/teachers/${id}/semester`)}
                       className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1"
                     >
                       Ver Detalles &rarr;
