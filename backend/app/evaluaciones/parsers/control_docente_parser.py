@@ -7,7 +7,7 @@ class ControlDocenteParser(BaseParser):
         df = pd.read_excel(archivo)
         
         # Palabras clave para identificar columnas de calificación (asistencia, tareas, etc.)
-        keywords = ['asistencia', 'zonas', 'programa', 'portal', 'actas', 'propuesta']
+        keywords = ['asistencia', 'zonas', 'programa', 'portal', 'actas', 'propuesta', 'notas']
         
         for _, fila in df.iterrows():
             nombre_docente = fila.get('Docente')
@@ -17,29 +17,25 @@ class ControlDocenteParser(BaseParser):
             codigo_raw = fila.get('Código') or fila.get('Código Docente') or fila.get('Carné')
             codigo = cls.extraer_codigo_docente(codigo_raw)
             
-            # 2. Calcular promedio de columnas de control dinámicamente
-            notas_control = []
+            # 2. Calcular promedio de cumplimiento (Escala 0-1)
+            puntos_obtenidos = []
             for col in df.columns:
-                col_lower = col.lower()
-                # Si la columna contiene alguna palabra clave, tomamos su valor
+                col_lower = str(col).lower()
+                # Si la columna contiene alguna palabra clave de las preguntas del coordinador
                 if any(k in col_lower for k in keywords):
                     val = pd.to_numeric(fila.get(col), errors='coerce')
                     if not pd.isna(val):
-                        notas_control.append(val)
+                        puntos_obtenidos.append(float(val))
             
-            # Promedio de las columnas de control encontradas
-            promedio_control = sum(notas_control) / len(notas_control) if notas_control else 0
+            # Calculamos el promedio de cumplimiento (ej: 0.85)
+            promedio_cumplimiento = sum(puntos_obtenidos) / len(puntos_obtenidos) if puntos_obtenidos else 0
             
-            # Prioridad: Si ya existe una columna de "Evaluación" ya calculada, la usamos
-            # (A veces los coordinadores ya ponen el total ahí)
-            nota_final = fila.get('Evaluación desde la coordinación') or fila.get('Evaluación del desempeño') or promedio_control
+            # Convertimos a escala 0-100%
+            nota_final = round(promedio_cumplimiento * 100, 2)
             
-            if pd.isna(nota_final):
-                nota_final = promedio_control
-
             # 3. Guardar en BD
             curso = fila.get('Curso')
-            seccion = str(fila.get('Sección')).split('.')[0] if not pd.isna(fila.get('Sección')) else None
+            seccion = str(fila.get('Sección')).split('.')[0] if not pd.isna(fila.get('Sección')) else "1"
             
             cls.guardar_nota_en_bd(
                 codigo, 
