@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Usuario, Docente
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -42,3 +44,38 @@ class DocenteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Docente
         fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan']
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    def validate(self, attrs):
+        username_or_email = attrs.get("username")
+        password = attrs.get("password")
+
+        user = authenticate(
+            request=self.context.get("request"),
+            username=username_or_email,
+            password=password
+        )
+
+        # 🔥 SI NO ENCUENTRA POR USERNAME → BUSCA POR EMAIL
+        if not user:
+            from usuarios.models import Usuario
+            try:
+                user_obj = Usuario.objects.get(email=username_or_email)
+                user = authenticate(
+                    request=self.context.get("request"),
+                    username=user_obj.username,
+                    password=password
+                )
+            except Usuario.DoesNotExist:
+                pass
+
+        if not user:
+            raise serializers.ValidationError("Credenciales incorrectas")
+
+        data = super().validate({
+            "username": user.username,
+            "password": password
+        })
+
+        return data
