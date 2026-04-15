@@ -16,11 +16,18 @@ class ControlDocenteParser(BaseParser):
         for _, fila in df.iterrows():
             nombre_docente = fila.get('Docente')
             if pd.isna(nombre_docente): continue
-            docente_obj = cls.buscar_docente_por_nombre(nombre_docente)
+            
+            # Intentar buscar un código en el Excel (a veces se llama 'Carné' o 'Código')
+            codigo = fila.get('Código') or fila.get('Código Docente') or fila.get('Carné')
+            
+            # Calculamos el promedio de asistencia
             valores = pd.to_numeric([fila.get(c) for c in cols_asistencia if c in fila], errors='coerce')
             valores_validos = valores[~pd.isna(valores)]
             promedio = valores_validos.mean() if len(valores_validos) > 0 else 0
+            
             curso = fila.get('Curso')
             seccion = fila.get('Sección')
-            cls.guardar_nota_en_bd(None, 'Criterios de Coordinador', promedio, semestre, 
-                              nombre_curso=curso, seccion=seccion, docente_obj=docente_obj)
+            
+            # Pasamos nombre_docente como docente_obj para que BaseParser lo cree si no existe
+            cls.guardar_nota_en_bd(codigo, 'Control Docente', promedio, semestre, 
+                              nombre_curso=curso, seccion=seccion, docente_obj=nombre_docente)

@@ -9,4 +9,5 @@ class CEATParser(BaseParser):
             if pd.isna(fila.get('Código Docente')) or pd.isna(fila.get('Nombre(s) y Apellidos')):
                 continue
             codigo = cls.extraer_codigo_docente(fila.get('Código Docente'))
-            cls.guardar_nota_en_bd(codigo, 'Capacitaciones CEAT', 100, semestre)
+            nombre = fila.get('Nombre(s) y Apellidos')
+            cls.guardar_nota_en_bd(codigo, 'Capacitaciones CEAT', 100, semestre, docente_obj=nombre)
