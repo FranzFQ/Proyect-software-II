@@ -30,8 +30,10 @@ class ControlDocenteParser(BaseParser):
             # Calculamos el promedio de cumplimiento (ej: 0.85)
             promedio_cumplimiento = sum(puntos_obtenidos) / len(puntos_obtenidos) if puntos_obtenidos else 0
             
-            # Convertimos a escala 0-100%
+            # Convertimos a escala 0-100% y limitamos al 100 (Techo)
             nota_final = round(promedio_cumplimiento * 100, 2)
+            if nota_final > 100:
+                nota_final = 100.0
             
             # 3. Guardar en BD
             curso = fila.get('Curso')
