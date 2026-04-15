@@ -4,12 +4,13 @@ from .models import Usuario, Docente
 
 class UsuarioSerializer(serializers.ModelSerializer):
     CarreraNombre = serializers.CharField(source='carrera.nombre', read_only=True)
+    FacultadNombre = serializers.CharField(source='facultad.nombre', read_only=True)
 
     class Meta:
         model = Usuario
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'carrera', 'CarreraNombre', 'facultad',
+            'carrera', 'CarreraNombre', 'facultad', 'FacultadNombre',
             'is_active', 'is_staff', 'date_joined'
         ]
         
@@ -36,6 +37,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 class DocenteSerializer(serializers.ModelSerializer):
+    FacultadNombre = serializers.CharField(source='facultad.nombre', read_only=True)
+
     class Meta:
         model = Docente
-        fields = ['id', 'codigo_docente', 'nombre_completo', 'tipo_plan']
+        fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan']
