@@ -1,6 +1,6 @@
 import pandas as pd
 from usuarios.models import Docente
-from academico.models import Curso, Semestre
+from academico.models import Curso, Semestre, Facultad
 from evaluaciones.models import CursoDado
 
 class NominaParser:
@@ -22,6 +22,7 @@ class NominaParser:
         cursos_asignados = 0
         docente_actual = None
         codigo_actual = None
+        facultad_actual = None
 
         for _, fila in df.iterrows():
             # Extraer valores, manejando posibles nombres de columnas
@@ -32,17 +33,25 @@ class NominaParser:
             if pd.isna(fila.get('Curso')) and pd.isna(fila.get('Docente')) and pd.isna(fila.get('Código  docente')):
                 continue
 
-            # Propagar Docente y Codigo si estan vacios (filas de multiples cursos para el mismo docente)
+            # Propagar Docente, Codigo y Facultad si estan vacios (filas de multiples cursos para el mismo docente)
             docente_nombre = fila.get('Docente')
             codigo_docente = fila.get('Código  docente')
+            nombre_facultad = fila.get('Facultad')
 
             if not pd.isna(docente_nombre):
                 docente_actual = str(docente_nombre).strip()
             if not pd.isna(codigo_docente):
                 codigo_actual = str(codigo_docente).strip().split('.')[0] # Quitar .0 si es float
+            if not pd.isna(nombre_facultad):
+                facultad_actual = str(nombre_facultad).strip()
 
             if not docente_actual or not codigo_actual:
                 continue
+
+            # 0. Obtener o crear Facultad si existe
+            facultad_obj = None
+            if facultad_actual:
+                facultad_obj, _ = Facultad.objects.get_or_create(nombre=facultad_actual)
 
             # Datos del curso
             nombre_curso = str(fila.get('Curso')).strip()
@@ -51,10 +60,18 @@ class NominaParser:
             total_creditos = int(fila.get('Total  de créditos', 0))
 
             # 1. Obtener o crear Docente
-            docente_obj, _ = Docente.objects.get_or_create(
+            docente_obj, created = Docente.objects.get_or_create(
                 codigo_docente=codigo_actual,
-                defaults={'nombre_completo': docente_actual}
+                defaults={
+                    'nombre_completo': docente_actual,
+                    'facultad': facultad_obj
+                }
             )
+            
+            # Si el docente ya existia pero no tenia facultad, se la actualizamos
+            if not created and facultad_obj and not docente_obj.facultad:
+                docente_obj.facultad = facultad_obj
+                docente_obj.save()
 
             # 2. Buscar el Curso (esto asume que el Pensum ya se cargo)
             # Si no existe, podriamos tener un "Pensum General" o algo similar?
