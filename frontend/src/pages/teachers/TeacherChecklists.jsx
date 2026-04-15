@@ -33,7 +33,7 @@ function VisitaDetalleView({ docente, visita, onBack }) {
   const completados   = evaluaciones.filter((e) => e.completado).length;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       <div>
         <button onClick={onBack} className="text-gray-500 hover:text-[#112240] font-semibold flex items-center gap-2 transition mb-4">
           &larr; Visitas / Visita {visita.numero} / Detalles de checklist
@@ -59,7 +59,7 @@ function VisitaDetalleView({ docente, visita, onBack }) {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 mt-4">
+      <div className="flex flex-col lg:flex-row gap-6 mt-4 flex-1">
         <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100">
             <h3 className="font-bold text-xl text-[#112240]">Criterios de Evaluacion</h3>
@@ -118,10 +118,19 @@ const TeacherChecklists = () => {
   const docente = docentes.find((d) => String(d.id) === String(id)) ?? docentes[0];
   const [selectedVisita, setSelectedVisita] = useState(null);
 
+  // Estados para Paginación Segura
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4; // Ajusta esto según cuántas tarjetas quieres por página
+
   if (!docente) return <div className="p-8 text-gray-400">Cargando...</div>;
 
   const visitas  = docente.visitas || [];
   const promedio = punteoPromedio(visitas);
+
+  // Lógica de Paginación
+  const totalPages = Math.ceil(visitas.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const currentVisitas = visitas.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   if (selectedVisita) {
     return <VisitaDetalleView docente={docente} visita={selectedVisita} onBack={() => setSelectedVisita(null)} />;
@@ -130,12 +139,13 @@ const TeacherChecklists = () => {
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       <div>
-        <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-[#112240] font-semibold flex items-center gap-2 transition mb-4">
-          &larr; Visitas / Resultados — {docente.nombre}
+        {/* USAMOS NAVIGATE(-1) AQUÍ PARA REGRESAR AL SEMESTRE HISTÓRICO SI APLICA */}
+        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-[#112240] font-semibold flex items-center gap-2 transition mb-4">
+          &larr; Volver
         </button>
       </div>
 
-      <div className="bg-[#112240] rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6">
+      <div className="bg-[#112240] rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
         <div className="flex items-center gap-6">
           <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
             {docente.iniciales}
@@ -155,13 +165,13 @@ const TeacherChecklists = () => {
       </div>
 
       {visitas.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex items-center justify-center">
           <p>Este docente no tiene visitas registradas aún.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-          {visitas.map((visita) => (
-            <div key={visita.id} className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200" style={{ borderLeft: `12px solid ${visita.color || '#112240'}` }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 flex-1 content-start">
+          {currentVisitas.map((visita) => (
+            <div key={visita.id} className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200 min-h-[220px]" style={{ borderLeft: `12px solid ${visita.color || '#112240'}` }}>
               <div className="p-6 pb-2">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -180,7 +190,7 @@ const TeacherChecklists = () => {
                 </span>
                 <p className="text-sm text-gray-500 mb-4">{visita.materia}</p>
               </div>
-              <div className="p-6 pt-0">
+              <div className="p-6 pt-0 mt-auto">
                 <button onClick={() => setSelectedVisita(visita)} className="bg-[#112240] text-white w-full py-3 font-bold hover:bg-blue-900 transition rounded-md text-sm">
                   Ver detalle
                 </button>
@@ -190,14 +200,26 @@ const TeacherChecklists = () => {
         </div>
       )}
 
-      <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-gray-500 font-semibold gap-2">
-        <span className="text-[#112240] font-bold text-lg">1</span>
-        <button className="hover:text-url-blue transition-colors">2</button>
-        <button className="hover:text-url-blue transition-colors">3</button>
-        <span>.......</span>
-        <button className="hover:text-url-blue transition-colors">20</button>
-        <button className="hover:text-url-blue ml-2 transition-colors">Siguiente &rarr;</button>
-      </div>
+      {/* PAGINACIÓN DINÁMICA AL FONDO */}
+      {totalPages > 1 && (
+        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+            disabled={safeCurrentPage === 1} 
+            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+          >
+            &larr; Anterior
+          </button>
+          <span>Página {safeCurrentPage} de {totalPages}</span>
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+            disabled={safeCurrentPage === totalPages} 
+            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+          >
+            Siguiente &rarr;
+          </button>
+        </div>
+      )}
     </div>
   );
 };
