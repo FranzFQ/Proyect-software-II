@@ -1,27 +1,15 @@
-<<<<<<< HEAD
-import React, { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import { AppContext } from "../context/AppContext";
-=======
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
 import {
   getUsuarios,
   createUsuario,
   updateUsuario,
   deleteUsuario,
   normalizeCoordinador,
-<<<<<<< HEAD
-} from "../services/user_service";
-import Modal from "../components/common/Modal";
-import Button from "../components/common/Button";
-=======
 } from '../services/user_service'; 
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
 import {
   CheckCircleIcon as CheckCircleSolid,
   XCircleIcon as XCircleSolid,
@@ -40,13 +28,7 @@ import {
 const Coordinators = () => {
   const navigate = useNavigate();
   const { coordinadores, setCoordinadores } = useContext(AppContext);
-<<<<<<< HEAD
-
-  // ─── Estados de UI ─────────────────────────────────────────────────────────
-  const [filtroTexto, setFiltroTexto] = useState("");
-=======
   const [filtroTexto, setFiltroTexto]           = useState('');
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCargarPensumOpen, setIsCargarPensumOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -55,17 +37,6 @@ const Coordinators = () => {
   const [esAdminForm, setEsAdminForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-<<<<<<< HEAD
-  const [passwordValue, setPasswordValue] = useState("");
-  const [confirmPasswordValue, setConfirmPasswordValue] = useState("");
-
-  // ─── Estados de carga y error ──────────────────────────────────────────────
-  const [isLoadingList, setIsLoadingList] = useState(true); // carga inicial
-  const [isSaving, setIsSaving] = useState(false); // guardar/editar
-  const [isDeleting, setIsDeleting] = useState(false); // eliminar
-  const [listError, setListError] = useState("");
-  const [formError, setFormError] = useState("");
-=======
   const [passwordValue, setPasswordValue]       = useState('');
   const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
   const [isLoadingList, setIsLoadingList] = useState(true);   
@@ -73,7 +44,8 @@ const Coordinators = () => {
   const [isDeleting, setIsDeleting]       = useState(false);  
   const [listError, setListError]         = useState('');
   const [formError, setFormError]         = useState('');
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
+  const [alertMessage, setAlertMessage]   = useState('');
+  const [alertType, setAlertType]         = useState('success');
 
   useEffect(() => {
     const cargarCoordinadores = async () => {
@@ -97,28 +69,16 @@ const Coordinators = () => {
     cargarCoordinadores();
   }, []); 
 
-<<<<<<< HEAD
-  // ─── Filtrado local (sin llamar al backend) ────────────────────────────────
-  // Filtramos la lista que ya tenemos en memoria. Para búsquedas más pesadas
-  // podrías pasar el texto como parámetro a getUsuarios({ search: filtroTexto })
-  const coordinadoresFiltrados = coordinadores.filter(
-    (coord) =>
-      coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-      coord.carrera.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-      coord.correo.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-      (coord.username &&
-        coord.username.toLowerCase().includes(filtroTexto.toLowerCase())),
-  );
-
-  // ─── 2. ABRIR MODAL DE ELIMINACIÓN ────────────────────────────────────────
-=======
   const coordinadoresFiltrados = coordinadores.filter((coord) =>
     coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||
     coord.carrera.toLowerCase().includes(filtroTexto.toLowerCase()) ||
     coord.correo.toLowerCase().includes(filtroTexto.toLowerCase())
   );
 
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
+  const handleSearch = () => {
+    // El filtro ya se aplica en tiempo real al cambiar el texto
+  };
+
   const confirmarEliminacion = (coord) => {
     setCoordinadorActual(coord);
     setIsDeleteModalOpen(true);
@@ -129,16 +89,7 @@ const Coordinators = () => {
     try {
       // Ejecuta eliminar usuario
       await deleteUsuario(coordinadorActual.id);
-<<<<<<< HEAD
-
-      // ★ Actualización optimista: quitamos el coordinador del estado local
-      // sin recargar toda la lista. La UI responde instantáneamente.
-      setCoordinadores((prev) =>
-        prev.filter((c) => c.id !== coordinadorActual.id),
-      );
-=======
       setCoordinadores(prev => prev.filter(c => c.id !== coordinadorActual.id));
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       setIsDeleteModalOpen(false);
       setCoordinadorActual(null);
     } catch (err) {
@@ -148,10 +99,6 @@ const Coordinators = () => {
     }
   };
 
-<<<<<<< HEAD
-  // ─── 4. ABRIR FORMULARIO ──────────────────────────────────────────────────
-=======
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const abrirFormulario = (coord = null) => {
     setCoordinadorActual(coord);
     setEsAdminForm(coord ? coord.esAdmin : false);
@@ -163,10 +110,6 @@ const Coordinators = () => {
     setIsFormModalOpen(true);
   };
 
-<<<<<<< HEAD
-  // ─── 5. GUARDAR (CREAR O EDITAR) ──────────────────────────────────────────
-=======
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
   const guardarCoordinador = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -182,21 +125,12 @@ const Coordinators = () => {
 
     // Construimos el objeto que espera el backend
     const payload = {
-<<<<<<< HEAD
-      first_name: formData.get("first_name"),
-      last_name: formData.get("last_name"),
-      email: formData.get("email"),
-      // username: usamos el email como username (práctica común)
-      username: formData.get("email"),
-      is_staff: esAdminForm,
-=======
       first_name: formData.get('first_name'),
       last_name:  formData.get('last_name'),
       email:      formData.get('email'),
       // username: usamos el email como username
       username:   formData.get('email'),
       is_staff:   esAdminForm,
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
     };
 
     if (passwordValue) {
@@ -209,50 +143,28 @@ const Coordinators = () => {
         const updated = await updateUsuario(coordinadorActual.id, payload);
         const normalizado = normalizeCoordinador(updated);
 
-<<<<<<< HEAD
-        // Reemplazamos el coordinador en la lista local
-        setCoordinadores((prev) =>
-          prev.map((c) => (c.id === normalizado.id ? normalizado : c)),
-=======
         setCoordinadores(prev =>
           prev.map(c => c.id === normalizado.id ? normalizado : c)
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
         );
       } else {
         const created = await createUsuario(payload);
         const normalizado = normalizeCoordinador(created);
 
-<<<<<<< HEAD
-        // Añadimos el nuevo coordinador al final de la lista local
-        setCoordinadores((prev) => [...prev, normalizado]);
-=======
         setCoordinadores(prev => [...prev, normalizado]);
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       }
 
       setIsFormModalOpen(false);
     } catch (err) {
-<<<<<<< HEAD
-      // Mostramos el error dentro del modal (no como alert)
-      setFormError(err.message || "Ocurrió un error. Intenta de nuevo.");
-=======
       setFormError(err.message || 'Ocurrió un error. Intenta de nuevo.');
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
     } finally {
       setIsSaving(false);
     }
   };
 
-<<<<<<< HEAD
-  // ─── RENDER ───────────────────────────────────────────────────────────────
-  return (
-    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
-=======
   return (
     <div className="flex flex-col gap-6">
 
       {/* Cabecera */}
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue mb-2">
@@ -280,10 +192,7 @@ const Coordinators = () => {
         </div>
       </div>
 
-<<<<<<< HEAD
-=======
       {/* Buscador */}
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="flex w-full md:w-1/2">
           <input
@@ -305,29 +214,6 @@ const Coordinators = () => {
         </div>
       </div>
 
-<<<<<<< HEAD
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-2">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead className="bg-[#112240] text-white">
-              <tr>
-                <th className="py-4 px-6 font-semibold text-sm text-center w-1/3">
-                  Nombre / Email
-                </th>
-                <th className="py-4 px-6 font-semibold text-sm text-center w-1/4">
-                  Facultad
-                </th>
-                <th className="py-4 px-6 font-semibold text-sm text-center w-1/4">
-                  Carrera
-                </th>
-                <th className="py-4 px-6 font-semibold text-sm text-center w-auto">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.length === 0 ? (
-=======
       {/* Estados de carga / error */}
       {isLoadingList && (
         <div className="flex justify-center py-12">
@@ -347,10 +233,19 @@ const Coordinators = () => {
       {/* Tabla */}
       {!isLoadingList && !listError && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse whitespace-nowrap">
-              <thead className="bg-[#112240] text-white">
->>>>>>> 610fdbe (docs(frontend): changed the documentation of the connection)
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead className="bg-[#112240] text-white">
+              <tr>
+                <th className="py-4 px-6 text-left">Coordinador</th>
+                <th className="py-4 px-6 text-center">Facultad</th>
+                <th className="py-4 px-6 text-center">Carrera</th>
+                <th className="py-4 px-6 text-center">Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {coordinadoresFiltrados.length === 0 ? (
                 <tr>
                   <td
                     colSpan="4"
@@ -360,7 +255,7 @@ const Coordinators = () => {
                   </td>
                 </tr>
               ) : (
-                currentItems.map((coord, index) => (
+                coordinadoresFiltrados.map((coord, index) => (
                   <tr
                     key={coord.id}
                     className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? "bg-gray-50/50" : ""}`}
@@ -426,27 +321,6 @@ const Coordinators = () => {
             </tbody>
           </table>
         </div>
-
-        <div className="mt-auto flex justify-end items-center pt-4 pb-2 text-sm text-[#112240] font-bold gap-4">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={safeCurrentPage === 1}
-            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-          >
-            &larr; Anterior
-          </button>
-          <span>
-            Página {safeCurrentPage} de {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safeCurrentPage === totalPages}
-            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-          >
-            Siguiente &rarr;
-          </button>
-        </div>
-
         <Modal
           isOpen={isFormModalOpen}
           onClose={() => setIsFormModalOpen(false)}
@@ -532,39 +406,6 @@ const Coordinators = () => {
                   type="text"
                   placeholder="Ej. Informática y sistemas"
                   defaultValue={coordinadorActual?.carrera}
-                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
-                  required
-                />
-              </div>
-
-              {/* Apellido */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">
-                  Apellido
-                </label>
-                <input
-                  name="last_name"
-                  type="text"
-                  placeholder="Ej. Torres"
-                  defaultValue={
-                    coordinadorActual?.nombre?.split(" ").slice(1).join(" ") ||
-                    ""
-                  }
-                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
-                  required
-                />
-              </div>
-
-              {/* Correo */}
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">
-                  Correo Institucional
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="Ej. mtorres@correo.url.edu.gt"
-                  defaultValue={coordinadorActual?.correo || ""}
                   className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
                   required
                 />
@@ -719,9 +560,10 @@ const Coordinators = () => {
             </Button>
           </div>
         </Modal>
+        </div>
+      )}
       </div>
-    </div>
-  );
+);
 };
 
 export default Coordinators;
