@@ -55,7 +55,7 @@ const Files = () => {
     const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv');
     
     if (!isValidFormat) {
-      return setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx, .xls o .csv");
+      return setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx");
     }
 
     // --- CARGA INMEDIATA PARA NÓMINA Y PENSUM ---
@@ -203,7 +203,7 @@ const Files = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-gray-800 text-lg">{doc.titulo}</h3>
-                <p className="text-sm text-gray-500 mt-1">{doc.estado === 'subido' ? `Archivo cargado: ${doc.nombreArchivo}` : 'Hacer clic para subir archivo (.xlsx, .xls, .csv)'}</p>
+                <p className="text-sm text-gray-500 mt-1">{doc.estado === 'subido' ? `Archivo cargado: ${doc.nombreArchivo}` : 'Hacer clic para subir archivo (.xlsx)'}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {doc.estado === 'subido' ? <CheckCircleSolid className="w-5 h-5 text-status-success" /> : <CheckCircleIcon className="w-5 h-5 text-gray-300" />}
@@ -290,7 +290,7 @@ const Files = () => {
 
       <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={`Cargar: ${categoriaActivaObj?.titulo}`}>
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-gray-500">Sube el archivo (.xlsx, .xls, .csv) con los resultados correspondientes a esta categoría.</p>
+          <p className="text-sm text-gray-500">Sube el archivo (.xlsx) con los resultados correspondientes a esta categoría.</p>
           <label className="border-2 border-dashed border-url-blue bg-blue-50/50 hover:bg-blue-50 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors group">
             <input 
               type="file" 
@@ -301,7 +301,7 @@ const Files = () => {
             {archivoTemporal ? (
               <div className="text-center"><DocumentTextIcon className="w-16 h-16 text-url-blue mx-auto" /><p className="font-bold text-url-blue mt-2">{archivoTemporal.name}</p><p className="text-xs text-gray-500 mt-1">Clic para cambiar archivo</p></div>
             ) : (
-              <div className="text-center"><CloudArrowUpIcon className="w-16 h-16 text-url-blue mx-auto group-hover:scale-110 transition-transform" /><p className="font-bold text-url-blue text-lg mt-2">Haz clic o arrastra tu archivo aquí</p><p className="text-sm text-gray-500 mt-1">Formatos: .xlsx, .xls, .csv</p></div>
+              <div className="text-center"><CloudArrowUpIcon className="w-16 h-16 text-url-blue mx-auto group-hover:scale-110 transition-transform" /><p className="font-bold text-url-blue text-lg mt-2">Haz clic o arrastra tu archivo aquí</p><p className="text-sm text-gray-500 mt-1">Formatos: .xlsx</p></div>
             )}
           </label>
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">

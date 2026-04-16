@@ -35,7 +35,7 @@ const ModalPonderacion = ({ onClose, onError }) => {
           ceat: 'Evaluaciones CEAT',
           autoevaluacion: 'Autoevaluaciones',
           coordinador: 'Criterios de Coordinador',
-          visitas: 'Visitas Docentes',
+          visitas: 'Checklist',
           apoyo: 'Apoyo y Colaboración'
         }).map(([key, label]) => (
           <div key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -61,9 +61,9 @@ const ModalPonderacion = ({ onClose, onError }) => {
       </div>
 
       <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-gray-100">
-        <Button variant="secondary" onClick={onClose}>
+        {/* <Button variant="secondary" onClick={onClose}>
           Cancelar
-        </Button>
+        </Button> */}
         <Button variant="primary" onClick={handleGuardar}>
           Actualizar Ponderaciones
         </Button>
