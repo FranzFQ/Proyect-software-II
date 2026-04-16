@@ -1,6 +1,6 @@
-import GLOBAL_API_URL from "./global_URL";
+import { API_URL } from "./global_URL";
 
-const BASE_URL = GLOBAL_API_URL;
+const BASE_URL = API_URL;
 
 // Claves que usamos en sessionStorage (constantes para evitar typos)
 const TOKEN_KEY   = 'auth_token';
@@ -13,7 +13,7 @@ const USER_KEY    = 'auth_user';
  * @returns {Promise<{token: string, user: object}>}
  */
 export async function login(email, password) {
-  const response = await fetch(`${BASE_URL}/token/`, {
+  const response = await fetch(`${BASE_URL}token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: email, password }),
@@ -82,7 +82,7 @@ export function isAuthenticated() {
  */
 async function fetchCurrentUser(token) {
   // Si no tienes un endpoint /me/, puedes construir el objeto manualmente
-  const response = await fetch(`${BASE_URL}/usuarios/usuarios/me/`, {
+  const response = await fetch(`${BASE_URL}usuarios/usuarios/me/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

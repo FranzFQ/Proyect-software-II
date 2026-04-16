@@ -1,7 +1,7 @@
 import { getToken } from "./auth_service";
-import GLOBAL_API_URL from "./global_URL";
+import { API_URL } from "./global_URL";
 
-const BASE_URL = GLOBAL_API_URL;
+const BASE_URL = API_URL;
 
 /**
  * Construye los headers HTTP con el token JWT.
@@ -44,7 +44,7 @@ async function handleResponse(response) {
 export async function getUsuarios(params = {}) {
   // Convertimos el objeto params a query string: { search: 'juan' } → '?search=juan'
   const queryString = new URLSearchParams(params).toString();
-  const url = `${BASE_URL}/usuarios/usuarios/${queryString ? `?${queryString}` : ""}`;
+  const url = `${BASE_URL}usuarios/usuarios/${queryString ? `?${queryString}` : ""}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -62,7 +62,7 @@ export async function getUsuarios(params = {}) {
  * @returns {Promise<object>}
  */
 export async function createUsuario(data) {
-  const response = await fetch(`${BASE_URL}/usuarios/usuarios/`, {
+  const response = await fetch(`${BASE_URL}usuarios/usuarios/`, {
     method: "POST",
     headers: authHeaders(true),
     body: JSON.stringify(data),
@@ -82,7 +82,7 @@ export async function createUsuario(data) {
  * @returns {Promise<object>} 
  */
 export async function updateUsuario(id, data) {
-  const response = await fetch(`${BASE_URL}/usuarios/usuarios/${id}/`, {
+  const response = await fetch(`${BASE_URL}usuarios/usuarios/${id}/`, {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(data),
@@ -98,7 +98,7 @@ export async function updateUsuario(id, data) {
  * @returns {Promise<null>}
  */
 export async function deleteUsuario(id) {
-  const response = await fetch(`${BASE_URL}/usuarios/usuarios/${id}/`, {
+  const response = await fetch(`${BASE_URL}usuarios/usuarios/${id}/`, {
     method: "DELETE",
     headers: authHeaders(),
   });
