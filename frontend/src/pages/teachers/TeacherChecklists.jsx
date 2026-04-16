@@ -1,60 +1,69 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AppContext } from '../../context/AppContext';
+import GLOBAL_API_URL from '../../services/global_URL';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
 function colorPunteo(val) {
   if (val >= 9) return '#22c55e';
   if (val >= 7) return '#facc15';
   return '#ef4444';
 }
-function punteoPromedio(visitas) {
-  if (!visitas?.length) return '—';
-  return (visitas.reduce((a, v) => a + v.punteo, 0) / visitas.length).toFixed(1);
+
+function punteoPromedio(checklists) {
+  if (!checklists?.length) return '—';
+  const scores = checklists
+    .map(c => parseFloat(c.datos?.punteo_final ?? 0))
+    .filter(s => s > 0);
+  if (!scores.length) return '—';
+  return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
 }
+
 function scoreBadgeStyle(score) {
   if (score === null) return { background: '#f1f5f9', color: '#94a3b8' };
   if (score >= 9)     return { background: '#dcfce7', color: '#14532d' };
   if (score >= 7)     return { background: '#fde68a', color: '#713f12' };
   return               { background: '#fee2e2', color: '#991b1b' };
 }
-function calcPunteo(evaluaciones) {
-  const completadas = (evaluaciones || []).filter((e) => e.completado && e.score !== null);
-  if (!completadas.length) return null;
-  return (completadas.reduce((a, e) => a + e.score, 0) / completadas.length).toFixed(1);
-}
 
-// ── Vista detalle de visita ────────────────────────────────────────────────────
-function VisitaDetalleView({ docente, visita, onBack }) {
-  const criterios     = visita.criteriosList         || [];
-  const evaluaciones  = visita.evaluacionesGuardadas  || [];
-  const observaciones = visita.observacionesGuardadas || '';
-  const punteo        = calcPunteo(evaluaciones) ?? visita.punteo?.toFixed(1) ?? '—';
-  const completados   = evaluaciones.filter((e) => e.completado).length;
+function VisitaDetalleView({ docente, checklist, onBack }) {
+  const datos       = checklist.datos ?? {};
+  const criterios   = datos.criteriosList ?? [];
+  const evaluaciones= datos.evaluaciones  ?? [];
+  const observaciones = datos.observaciones ?? '';
+  const punteo      = datos.punteo_final != null
+    ? parseFloat(datos.punteo_final).toFixed(1)
+    : '—';
+  const completados = evaluaciones.filter(e => e.completado).length;
+
+  const iniciales = docente?.nombre_completo
+    ?.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase() ?? '?';
+
+  const fecha = checklist.fecha_observacion
+    ? new Date(checklist.fecha_observacion).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '—';
 
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       <div>
-        <button onClick={onBack} className="text-gray-500 hover:text-[#112240] font-semibold flex items-center gap-2 transition mb-4">
-          &larr; Visitas / Visita {visita.numero} / Detalles de checklist
+        <button onClick={onBack} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
+          &larr; Visitas / {checklist.titulo} / Detalles de checklist
         </button>
       </div>
 
-      <div className="bg-[#112240] rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6">
+      <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6">
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
-            {docente.iniciales}
+          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-bold shadow-lg shrink-0">
+            {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-serif font-bold mb-2">{docente.nombre}</h1>
-            <p className="text-url-yellow font-semibold mb-4">Checklist · {visita.fecha}</p>
+            <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+            <p className="text-url-yellow font-semibold mb-4">Checklist · {fecha}</p>
             <span className="bg-url-yellow text-url-blue px-6 py-2 rounded-md font-bold text-sm">
               Total de criterios: {criterios.length}
             </span>
           </div>
         </div>
         <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
-          <span className="text-5xl font-serif font-bold text-url-yellow mb-1">{punteo}</span>
+          <span className="text-5xl font-bold text-url-yellow mb-1">{punteo}</span>
           <span className="text-xs text-gray-300 font-semibold uppercase tracking-wider">Punteo final</span>
         </div>
       </div>
@@ -62,7 +71,7 @@ function VisitaDetalleView({ docente, visita, onBack }) {
       <div className="flex flex-col lg:flex-row gap-6 mt-4 flex-1">
         <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100">
-            <h3 className="font-bold text-xl text-[#112240]">Criterios de Evaluacion</h3>
+            <h3 className="font-bold text-xl text-url-blue">Criterios de Evaluacion</h3>
             {completados > 0 && (
               <span className="bg-green-100 text-green-700 px-6 py-1.5 rounded-full font-bold text-sm border border-green-200">
                 {completados} completados
@@ -81,7 +90,7 @@ function VisitaDetalleView({ docente, visita, onBack }) {
                       </svg>
                     )}
                   </div>
-                  <span className={`flex-1 font-semibold text-[15px] ${ev.completado ? 'text-[#112240]' : 'text-gray-400'}`}>
+                  <span className={`flex-1 font-semibold text-[15px] ${ev.completado ? 'text-url-blue' : 'text-gray-400'}`}>
                     {nombre}
                   </span>
                   <span className="px-5 py-1.5 rounded-md text-sm font-bold min-w-[72px] text-center" style={scoreBadgeStyle(ev.completado ? ev.score : null)}>
@@ -95,7 +104,7 @@ function VisitaDetalleView({ docente, visita, onBack }) {
 
         <div className="w-full lg:w-1/3">
           <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm h-full">
-            <p className="font-bold text-[#112240] mb-4">Observaciones generales:</p>
+            <p className="font-bold text-url-blue mb-4">Observaciones generales:</p>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[8rem]">
               {observaciones
                 ? <p className="text-gray-600 text-sm">{observaciones}</p>
@@ -109,111 +118,190 @@ function VisitaDetalleView({ docente, visita, onBack }) {
   );
 }
 
-// ── Página principal ───────────────────────────────────────────────────────────
 const TeacherChecklists = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const { docentes } = useContext(AppContext);
+  const { id }   = useParams();
 
-  const docente = docentes.find((d) => String(d.id) === String(id)) ?? docentes[0];
-  const [selectedVisita, setSelectedVisita] = useState(null);
+  const [docente,        setDocente]        = useState(null);
+  const [checklists,     setChecklists]     = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState(null);
+  const [selectedChecklist, setSelectedChecklist] = useState(null);
+  const [currentPage,    setCurrentPage]    = useState(1);
+  const itemsPerPage = 4;
 
-  // Estados para Paginación Segura
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Ajusta esto según cuántas tarjetas quieres por página
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [docenteRes, cursosRes] = await Promise.all([
+          fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`),
+          fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${id}`),
+        ]);
+        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
 
-  if (!docente) return <div className="p-8 text-gray-400">Cargando...</div>;
+        const docenteData = await docenteRes.json();
+        setDocente(docenteData);
 
-  const visitas  = docente.visitas || [];
-  const promedio = punteoPromedio(visitas);
+        if (cursosRes.ok) {
+          const cursosData = await cursosRes.json();
+          const cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
 
-  // Lógica de Paginación
-  const totalPages = Math.ceil(visitas.length / itemsPerPage) || 1;
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const currentVisitas = visitas.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
+          const checklistsResults = await Promise.all(
+            cursosList.map(c =>
+              fetch(`${GLOBAL_API_URL}evaluaciones/checklists/?curso_dado=${c.id}`)
+                .then(r => r.ok ? r.json() : [])
+                .then(d => Array.isArray(d) ? d : d.results ?? [])
+            )
+          );
+          const all = checklistsResults.flat().sort((a, b) =>
+            new Date(b.fecha_observacion) - new Date(a.fecha_observacion)
+          );
+          setChecklists(all);
+        }
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
-  if (selectedVisita) {
-    return <VisitaDetalleView docente={docente} visita={selectedVisita} onBack={() => setSelectedVisita(null)} />;
+  const promedio    = punteoPromedio(checklists);
+  const totalPages  = Math.ceil(checklists.length / itemsPerPage) || 1;
+  const safePage    = Math.min(currentPage, totalPages);
+  const currentItems= checklists.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
+
+  const iniciales = docente?.nombre_completo
+    ?.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase() ?? '?';
+
+  if (selectedChecklist) {
+    return <VisitaDetalleView docente={docente} checklist={selectedChecklist} onBack={() => setSelectedChecklist(null)} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1,2,3,4].map(i => <div key={i} className="bg-gray-200 rounded-xl h-48 animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
+          &larr; Volver
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center text-red-600">
+          <p className="font-bold mb-1">Error al cargar los checklists</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       <div>
-        {/* USAMOS NAVIGATE(-1) AQUÍ PARA REGRESAR AL SEMESTRE HISTÓRICO SI APLICA */}
-        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-[#112240] font-semibold flex items-center gap-2 transition mb-4">
+        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
           &larr; Volver
         </button>
       </div>
 
-      <div className="bg-[#112240] rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
+      <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
-            {docente.iniciales}
+          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-bold shadow-lg shrink-0">
+            {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-serif font-bold mb-2">{docente.nombre}</h1>
-            <p className="text-url-yellow font-semibold mb-4">{docente.departamento || docente.facultad} · Checklists</p>
+            <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+            <p className="text-url-yellow font-semibold mb-4">
+              {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''} · Checklists
+            </p>
             <span className="bg-url-yellow text-url-blue px-6 py-2 rounded-md font-bold text-sm">
-              Total de checklists: {visitas.length}
+              Total de checklists: {checklists.length}
             </span>
           </div>
         </div>
         <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
-          <span className="text-5xl font-serif font-bold text-url-yellow mb-1">{promedio}</span>
+          <span className="text-5xl font-bold text-url-yellow mb-1">{promedio}</span>
           <span className="text-xs text-gray-300 font-semibold uppercase tracking-wider">Punteo final</span>
         </div>
       </div>
 
-      {visitas.length === 0 ? (
+      {checklists.length === 0 ? (
         <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex items-center justify-center">
-          <p>Este docente no tiene visitas registradas aún.</p>
+          <p>Este docente no tiene checklists registrados aún.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 flex-1 content-start">
-          {currentVisitas.map((visita) => (
-            <div key={visita.id} className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200 min-h-[220px]" style={{ borderLeft: `12px solid ${visita.color || '#112240'}` }}>
-              <div className="p-6 pb-2">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-bold text-xl text-[#112240] mb-1">Visita {visita.numero}</h4>
-                    <p className="text-sm text-gray-500">{visita.nombre}</p>
+          {currentItems.map((checklist, idx) => {
+            const datos  = checklist.datos ?? {};
+            const punteo = datos.punteo_final != null ? parseFloat(datos.punteo_final) : 0;
+            const color  = datos.color ?? '#1a2744';
+            const fecha  = checklist.fecha_observacion
+              ? new Date(checklist.fecha_observacion).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
+              : '—';
+
+            return (
+              <div
+                key={checklist.id}
+                className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200 min-h-[220px]"
+                style={{ borderLeft: `12px solid ${color}` }}
+              >
+                <div className="p-6 pb-2">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-bold text-xl text-url-blue mb-1">{checklist.titulo}</h4>
+                      <p className="text-sm text-gray-500">{checklist.CursoDadoStr}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-4xl font-bold leading-none" style={{ color: colorPunteo(punteo) }}>
+                        {punteo > 0 ? punteo.toFixed(1) : '—'}
+                      </span>
+                      {punteo > 0 && <span className="text-sm text-gray-400 font-semibold ml-1">/10</span>}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-4xl font-bold leading-none" style={{ color: colorPunteo(visita.punteo) }}>
-                      {visita.punteo.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-gray-400 font-semibold ml-1">/10</span>
-                  </div>
+                  <span className="bg-gray-100 text-gray-500 text-xs px-6 py-1.5 rounded-full font-bold inline-block mb-4 border border-gray-300">
+                    {fecha}
+                  </span>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {(datos.criteriosList?.length ?? 0)} criterios evaluados
+                  </p>
                 </div>
-                <span className="bg-[#e2e8f0] text-[#475569] text-xs px-6 py-1.5 rounded-full font-bold inline-block mb-4 border border-gray-300">
-                  {visita.fecha}
-                </span>
-                <p className="text-sm text-gray-500 mb-4">{visita.materia}</p>
+                <div className="p-6 pt-0 mt-auto">
+                  <button
+                    onClick={() => setSelectedChecklist(checklist)}
+                    className="bg-url-blue text-white w-full py-3 font-bold hover:bg-blue-900 transition rounded-md text-sm"
+                  >
+                    Ver detalle
+                  </button>
+                </div>
               </div>
-              <div className="p-6 pt-0 mt-auto">
-                <button onClick={() => setSelectedVisita(visita)} className="bg-[#112240] text-white w-full py-3 font-bold hover:bg-blue-900 transition rounded-md text-sm">
-                  Ver detalle
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* PAGINACIÓN DINÁMICA AL FONDO */}
       {totalPages > 1 && (
-        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
-          <button 
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-            disabled={safeCurrentPage === 1} 
+        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-url-blue font-bold gap-4">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={safePage === 1}
             className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
           >
             &larr; Anterior
           </button>
-          <span>Página {safeCurrentPage} de {totalPages}</span>
-          <button 
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-            disabled={safeCurrentPage === totalPages} 
+          <span>Página {safePage} de {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
             className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
           >
             Siguiente &rarr;

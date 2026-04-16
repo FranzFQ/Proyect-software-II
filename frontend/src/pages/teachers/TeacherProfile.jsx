@@ -1,63 +1,157 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listaDocentesGlobal } from '../../utils/mockData';
-import { detalleDocenteMarta } from '../../utils/mockData';
 import Button from '../../components/common/Button';
+import GLOBAL_API_URL from '../../services/global_URL';
 
 const TeacherProfile = () => {
-  const navigate = useNavigate();
-  const { id = 1, semesterId } = useParams(); 
-  const docente = detalleDocenteMarta;
-
+  const navigate    = useNavigate();
+  const { id, semesterId } = useParams();
   const isHistorical = !!semesterId;
-  const currentData = isHistorical 
-    ? docente.semestresHistoricos.find(s => s.id === semesterId) || docente.semestreActual
-    : docente.semestreActual;
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [docente,      setDocente]      = useState(null);
+  const [semestre,     setSemestre]     = useState(null);
+  const [cursos,       setCursos]       = useState([]);
+  const [evaluacion,   setEvaluacion]   = useState(null);
+  const [puntajesCurso,setPuntajesCurso]= useState({});
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+  const [currentPage,  setCurrentPage]  = useState(1);
   const itemsPerPage = 6;
-  
-  const totalPages = Math.ceil(currentData.cursos.length / itemsPerPage) || 1;
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const currentCourses = currentData.cursos.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
-  // Reseteamos la paginación si cambia el semestre que estamos viendo
-const [prevSemesterId, setPrevSemesterId] = useState(semesterId);
-  if (semesterId !== prevSemesterId) {
-    setCurrentPage(1);
-    setPrevSemesterId(semesterId);
-  }
-  const getColorEstado = (estado) => {
-    if (estado === 'Excelente') return 'bg-green-500';
-    if (estado === 'Buena') return 'bg-orange-500';
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setCurrentPage(1);
+      try {
+        const docenteRes = await fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`);
+        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
+        const docenteData = await docenteRes.json();
+        setDocente(docenteData);
+
+        let semestreTarget = null;
+        if (isHistorical && semesterId) {
+          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/${semesterId}/`);
+          if (semRes.ok) semestreTarget = await semRes.json();
+        } else {
+          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/?activo_para_carga=true`);
+          if (semRes.ok) {
+            const semData = await semRes.json();
+            const list = Array.isArray(semData) ? semData : semData.results ?? [];
+            semestreTarget = list[0] ?? null;
+          }
+        }
+        setSemestre(semestreTarget);
+
+        if (semestreTarget) {
+          const [cursosRes, evalRes] = await Promise.all([
+            fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
+            fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
+          ]);
+
+          let cursosList = [];
+          if (cursosRes.ok) {
+            const cursosData = await cursosRes.json();
+            cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
+            setCursos(cursosList);
+          }
+          if (evalRes.ok) {
+            const evalData = await evalRes.json();
+            const list = Array.isArray(evalData) ? evalData : evalData.results ?? [];
+            setEvaluacion(list[0] ?? null);
+          }
+
+          if (cursosList.length > 0) {
+            const evalCursoResults = await Promise.all(
+              cursosList.map(c =>
+                fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
+                  .then(r => r.ok ? r.json() : [])
+                  .then(d => Array.isArray(d) ? d : d.results ?? [])
+              )
+            );
+            const mapa = {};
+            evalCursoResults.forEach((results, i) => {
+              if (results.length > 0) {
+                mapa[cursosList[i].id] = parseFloat(results[0].puntaje_curso ?? 0);
+              }
+            });
+            setPuntajesCurso(mapa);
+          }
+        }
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, semesterId]);
+
+  const getColorBarra = (score) => {
+    if (score >= 8) return 'bg-green-500';
+    if (score >= 6) return 'bg-orange-500';
     return 'bg-red-500';
   };
 
+  const getScoreColor = (score) => {
+    if (score >= 8) return 'text-green-400';
+    if (score >= 6) return 'text-orange-400';
+    return 'text-red-400';
+  };
+
+  const semNombre = semestre ? `${semestre.anio} - Semestre ${semestre.ciclo}` : '—';
+
+  const totalPages      = Math.ceil(cursos.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const currentCourses  = cursos.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
+
+  const iniciales = docente
+    ? docente.nombre_completo.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
+    : '?';
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1,2,3].map(i => <div key={i} className="bg-gray-200 rounded-xl h-48 animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6">
+        <button onClick={() => navigate('/teachers')} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
+          &larr; Volver a Docentes
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center text-red-600">
+          <p className="font-bold mb-1">Error al cargar el perfil</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
-      
+
       <div className="flex justify-between items-center">
-        <button 
-          onClick={() => navigate(isHistorical ? `/teachers/${id}/history` : '/teachers')} 
+        <button
+          onClick={() => navigate(isHistorical ? `/teachers/${id}/history` : '/teachers')}
           className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition"
         >
           &larr; Volver a {isHistorical ? 'Histórico de Semestres' : 'Docentes'}
         </button>
-
-        {/* BOTÓN PARA VOLVER AL SEMESTRE ACTUAL (Solo visible en Histórico) */}
         {isHistorical && (
-           <Button 
-             variant="primary" 
-             onClick={() => navigate(`/teachers/${id}`)} 
-             className="px-6 py-3 text-lg font-bold flex items-center gap-2 shadow-md"
-           >
-             Volver al semestre actual
-           </Button>
+          <Button variant="primary" onClick={() => navigate(`/teachers/${id}`)}>
+            Volver al semestre actual
+          </Button>
         )}
       </div>
 
       <div className={`rounded-xl text-white relative flex flex-col pt-8 shadow-md shrink-0 transition-colors ${isHistorical ? 'bg-[#2d3748]' : 'bg-url-blue'}`}>
-        
         {isHistorical && (
           <div className="absolute top-0 right-8 bg-orange-500 text-white px-4 py-1 rounded-b-md text-xs font-bold tracking-widest uppercase shadow-md">
             Viendo Registro Histórico
@@ -66,54 +160,49 @@ const [prevSemesterId, setPrevSemesterId] = useState(semesterId);
 
         <div className="px-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mt-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-serif font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
-              {docente.iniciales}
+            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
+              {iniciales}
             </div>
             <div>
               <p className={`${isHistorical ? 'text-gray-300' : 'text-url-yellow'} text-sm mb-1 font-semibold`}>
-                {currentData.nombre || currentData.label}
+                {semNombre}
               </p>
-              <h1 className="text-3xl font-serif font-bold mb-2">{docente.nombre}</h1>
-              <p className="text-gray-300 text-sm">{docente.codigo} · {docente.departamento || docente.facultad}</p>
+              <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+              <p className="text-gray-300 text-sm">
+                {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
+              </p>
               <div className="flex flex-wrap gap-3 mt-4">
-                <span className={`${isHistorical ? 'bg-gray-600 text-white' : 'bg-url-yellow text-url-blue'} px-4 py-1.5 rounded-md text-sm font-bold`}>Créditos totales: {currentData.creditosTotales || 0}</span>
-                <span className="border border-white/30 text-white px-4 py-1.5 rounded-md text-sm font-semibold">{currentData.cursos.length} cursos impartidos</span>
+                {evaluacion && (
+                  <span className={`${isHistorical ? 'bg-gray-600 text-white' : 'bg-url-yellow text-url-blue'} px-4 py-1.5 rounded-md text-sm font-bold`}>
+                    Punteo final: {parseFloat(evaluacion.puntaje_final).toFixed(1)}
+                  </span>
+                )}
+                <span className="border border-white/30 text-white px-4 py-1.5 rounded-md text-sm font-semibold">
+                  {cursos.length} cursos impartidos
+                </span>
               </div>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-3 justify-end w-full lg:w-auto">
-            {currentData.ponderacionesActuales?.map((item, idx) => (
-              <div key={idx} className={`border-2 rounded-xl flex flex-col items-center justify-center w-[5.5rem] h-24 ${isHistorical ? 'border-gray-400 bg-gray-800/50 text-gray-300' : 'border-url-yellow bg-blue-900/20 text-url-yellow'}`}>
-                <span className="text-2xl font-bold">{item.score || item.valor}</span>
-                <span className="text-[9px] text-center leading-tight px-1 mt-1 font-semibold uppercase">{item.label || item.nombre}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* BOTONERA DE PESTAÑAS */}
         <div className="flex flex-wrap justify-end gap-4 px-8 mt-6 pb-6">
-          {/* El botón de Checklists SIEMPRE se muestra (incluso en histórico) */}
-          <button 
-            onClick={() => navigate(`/teachers/${id}/checklists`)} 
-            className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-[#112240] hover:bg-yellow-500 transition-colors shadow-sm"
+          <button
+            onClick={() => navigate(`/teachers/${id}/checklists`)}
+            className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
           >
             Checklists
           </button>
-          
-          {/* Histórico y Comparación solo se muestran en el semestre actual */}
           {!isHistorical && (
             <>
-              <button 
-                onClick={() => navigate(`/teachers/${id}/history`)} 
-                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-[#112240] hover:bg-yellow-500 transition-colors shadow-sm"
+              <button
+                onClick={() => navigate(`/teachers/${id}/history`)}
+                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
               >
                 Histórico
               </button>
-              <button 
-                onClick={() => navigate(`/teachers/${id}/comparison`)} 
-                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-[#112240] hover:bg-yellow-500 transition-colors shadow-sm"
+              <button
+                onClick={() => navigate(`/teachers/${id}/comparison`)}
+                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
               >
                 Comparación
               </button>
@@ -123,45 +212,53 @@ const [prevSemesterId, setPrevSemesterId] = useState(semesterId);
       </div>
 
       <div className="mt-4 flex flex-col gap-6 flex-1">
-        <h3 className="font-bold text-lg text-[#112240]">Cursos impartidos ({currentData.nombre || currentData.label})</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentCourses.map(curso => (
-            <div key={curso.id || curso.codigo} className="bg-[#112240] rounded-xl overflow-hidden shadow-md flex flex-col h-48">
-              <div className={`h-3 w-full ${getColorEstado(curso.estado || 'Buena')}`}></div>
-              <div className="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <h4 className="text-white font-bold text-xl leading-tight line-clamp-2 mb-2">{curso.nombre}</h4>
-                  <p className="text-gray-400 text-xs mb-1">{curso.estado || 'Finalizado'}</p>
+        <h3 className="font-bold text-lg text-url-blue">Cursos impartidos ({semNombre})</h3>
+
+        {cursos.length === 0 ? (
+          <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm">
+            <p>No hay cursos registrados para este semestre.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentCourses.map(curso => {
+              const score = puntajesCurso[curso.id] ?? null;
+              return (
+                <div key={curso.id} className="bg-url-blue rounded-xl overflow-hidden shadow-md flex flex-col h-48">
+                  <div className={`h-3 w-full ${score !== null ? getColorBarra(score) : 'bg-gray-500'}`} />
+                  <div className="p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-white font-bold text-xl leading-tight line-clamp-2 mb-1">
+                        {curso.CursosNombre}
+                      </h4>
+                      <p className="text-gray-400 text-xs">Sección {curso.seccion}</p>
+                    </div>
+                    <div className="flex justify-between items-end mt-4">
+                      {score !== null ? (
+                        <span className={`text-4xl font-bold leading-none ${getScoreColor(score)}`}>
+                          {score.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-sm">Sin punteo</span>
+                      )}
+                      <button
+                        onClick={() => navigate(`/teachers/${id}/course/${curso.id}`)}
+                        className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1"
+                      >
+                        Ver Detalles &rarr;
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-end mt-4">
-                  <span className="text-url-yellow text-4xl font-serif font-bold leading-none">{curso.score || curso.punteoFinal}</span>
-                  <button onClick={() => navigate(`/teachers/${id}/course/${curso.id || curso.codigo}`)} className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1">
-                    Ver Detalles &rarr;
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {totalPages > 1 && (
-          <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
-             <button 
-               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-               disabled={safeCurrentPage === 1}
-               className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-             >
-               &larr; Anterior
-             </button>
-             <span>Página {safeCurrentPage} de {totalPages}</span>
-             <button 
-               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-               disabled={safeCurrentPage === totalPages}
-               className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-             >
-               Siguiente &rarr;
-             </button>
+          <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-url-blue font-bold gap-4">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors">&larr; Anterior</button>
+            <span>Página {safeCurrentPage} de {totalPages}</span>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors">Siguiente &rarr;</button>
           </div>
         )}
       </div>
