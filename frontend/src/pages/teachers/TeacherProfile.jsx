@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 const TeacherProfile = () => {
   const navigate    = useNavigate();
@@ -24,17 +24,17 @@ const TeacherProfile = () => {
       setError(null);
       setCurrentPage(1);
       try {
-        const docenteRes = await fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`);
+        const docenteRes = await fetch(`${ API_URL }usuarios/docentes/${id}/`);
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
         const docenteData = await docenteRes.json();
         setDocente(docenteData);
 
         let semestreTarget = null;
         if (isHistorical && semesterId) {
-          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/${semesterId}/`);
+          const semRes = await fetch(`${ API_URL }academico/semestres/${semesterId}/`);
           if (semRes.ok) semestreTarget = await semRes.json();
         } else {
-          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/?activo_para_carga=true`);
+          const semRes = await fetch(`${ API_URL }academico/semestres/?activo_para_carga=true`);
           if (semRes.ok) {
             const semData = await semRes.json();
             const list = Array.isArray(semData) ? semData : semData.results ?? [];
@@ -45,8 +45,8 @@ const TeacherProfile = () => {
 
         if (semestreTarget) {
           const [cursosRes, evalRes] = await Promise.all([
-            fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
-            fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
+            fetch(`${ API_URL }evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
+            fetch(`${ API_URL }evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
           ]);
 
           let cursosList = [];
@@ -64,7 +64,7 @@ const TeacherProfile = () => {
           if (cursosList.length > 0) {
             const evalCursoResults = await Promise.all(
               cursosList.map(c =>
-                fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
+                fetch(`${API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
                   .then(r => r.ok ? r.json() : [])
                   .then(d => Array.isArray(d) ? d : d.results ?? [])
               )

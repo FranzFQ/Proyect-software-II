@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 const TeacherHistory = () => {
   const navigate = useNavigate();
@@ -21,8 +21,8 @@ const TeacherHistory = () => {
       setError(null);
       try {
         const [docenteRes, evaluacionesRes] = await Promise.all([
-          fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`),
-          fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}`),
+          fetch(`${API_URL}usuarios/docentes/${id}/`),
+          fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}`),
         ]);
 
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');

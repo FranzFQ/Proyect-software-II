@@ -3,7 +3,7 @@ import { AppContext } from '../context/AppContext';
 import ChecklistForm from '../components/checklist/ChecklistForm';
 import ChecklistEjecucion from '../components/checklist/ChecklistEjecucion';
 import Button from '../components/common/Button';
-import GLOBAL_API_URL from '../services/global_URL';
+import { API_URL } from '../services/global_URL';
 
 function colorDePunteo(score) {
   if (score >= 9) return '#22c55e';
@@ -109,8 +109,8 @@ export default function Checklist() {
       setLoading(true);
       try {
         const [checklistsRes, semRes] = await Promise.all([
-          fetch(`${GLOBAL_API_URL}evaluaciones/checklists/`),
-          fetch(`${GLOBAL_API_URL}academico/semestres/?activo_para_carga=true`),
+          fetch(`${API_URL}evaluaciones/checklists/`),
+          fetch(`${API_URL}academico/semestres/?activo_para_carga=true`),
         ]);
         if (checklistsRes.ok) {
           const data = await checklistsRes.json();
@@ -160,11 +160,11 @@ export default function Checklist() {
     try {
       let res;
       if (editingChecklist) {
-        res = await fetch(`${GLOBAL_API_URL}evaluaciones/checklists/${editingChecklist.id}/`, {
+        res = await fetch(`${API_URL}evaluaciones/checklists/${editingChecklist.id}/`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${GLOBAL_API_URL}evaluaciones/checklists/`, {
+        res = await fetch(`${API_URL}evaluaciones/checklists/`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         });
       }
@@ -209,7 +209,7 @@ export default function Checklist() {
     };
 
     try {
-      const res = await fetch(`${GLOBAL_API_URL}evaluaciones/checklists/${ejecutandoChecklist.id}/`, {
+      const res = await fetch(`${API_URL}evaluaciones/checklists/${ejecutandoChecklist.id}/`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datosPatch),
       });
       if (res.ok) {

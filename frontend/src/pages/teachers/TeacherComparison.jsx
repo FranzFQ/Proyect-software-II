@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronUpIcon, ChevronDownIcon, MinusIcon } from '@heroicons/react/24/outline';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 // Mapeo de campos del backend a etiquetas legibles
 const CRITERIOS = [
@@ -33,8 +33,8 @@ const DocenteComparacion = () => {
       setError(null);
       try {
         const [docenteRes, semRes] = await Promise.all([
-          fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`),
-          fetch(`${GLOBAL_API_URL}academico/semestres/`),
+          fetch(`${API_URL}usuarios/docentes/${id}/`),
+          fetch(`${API_URL}academico/semestres/`),
         ]);
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
         if (!semRes.ok)     throw new Error('No se pudo cargar los semestres');
@@ -63,8 +63,8 @@ const DocenteComparacion = () => {
       setLoadingComp(true);
       try {
         const fetches = [];
-        if (semActualId) fetches.push(fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semActualId}`));
-        if (semAnterId)  fetches.push(fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semAnterId}`));
+        if (semActualId) fetches.push(fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semActualId}`));
+        if (semAnterId)  fetches.push(fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semAnterId}`));
 
         const results = await Promise.all(fetches);
         const [resActual, resAnter] = results;

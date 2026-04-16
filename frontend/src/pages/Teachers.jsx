@@ -4,7 +4,7 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import { EyeIcon, TrashIcon, UserPlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import GLOBAL_API_URL from '../services/global_URL';
+import { API_URL } from '../services/global_URL';
 
 const Teachers = () => {
   const navigate = useNavigate();
@@ -39,8 +39,8 @@ const Teachers = () => {
     setLoading(true);
     try {
       const [docentesRes, semRes] = await Promise.all([
-        fetch(`${GLOBAL_API_URL}usuarios/docentes/`),
-        fetch(`${GLOBAL_API_URL}academico/semestres/?activo_para_carga=true`),
+        fetch(`${ API_URL }usuarios/docentes/`),
+        fetch(`${ API_URL }academico/semestres/?activo_para_carga=true`),
       ]);
 
       if (!docentesRes.ok) return;
@@ -54,7 +54,7 @@ const Teachers = () => {
         const semestreActivo = semList[0];
         if (semestreActivo && lista.length > 0) {
           const cursosRes = await fetch(
-            `${GLOBAL_API_URL}evaluaciones/cursos-dados/?semestre=${semestreActivo.id}`
+            `${API_URL}evaluaciones/cursos-dados/?semestre=${semestreActivo.id}`
           );
           if (cursosRes.ok) {
             const cursosData = await cursosRes.json();
@@ -75,7 +75,7 @@ const Teachers = () => {
 
   const fetchFacultades = async () => {
     try {
-      const res = await fetch(`${GLOBAL_API_URL}academico/facultades/`);
+      const res = await fetch(`${API_URL}academico/facultades/`);
       if (res.ok) {
         const data = await res.json();
         setFacultades(Array.isArray(data) ? data : data.results ?? []);
@@ -125,7 +125,7 @@ const Teachers = () => {
 
   const ejecutarEliminacion = async () => {
     try {
-      const res = await fetch(`${GLOBAL_API_URL}usuarios/docentes/${docenteActual.id}/`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, { method: 'DELETE' });
       if (res.ok || res.status === 204) {
         setDocentes(prev => prev.filter(d => d.id !== docenteActual.id));
         setAlertMessage('Docente eliminado correctamente del sistema.');
@@ -156,11 +156,11 @@ const Teachers = () => {
     try {
       let res;
       if (docenteActual) {
-        res = await fetch(`${GLOBAL_API_URL}usuarios/docentes/${docenteActual.id}/`, {
+        res = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${GLOBAL_API_URL}usuarios/docentes/`, {
+        res = await fetch(`${API_URL}usuarios/docentes/`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         });
       }
