@@ -24,17 +24,17 @@ const TeacherProfile = () => {
       setError(null);
       setCurrentPage(1);
       try {
-        const docenteRes = await fetch(`${ API_URL }usuarios/docentes/${id}/`);
+        const docenteRes = await fetch(`${API_URL}usuarios/docentes/${id}/`);
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
         const docenteData = await docenteRes.json();
         setDocente(docenteData);
 
         let semestreTarget = null;
         if (isHistorical && semesterId) {
-          const semRes = await fetch(`${ API_URL }academico/semestres/${semesterId}/`);
+          const semRes = await fetch(`${API_URL}academico/semestres/${semesterId}/`);
           if (semRes.ok) semestreTarget = await semRes.json();
         } else {
-          const semRes = await fetch(`${ API_URL }academico/semestres/?activo_para_carga=true`);
+          const semRes = await fetch(`${API_URL}academico/semestres/?activo_para_carga=true`);
           if (semRes.ok) {
             const semData = await semRes.json();
             const list = Array.isArray(semData) ? semData : semData.results ?? [];
@@ -45,8 +45,8 @@ const TeacherProfile = () => {
 
         if (semestreTarget) {
           const [cursosRes, evalRes] = await Promise.all([
-            fetch(`${ API_URL }evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
-            fetch(`${ API_URL }evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
+            fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
+            fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
           ]);
 
           let cursosList = [];
@@ -100,6 +100,20 @@ const TeacherProfile = () => {
   };
 
   const semNombre = semestre ? `${semestre.anio} - Semestre ${semestre.ciclo}` : '—';
+
+  // Promedio general = promedio de todos los puntajes de cursos con evaluacion
+  const promedioGeneral = (() => {
+    const valores = Object.values(puntajesCurso);
+    if (valores.length === 0) return null;
+    return valores.reduce((a, b) => a + b, 0) / valores.length;
+  })();
+
+  const getEstadoLabel = (score) => {
+    if (score === null) return null;
+    if (score >= 8) return { label: 'Excelente', color: 'text-green-400' };
+    if (score >= 6) return { label: 'Buena',     color: 'text-orange-400' };
+    return              { label: 'Deficiente',   color: 'text-red-400' };
+  };
 
   const totalPages      = Math.ceil(cursos.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -160,14 +174,14 @@ const TeacherProfile = () => {
 
         <div className="px-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mt-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
+            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-serif font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
               {iniciales}
             </div>
             <div>
               <p className={`${isHistorical ? 'text-gray-300' : 'text-url-yellow'} text-sm mb-1 font-semibold`}>
                 {semNombre}
               </p>
-              <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+              <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
               <p className="text-gray-300 text-sm">
                 {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
               </p>
@@ -183,6 +197,22 @@ const TeacherProfile = () => {
               </div>
             </div>
           </div>
+
+          {/* Score promedio general — esquina superior derecha del header */}
+          {promedioGeneral !== null && (() => {
+            const estado = getEstadoLabel(promedioGeneral);
+            return (
+              <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
+                <span className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1"></span>
+                <span className={`text-5xl font-bold leading-none text-url-yellow`}>
+                  {promedioGeneral.toFixed(1)}
+                </span>
+                <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-md text-url-yellow`}>
+                  Punteo Final
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex flex-wrap justify-end gap-4 px-8 mt-6 pb-6">

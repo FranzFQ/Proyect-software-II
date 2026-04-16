@@ -216,11 +216,11 @@ const TeacherChecklists = () => {
 
       <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-bold shadow-lg shrink-0">
+          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
             {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+            <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
             <p className="text-url-yellow font-semibold mb-4">
               {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''} · Checklists
             </p>
@@ -244,7 +244,7 @@ const TeacherChecklists = () => {
           {currentItems.map((checklist, idx) => {
             const datos  = checklist.datos ?? {};
             const punteo = datos.punteo_final != null ? parseFloat(datos.punteo_final) : 0;
-            const color  = datos.color ?? '#1a2744';
+            const color  = punteo > 0 ? colorPunteo(punteo) : '#1a2744';
             const fecha  = checklist.fecha_observacion
               ? new Date(checklist.fecha_observacion).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
               : '—';

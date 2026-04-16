@@ -9,11 +9,12 @@ import { API_URL } from '../services/global_URL';
 const Teachers = () => {
   const navigate = useNavigate();
 
-  const [docentes,        setDocentes]        = useState([]);
-  const [facultades,      setFacultades]      = useState([]);
-  const [cursosPorDocente,setCursosPorDocente]= useState({});
-  const [loading,         setLoading]         = useState(true);
-  const [saving,          setSaving]          = useState(false);
+  const [docentes,           setDocentes]           = useState([]);
+  const [facultades,         setFacultades]         = useState([]);
+  const [cursosPorDocente,   setCursosPorDocente]   = useState({});
+  const [promedioPorDocente, setPromedioPorDocente] = useState({});
+  const [loading,            setLoading]            = useState(true);
+  const [saving,             setSaving]             = useState(false);
 
   const [filtroTexto,  setFiltroTexto]  = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -39,8 +40,8 @@ const Teachers = () => {
     setLoading(true);
     try {
       const [docentesRes, semRes] = await Promise.all([
-        fetch(`${ API_URL }usuarios/docentes/`),
-        fetch(`${ API_URL }academico/semestres/?activo_para_carga=true`),
+        fetch(`${API_URL}usuarios/docentes/`),
+        fetch(`${API_URL}academico/semestres/?activo_para_carga=true`),
       ]);
 
       if (!docentesRes.ok) return;
@@ -59,12 +60,43 @@ const Teachers = () => {
           if (cursosRes.ok) {
             const cursosData = await cursosRes.json();
             const cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
+
+            // Mapa nombre de cursos por docente
             const mapa = {};
             cursosList.forEach(c => {
               if (!mapa[c.docente]) mapa[c.docente] = [];
               mapa[c.docente].push(c.CursosNombre);
             });
             setCursosPorDocente(mapa);
+
+            // Obtener puntaje_curso de cada curso y calcular promedio por docente
+            if (cursosList.length > 0) {
+              const evalResults = await Promise.all(
+                cursosList.map(c =>
+                  fetch(`${API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
+                    .then(r => r.ok ? r.json() : [])
+                    .then(d => ({ docenteId: c.docente, data: Array.isArray(d) ? d : d.results ?? [] }))
+                    .catch(() => ({ docenteId: c.docente, data: [] }))
+                )
+              );
+
+              // Agrupar puntajes por docente
+              const puntajesPorDocente = {};
+              evalResults.forEach(({ docenteId, data }) => {
+                if (data.length > 0) {
+                  const puntaje = parseFloat(data[0].puntaje_curso ?? 0);
+                  if (!puntajesPorDocente[docenteId]) puntajesPorDocente[docenteId] = [];
+                  puntajesPorDocente[docenteId].push(puntaje);
+                }
+              });
+
+              // Calcular promedio por docente
+              const promedios = {};
+              Object.entries(puntajesPorDocente).forEach(([docenteId, puntajes]) => {
+                promedios[docenteId] = puntajes.reduce((a, b) => a + b, 0) / puntajes.length;
+              });
+              setPromedioPorDocente(promedios);
+            }
           }
         }
       }
@@ -83,8 +115,13 @@ const Teachers = () => {
     } catch { }
   };
 
+  const getPromedioDocente = (docId) => {
+    return promedioPorDocente[docId] ?? null;
+  };
+
   const clasificarEstado = (doc) => {
-    const p = doc.ponderacion ?? 0;
+    const p = getPromedioDocente(doc.id);
+    if (p === null) return 'Sin datos';
     if (p >= 8) return 'Excelente';
     if (p >= 6) return 'Buena';
     return 'Deficiente';
@@ -113,6 +150,7 @@ const Teachers = () => {
       Excelente:  'bg-green-100 text-green-700 border-green-200',
       Buena:      'bg-yellow-100 text-yellow-700 border-yellow-200',
       Deficiente: 'bg-red-100 text-red-700 border-red-200',
+      'Sin datos':'bg-gray-100 text-gray-500 border-gray-200',
     };
     return (
       <span className={`px-4 py-1.5 rounded-md text-sm font-bold border ${colores[estado] ?? 'bg-gray-100'}`}>
@@ -244,6 +282,7 @@ const Teachers = () => {
               ) : (
                 currentItems.map((doc, index) => {
                   const estado    = clasificarEstado(doc);
+                  const promedio  = getPromedioDocente(doc.id);
                   const iniciales = getIniciales(doc.nombre_completo);
                   const cursos    = cursosPorDocente[doc.id] ?? [];
                   return (
@@ -272,7 +311,9 @@ const Teachers = () => {
                         {doc.FacultadNombre ?? '—'}
                       </td>
                       <td className="py-2 px-3 md:py-4 md:px-6 text-center">
-                        {renderEstado(estado)}
+                        <div className="flex flex-col items-center gap-1">
+                          {renderEstado(estado)}
+                        </div>
                       </td>
                       <td className="py-2 px-3 md:py-4 md:px-6 text-center">
                         <div className="flex items-center justify-center gap-1 md:gap-2">
