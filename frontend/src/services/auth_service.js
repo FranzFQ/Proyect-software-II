@@ -4,53 +4,142 @@ const BASE_URL = API_URL;
 
 // Claves que usamos en sessionStorage (constantes para evitar typos)
 const TOKEN_KEY   = 'auth_token';
+const REFRESH_KEY = 'auth_refresh';
 const USER_KEY    = 'auth_user';
 
-/**
- * Hace POST /api/token/ (JWT de DRF Simple JWT).
- * @param {string} email    
- * @param {string} password 
- * @returns {Promise<{token: string, user: object}>}
- */
-export async function login(email, password) {
+// LOGIN
+export async function login(identifier, password) {
   const response = await fetch(`${BASE_URL}token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: email, password }),
+
+    // Compatibilidad con username y email
+    body: JSON.stringify({
+      username: identifier,
+      password
+    }),
   });
 
   if (!response.ok) {
-    // Lanzamos un error con el mensaje del backend si existe
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Credenciales incorrectas');
   }
 
   const data = await response.json();
-  // DRF Simple JWT devuelve { access: "...", refresh: "..." }
-  const token = data.access;
 
-  // Con el token, pedimos los datos del usuario logueado
-  const user = await fetchCurrentUser(token);
+  const access  = data.access;
+  const refresh = data.refresh;
 
-  // ★ PERSISTENCIA: guardamos en sessionStorage
-  sessionStorage.setItem(TOKEN_KEY, token);
+  // Guardar tokens
+  sessionStorage.setItem(TOKEN_KEY, access);
+  sessionStorage.setItem(REFRESH_KEY, refresh);
+
+  const user = await fetchCurrentUser(access);
+
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 
-  return { token, user };
+  return { token: access, user };
 }
 
-/**
- * Borra el token y el usuario de sessionStorage.
- */
+// REFRESH TOKEN
+
+async function refreshToken() {
+  const refresh = sessionStorage.getItem(REFRESH_KEY);
+
+  if (!refresh) {
+    logout();
+    throw new Error("No hay refresh token");
+  }
+
+  const response = await fetch(`${BASE_URL}token/refresh/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!response.ok) {
+    logout();
+    throw new Error("Sesión expirada");
+  }
+
+  const data = await response.json();
+
+  const newAccess = data.access;
+
+  sessionStorage.setItem(TOKEN_KEY, newAccess);
+
+  return newAccess;
+}
+
+// OBTENER USUARIO ACTUAL
+
+async function fetchCurrentUser(token) {
+  const response = await fetch(`${BASE_URL}usuarios/usuarios/me/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo obtener el usuario");
+  }
+
+  const data = await response.json();
+
+  return normalizeUser(data);
+}
+
+// FETCH CON AUTO-REFRESH
+
+export async function fetchWithAuth(url, options = {}) {
+  let token = getToken();
+
+  let response = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  // 🔥 Token expirado → intentamos refresh
+  if (response.status === 401) {
+    try {
+      token = await refreshToken();
+
+      response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+    } catch (error) {
+      logout();
+      throw new Error("Sesión expirada, vuelve a iniciar sesión");
+    }
+  }
+
+  // 🔥 MANEJO DE RESPUESTA AQUÍ
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Error ${response.status}`);
+  }
+
+  if (response.status === 204) return null;
+
+  return response;
+}
+
+// LOGOUT
+
 export function logout() {
   sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
   sessionStorage.removeItem(USER_KEY);
 }
 
-/**
- * Lee sessionStorage y devuelve el usuario guardado (o null si no hay sesión).
- * @returns {object|null}
- */
 export function getSavedUser() {
   try {
     const raw = sessionStorage.getItem(USER_KEY);
@@ -60,74 +149,49 @@ export function getSavedUser() {
   }
 }
 
-/**
- * Devuelve el token JWT guardado en sessionStorage.
- * @returns {string|null}
- */
 export function getToken() {
   return sessionStorage.getItem(TOKEN_KEY);
 }
 
-/**
- * Utilidad rápida: retorna true si hay un token guardado.
- *
- * @returns {boolean}
- */
 export function isAuthenticated() {
   return Boolean(getToken());
 }
 
-/**
- * Llama a /api/usuarios/me/ (o el endpoint que tengas) para obtener los datos del login
- */
-async function fetchCurrentUser(token) {
-  // Si no tienes un endpoint /me/, puedes construir el objeto manualmente
-  const response = await fetch(`${BASE_URL}usuarios/usuarios/me/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+// DECODIFICAR
 
-  if (!response.ok) {
-    throw new Error('No se pudo obtener la información del usuario');
+function parseJwt(token) {
+  try {
+    const base64 = token.split('.')[1];
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch {
+    return {};
   }
-
-  const userData = await response.json();
-  console.log("Datos del usuario obtenidos del backend:", userData);
-
-  // Adaptamos los campos del backend a la forma que usa el Sidebar
-  return normalizeUser(userData);
 }
 
-/**
- * Convierte el objeto Usuario del backend al formato que consume el frontend.
- * @param {object} backendUser 
- * @returns {object}           
- */
-export function normalizeUser(backendUser) {
-  const firstName = backendUser.first_name || '';
-  const lastName  = backendUser.last_name  || '';
+// NORMALIZADOR 
+export function normalizeUser(u) {
+  const firstName = u.first_name || "";
+  const lastName = u.last_name || "";
 
-  const fullName = `${firstName} ${lastName}`.trim() || backendUser.username;
+  const fullName =
+    `${firstName} ${lastName}`.trim() || u.username;
 
-  let iniciales = 'U';
-
-  if (firstName && lastName) {
-    iniciales = `${firstName[0]}${lastName[0]}`;
-  } else if (firstName) {
-    iniciales = firstName.substring(0, 2);
-  } else if (backendUser.username) {
-    iniciales = backendUser.username.substring(0, 2);
-  }
+  const iniciales =
+    firstName
+      ? `${firstName[0]}${lastName?.[0] || ""}`.toUpperCase()
+      : (u.username?.[0] || "U").toUpperCase();
 
   return {
-    id: backendUser.id,
-    username: backendUser.username,
-    email: backendUser.email,
+    id: u.id,
+    username: u.username,
+    email: u.email,
     nombre: fullName,
-    iniciales: iniciales.toUpperCase(),
-    rol: backendUser.is_staff ? 'Administrador' : 'Coordinador',
-    facultad: backendUser.FacultadNombre || backendUser.facultad || null,
-    carrera: backendUser.CarreraNombre || backendUser.carrera || null,
-    is_staff: backendUser.is_staff,
-    is_active: backendUser.is_active,
+    iniciales,
+    rol: u.is_staff ? "Administrador" : "Coordinador",
+    facultad: u.FacultadNombre || u.facultad || null,
+    carrera: u.CarreraNombre || u.carrera || null,
+    is_staff: u.is_staff,
+    is_active: u.is_active,
   };
 }

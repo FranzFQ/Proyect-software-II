@@ -137,6 +137,10 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
+SIMPLE_JWT = {
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 

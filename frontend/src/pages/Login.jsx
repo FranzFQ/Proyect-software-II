@@ -13,7 +13,7 @@ const Login = () => {
   // Se Usa un setCurrentUser para guardar el usuario en el contexto
   const { setCurrentUser } = useContext(AppContext);
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,12 +25,8 @@ const Login = () => {
     setError('');
 
     // Validación básica en frontend
-    if (!email || !password) {
+    if (!identifier || !password) {
       setError('Por favor, ingresa tu correo y contraseña.');
-      return;
-    }
-    if (!email.includes('@')) {
-      setError('Por favor, ingresa un correo válido.');
       return;
     }
 
@@ -38,7 +34,7 @@ const Login = () => {
 
     try {
       // LLAMADA REAL AL BACKEND
-      const { user } = await login(email, password);
+      const { user } = await login(identifier, password);
       // Guardamos el usuario en el contexto global de React.
       setCurrentUser(user);
 
@@ -82,12 +78,12 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <Input
-              id="email"
-              type="email"
-              label="CORREO INSTITUCIONAL"
+              id="identifier"
+              type="text"
+              label="Usuario o correo institucional"
               placeholder="jrodriguez@correo.url.edu.gt"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               disabled={isLoading}
             />
 
