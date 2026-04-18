@@ -27,6 +27,7 @@ import {
 
 const Coordinators = () => {
   const navigate = useNavigate();
+  const { currentUser, setCurrentUser } = useContext(AppContext);
   const { coordinadores, setCoordinadores } = useContext(AppContext);
   const [filtroTexto, setFiltroTexto]           = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,24 +49,32 @@ const Coordinators = () => {
   const [alertType, setAlertType]         = useState('success');
 
   useEffect(() => {
-    const cargarCoordinadores = async () => {
-      setIsLoadingList(true);
-      setListError("");
-      try {
-        // conexion al backend para obtener los usuarios
-        const data = await getUsuarios();
-        const lista = Array.isArray(data) ? data : data.results || [];
-        // Normalizamos cada usuario al formato que espera el componente
-        setCoordinadores(lista.map(normalizeCoordinador));
-      } catch (err) {
-        setListError(
-          err.message || "No se pudo cargar la lista de coordinadores.",
-        );
-      } finally {
-        setIsLoadingList(false);
-      }
-    };
+const cargarCoordinadores = async () => {
+  setIsLoadingList(true);
+  setListError("");
 
+  try {
+    const data = await getUsuarios();
+
+    const lista = Array.isArray(data) ? data : data.results || [];
+
+    // FILTRO CORRECTO
+    const filtrados = lista.filter((u) =>
+      u.is_active === true &&     // solo activos
+      u.is_staff === false &&     // solo coordinadores
+      u.id !== currentUser?.id    // excluir usuario actual
+    );
+
+    setCoordinadores(filtrados.map(normalizeCoordinador));
+
+  } catch (err) {
+    setListError(
+      err.message || "No se pudo cargar la lista de coordinadores."
+    );
+  } finally {
+    setIsLoadingList(false);
+  }
+};
     cargarCoordinadores();
   }, []); 
 
@@ -100,6 +109,7 @@ const Coordinators = () => {
   };
 
   const abrirFormulario = (coord = null) => {
+    console.log("Abriendo formulario para:", coord);
     setCoordinadorActual(coord);
     setEsAdminForm(coord ? coord.esAdmin : false);
     setPasswordValue("");
@@ -128,8 +138,7 @@ const Coordinators = () => {
       first_name: formData.get('first_name'),
       last_name:  formData.get('last_name'),
       email:      formData.get('email'),
-      // username: usamos el email como username
-      username:   formData.get('email'),
+      username:   formData.get('username'),
       is_staff:   esAdminForm,
     };
 
@@ -137,6 +146,7 @@ const Coordinators = () => {
       payload.password = passwordValue;
     }
 
+    console.log("Payload a enviar:", payload);
     setIsSaving(true);
     try {
       if (coordinadorActual) {
@@ -272,12 +282,12 @@ const Coordinators = () => {
                         {/* Información de texto */}
                         <div className="flex flex-col">
                           <h4 className="font-bold text-url-blue text-sm leading-tight">
-                            {coord.nombre}
+                            {coord.nombre_completo}
                           </h4>
 
                           <div className="flex items-center gap-2 mt-1.5">
                             {/* Username con ancho fijo para alinear el correo */}
-                            <div className="w-28 shrink-0">
+                            <div className="shrink-0">
                               <span className="text-[10px] font-bold bg-blue-50 text-url-blue px-2 py-0.5 rounded-md border border-blue-100 inline-block w-full text-center">
                                 @{coord.username || coord.correo.split("@")[0]}
                               </span>
@@ -348,12 +358,26 @@ const Coordinators = () => {
               {/* Nombre */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">
-                  Nombre Completo
+                  Nombre
                 </label>
                 <input
+                  name="first_name"
                   type="text"
-                  placeholder="Ej. María Elizabet"
+                  placeholder="Ej. María"
                   defaultValue={coordinadorActual?.nombre}
+                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase">
+                  Apellido
+                </label>
+                <input
+                  name="last_name"
+                  type="text"
+                  placeholder="Ej. García"
+                  defaultValue={coordinadorActual?.apellido}
                   className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
                   required
                 />
@@ -364,6 +388,7 @@ const Coordinators = () => {
                   Nombre de Usuario
                 </label>
                 <input
+                  name="username"
                   type="text"
                   placeholder="Ej. melizabet"
                   defaultValue={coordinadorActual?.username}
@@ -377,6 +402,7 @@ const Coordinators = () => {
                   Correo Institucional
                 </label>
                 <input
+                  name="email"
                   type="email"
                   placeholder="Ej. mtorres@univ.edu.gt"
                   defaultValue={coordinadorActual?.correo}

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -23,6 +23,13 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'])
+    def deactivate(self, request, pk=None):
+        user = self.get_object()
+        user.is_active = False
+        user.save()
+        return Response({'status': 'usuario desactivado'}, status=status.HTTP_200_OK)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

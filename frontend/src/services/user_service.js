@@ -1,4 +1,4 @@
-import { getToken } from "./auth_service";
+import { getToken, fetchWithAuth } from "./auth_service";
 import { API_URL } from "./global_URL";
 
 const BASE_URL = API_URL;
@@ -45,10 +45,8 @@ export async function getUsuarios(params = {}) {
   // Convertimos el objeto params a query string: { search: 'juan' } → '?search=juan'
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}usuarios/usuarios/${queryString ? `?${queryString}` : ""}`;
-
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     method: "GET",
-    headers: authHeaders(),
   });
   return handleResponse(response);
 }
@@ -98,10 +96,17 @@ export async function updateUsuario(id, data) {
  * @returns {Promise<null>}
  */
 export async function deleteUsuario(id) {
-  const response = await fetch(`${BASE_URL}usuarios/usuarios/${id}/`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
+  const response = await fetchWithAuth(
+    `${BASE_URL}usuarios/usuarios/${id}/`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ is_active: false }),
+    }
+  );
+
   return handleResponse(response);
 }
 
@@ -120,7 +125,9 @@ export function normalizeCoordinador(u) {
 
   return {
     id: u.id,
-    nombre: fullName,
+    nombre_completo: fullName,
+    nombre: firstName,
+    apellido: lastName,
     iniciales,
     correo: u.email,
     carrera: u.CarreraNombre || "—",

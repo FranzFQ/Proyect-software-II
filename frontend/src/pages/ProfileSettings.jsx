@@ -12,6 +12,7 @@ const ProfileSettings = () => {
   const [firstName, setFirstName] = useState(currentUser?.nombre?.split(' ')[0] || '');
   const [lastName,  setLastName]  = useState(currentUser?.nombre?.split(' ').slice(1).join(' ') || '');
   const [username,  setUsername]  = useState(currentUser?.username || '');
+  const [email, setEmail]     = useState(currentUser?.email || '');
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPass,     setShowNewPass]     = useState(false);
@@ -19,6 +20,7 @@ const ProfileSettings = () => {
   const [isSaving,      setIsSaving]      = useState(false);
   const [alertMessage,  setAlertMessage]  = useState('');
   const [errorMessage,  setErrorMessage]  = useState('');
+
   const handleSave = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -37,6 +39,7 @@ const ProfileSettings = () => {
       first_name: firstName.trim(),
       last_name:  lastName.trim(),
       username:   username.trim(),
+      email:      email.trim(),
     };
 
     if (newPassword) {
@@ -125,9 +128,10 @@ const ProfileSettings = () => {
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Correo Institucional</label>
               <input
                 type="email"
-                value={currentUser?.email || 'correo@url.edu.gt'}
-                disabled
-                className="px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-md text-gray-500 cursor-not-allowed font-medium"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue transition-colors"
+                required
               />
             </div>
             <div className="flex flex-col gap-2">
