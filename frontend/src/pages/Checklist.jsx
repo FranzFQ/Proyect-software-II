@@ -3,6 +3,10 @@ import { AppContext } from '../context/AppContext';
 import ChecklistForm from '../components/checklist/ChecklistForm';
 import ChecklistEjecucion from '../components/checklist/ChecklistEjecucion';
 import Button from '../components/common/Button';
+
+// Servicios
+import { getChecklists, createChecklist } from '../services/checklist_service';
+import { getSemestres } from '../services/academico_service';
 import { API_URL } from '../services/global_URL';
 
 function colorDePunteo(score) {
@@ -105,29 +109,28 @@ export default function Checklist() {
   const [modoEdicion,         setModoEdicion]         = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [checklistsRes, semRes] = await Promise.all([
-          fetch(`${API_URL}evaluaciones/checklists/`),
-          fetch(`${API_URL}academico/semestres/?activo_para_carga=true`),
-        ]);
-        if (checklistsRes.ok) {
-          const data = await checklistsRes.json();
-          const list = Array.isArray(data) ? data : data.results ?? [];
-          setChecklists(list.map(normalizeChecklist));
-        }
-        if (semRes.ok) {
-          const semData = await semRes.json();
-          const semList = Array.isArray(semData) ? semData : semData.results ?? [];
-          setSemestre(semList[0] ?? null);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [checklistsData, semData] = await Promise.all([
+        getChecklists(),
+        getSemestres({ activo_para_carga: true }),
+      ]);
+      
+      const list = Array.isArray(checklistsData) ? checklistsData : checklistsData.results ?? [];
+      setChecklists(list.map(normalizeChecklist));
+
+      const semList = Array.isArray(semData) ? semData : semData.results ?? [];
+      setSemestre(semList[0] ?? null);
+    } catch (error) {
+      console.error("Error al cargar checklists:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNuevaChecklist = () => { setEditingChecklist(null); setShowForm(true); };
 
@@ -161,27 +164,28 @@ export default function Checklist() {
       let res;
       if (editingChecklist) {
         res = await fetch(`${API_URL}evaluaciones/checklists/${editingChecklist.id}/`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          method: 'PATCH', 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+          }, 
+          body: JSON.stringify(payload),
         });
       } else {
         res = await fetch(`${API_URL}evaluaciones/checklists/`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          method: 'POST', 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+          }, 
+          body: JSON.stringify(payload),
         });
       }
+      
       if (res.ok) {
-        const saved = normalizeChecklist(await res.json());
-        if (editingChecklist) {
-          setChecklists(prev => prev.map(c => c.id === saved.id ? saved : c));
-          setShowForm(false);
-          setEditingChecklist(null);
-        } else {
-          setChecklists(prev => [...prev, saved]);
-          setShowForm(false);
-          setEditingChecklist(null);
-          setModoEdicion(false);
-          setEjecutandoChecklist(saved);
-          return;
-        }
+        await fetchData();
+        setShowForm(false);
+        setEditingChecklist(null);
       }
     } catch (e) {
       console.error('Error guardando checklist:', e);
@@ -210,24 +214,18 @@ export default function Checklist() {
 
     try {
       const res = await fetch(`${API_URL}evaluaciones/checklists/${ejecutandoChecklist.id}/`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datosPatch),
+        method: 'PATCH', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }, 
+        body: JSON.stringify(datosPatch),
       });
       if (res.ok) {
-        const saved = normalizeChecklist(await res.json());
-        setChecklists(prev => prev.map(c => c.id === saved.id ? saved : c));
-      } else {
-        setChecklists(prev => prev.map(c =>
-          c.id === ejecutandoChecklist.id
-            ? { ...c, criteriosList, criterios: criteriosList.length, punteo: punteoCalculado }
-            : c
-        ));
+        await fetchData();
       }
-    } catch {
-      setChecklists(prev => prev.map(c =>
-        c.id === ejecutandoChecklist.id
-          ? { ...c, criteriosList, criterios: criteriosList.length, punteo: punteoCalculado }
-          : c
-      ));
+    } catch (error) {
+        console.error("Error al guardar ejecución:", error);
     }
 
     setEjecutandoChecklist(null);

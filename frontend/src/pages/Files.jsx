@@ -4,7 +4,9 @@ import { AppContext } from '../context/AppContext';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import ModalPonderacion from '../components/common/ModalPonderacion';
-import { API_URL } from '../services/global_URL';
+
+// Importación de servicios
+import { subirExcels } from '../services/evaluaciones_service';
 
 import { 
   ArrowUpTrayIcon, TrashIcon, CheckCircleIcon, UserGroupIcon,
@@ -66,25 +68,17 @@ const Files = () => {
       formData.append('tipo', mapIdToOrigen(activeUploadId));
 
       try {
-        const response = await fetch(`${API_URL}evaluaciones/ingesta/subir-archivo/`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          setDocumentos(docs => docs.map(doc => 
-            doc.id === activeUploadId 
-              ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null } // file: null porque ya se subió
-              : doc
-          ));
-          setAlertMessage(`¡${activeUploadId.toUpperCase()} cargado con éxito!`);
-          setIsUploadModalOpen(false);
-        } else {
-          setAlertMessage(`Error al cargar ${activeUploadId}: ${data.error || "Error desconocido"}`);
-        }
+        await subirExcels(formData);
+        
+        setDocumentos(docs => docs.map(doc => 
+          doc.id === activeUploadId 
+            ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null }
+            : doc
+        ));
+        setAlertMessage(`¡${activeUploadId.toUpperCase()} cargado con éxito!`);
+        setIsUploadModalOpen(false);
       } catch (error) {
-        setAlertMessage(`Error de conexión al cargar ${activeUploadId}`);
+        setAlertMessage(`Error al cargar ${activeUploadId}: ${error.message}`);
       } finally {
         setCargando(false);
         setArchivoTemporal(null);
@@ -122,7 +116,7 @@ const Files = () => {
     let errores = [];
     let exitos = 0;
 
-    // Ordenamos para procesar PENSUM y NOMINA primero (importante para la BD)
+    // Ordenamos para procesar PENSUM y NOMINA primero
     const ordenados = [...archivosAProcesar].sort((a, b) => {
       if (a.id === 'pensum') return -1;
       if (b.id === 'pensum') return 1;
@@ -134,26 +128,31 @@ const Files = () => {
     for (const doc of ordenados) {
       const formData = new FormData();
       formData.append('archivo', doc.file);
-      formData.append('tipo', mapIdToOrigen(doc.id)); // Usar 'tipo' en lugar de 'origen' para el backend
+      formData.append('tipo', mapIdToOrigen(doc.id));
 
       try {
-        const response = await fetch(`${API_URL}evaluaciones/ingesta/subir-archivo/`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          exitos++;
-        } else {
-          errores.push(`${doc.titulo}: ${data.error || data.message || "Error desconocido"}`);
-        }
+        await subirExcels(formData);
+        exitos++;
       } catch (error) {
-        errores.push(`${doc.titulo}: Error de conexión con el servidor`);
+        errores.push(`${doc.titulo}: ${error.message}`);
       }
     }
 
     setCargando(false);
+
+    if (exitos > 0) {
+      const porcentaje = Math.round((categoriasCompletadas / documentos.length) * 100);
+      setEvaluacionesCompletadas(`${porcentaje}%`);
+      
+      let msg = `¡Proceso completado!\nArchivos procesados con éxito: ${exitos}`;
+      if (errores.length > 0) {
+        msg += `\n\nErrores encontrados:\n${errores.join('\n')}`;
+      }
+      setAlertMessage(msg);
+    } else if (errores.length > 0) {
+      setAlertMessage(`Error al procesar archivos:\n${errores.join('\n')}`);
+    }
+  };
 
     if (exitos > 0) {
       const porcentaje = Math.round((categoriasCompletadas / documentos.length) * 100);
