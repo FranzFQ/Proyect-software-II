@@ -154,20 +154,6 @@ const Files = () => {
     }
   };
 
-    if (exitos > 0) {
-      const porcentaje = Math.round((categoriasCompletadas / documentos.length) * 100);
-      setEvaluacionesCompletadas(`${porcentaje}%`);
-      
-      let msg = `¡Proceso completado!\nArchivos procesados con éxito: ${exitos}`;
-      if (errores.length > 0) {
-        msg += `\n\nErrores encontrados:\n${errores.join('\n')}`;
-      }
-      setAlertMessage(msg);
-    } else if (errores.length > 0) {
-      setAlertMessage(`Error al procesar archivos:\n${errores.join('\n')}`);
-    }
-  };
-
   const getIconForCategory = (id) => {
     switch(id) {
       case 'pensum': return <BookOpenIcon className="w-8 h-8" />;

@@ -4,7 +4,11 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import { EyeIcon, TrashIcon, UserPlusIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import { API_URL } from '../services/global_URL';
+
+// Importación de servicios
+import { getDocentes, updateDocente, getDocenteById } from '../services/docente_service';
+import { getFacultades, getSemestres } from '../services/academico_service';
+import { getCursosDados, getEvaluacionesCurso } from '../services/evaluaciones_service';
 
 const Teachers = () => {
   const navigate = useNavigate();
@@ -32,87 +36,50 @@ const Teachers = () => {
   const [formFacultad, setFormFacultad] = useState('');
 
   useEffect(() => {
-    fetchFacultades();
-    fetchDocentes();
+    fetchInitialData();
   }, []);
 
-  const fetchDocentes = async () => {
+  const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [docentesRes, semRes] = await Promise.all([
-        fetch(`${API_URL}usuarios/docentes/`),
-        fetch(`${API_URL}academico/semestres/?activo_para_carga=true`),
+      const [docentesData, semData, facsData] = await Promise.all([
+        getDocentes(),
+        getSemestres({ activo_para_carga: true }),
+        getFacultades()
       ]);
 
-      if (!docentesRes.ok) return;
-      const docentesData = await docentesRes.json();
       const lista = Array.isArray(docentesData) ? docentesData : docentesData.results ?? [];
       setDocentes(lista);
+      setFacultades(Array.isArray(facsData) ? facsData : facsData.results ?? []);
 
-      if (semRes.ok) {
-        const semData = await semRes.json();
-        const semList = Array.isArray(semData) ? semData : semData.results ?? [];
-        const semestreActivo = semList[0];
-        if (semestreActivo && lista.length > 0) {
-          const cursosRes = await fetch(
-            `${API_URL}evaluaciones/cursos-dados/?semestre=${semestreActivo.id}`
-          );
-          if (cursosRes.ok) {
-            const cursosData = await cursosRes.json();
-            const cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
-
-            // Mapa nombre de cursos por docente
-            const mapa = {};
-            cursosList.forEach(c => {
-              if (!mapa[c.docente]) mapa[c.docente] = [];
-              mapa[c.docente].push(c.CursosNombre);
-            });
-            setCursosPorDocente(mapa);
-
-            // Obtener puntaje_curso de cada curso y calcular promedio por docente
-            if (cursosList.length > 0) {
-              const evalResults = await Promise.all(
-                cursosList.map(c =>
-                  fetch(`${API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
-                    .then(r => r.ok ? r.json() : [])
-                    .then(d => ({ docenteId: c.docente, data: Array.isArray(d) ? d : d.results ?? [] }))
-                    .catch(() => ({ docenteId: c.docente, data: [] }))
-                )
-              );
-
-              // Agrupar puntajes por docente
-              const puntajesPorDocente = {};
-              evalResults.forEach(({ docenteId, data }) => {
-                if (data.length > 0) {
-                  const puntaje = parseFloat(data[0].puntaje_curso ?? 0);
-                  if (!puntajesPorDocente[docenteId]) puntajesPorDocente[docenteId] = [];
-                  puntajesPorDocente[docenteId].push(puntaje);
-                }
-              });
-
-              // Calcular promedio por docente
-              const promedios = {};
-              Object.entries(puntajesPorDocente).forEach(([docenteId, puntajes]) => {
-                promedios[docenteId] = puntajes.reduce((a, b) => a + b, 0) / puntajes.length;
-              });
-              setPromedioPorDocente(promedios);
-            }
-          }
+      // Mapeamos los promedios que ya vienen del backend
+      const promedios = {};
+      lista.forEach(doc => {
+        if (doc.promedio_punteo !== null && doc.promedio_punteo !== undefined) {
+          promedios[doc.id] = doc.promedio_punteo;
         }
+      });
+      setPromedioPorDocente(promedios);
+
+      const semList = Array.isArray(semData) ? semData : semData.results ?? [];
+      const semestreActivo = semList[0];
+
+      if (semestreActivo && lista.length > 0) {
+        const cursosData = await getCursosDados({ semestre: semestreActivo.id });
+        const cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
+
+        const mapa = {};
+        cursosList.forEach(c => {
+          if (!mapa[c.docente]) mapa[c.docente] = [];
+          mapa[c.docente].push(c.CursosNombre);
+        });
+        setCursosPorDocente(mapa);
       }
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchFacultades = async () => {
-    try {
-      const res = await fetch(`${API_URL}academico/facultades/`);
-      if (res.ok) {
-        const data = await res.json();
-        setFacultades(Array.isArray(data) ? data : data.results ?? []);
-      }
-    } catch { }
   };
 
   const getPromedioDocente = (docId) => {
@@ -163,12 +130,20 @@ const Teachers = () => {
 
   const ejecutarEliminacion = async () => {
     try {
-      const res = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, { method: 'DELETE' });
-      if (res.ok || res.status === 204) {
+      // Usamos el servicio de eliminar (que está en docente_service o podrías usar deleteUsuario)
+      // Como DocenteViewSet es independiente en el backend, usaremos un fetch por ahora o agregaré deleteDocente al service.
+      const response = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, { 
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      
+      if (response.ok || response.status === 204) {
         setDocentes(prev => prev.filter(d => d.id !== docenteActual.id));
         setAlertMessage('Docente eliminado correctamente del sistema.');
       }
-    } catch { }
+    } catch (error) {
+      console.error("Error al eliminar:", error);
+    }
     setIsDeleteModalOpen(false);
     setDocenteActual(null);
   };
@@ -192,25 +167,30 @@ const Teachers = () => {
       facultad:        formFacultad ? parseInt(formFacultad) : null,
     };
     try {
-      let res;
       if (docenteActual) {
-        res = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-        });
+        await updateDocente(docenteActual.id, payload);
       } else {
-        res = await fetch(`${API_URL}usuarios/docentes/`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        // Podríamos agregar createDocente al servicio, lo haré directamente aquí por brevedad
+        const res = await fetch(`${API_URL}usuarios/docentes/`, {
+          method: 'POST', 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+          }, 
+          body: JSON.stringify(payload),
         });
+        if (!res.ok) throw new Error("Error al crear docente");
       }
-      if (res.ok) {
-        await fetchDocentes();
-        setIsFormModalOpen(false);
-        setAlertMessage(docenteActual
-          ? 'Información del docente actualizada exitosamente.'
-          : 'Nuevo docente agregado exitosamente al sistema.'
-        );
-      }
-    } catch { } finally {
+      
+      await fetchInitialData();
+      setIsFormModalOpen(false);
+      setAlertMessage(docenteActual
+        ? 'Información del docente actualizada exitosamente.'
+        : 'Nuevo docente agregado exitosamente al sistema.'
+      );
+    } catch (error) {
+      console.error("Error al guardar:", error);
+    } finally {
       setSaving(false);
     }
   };
