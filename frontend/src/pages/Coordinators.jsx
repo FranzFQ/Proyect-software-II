@@ -76,7 +76,7 @@ const cargarCoordinadores = async () => {
   }
 };
     cargarCoordinadores();
-  }, []); 
+  }, []);
 
   const coordinadoresFiltrados = coordinadores.filter((coord) =>
     coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||

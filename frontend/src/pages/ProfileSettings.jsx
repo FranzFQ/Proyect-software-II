@@ -1,13 +1,15 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { updateUsuario } from '../services/user_service';
 import { normalizeUser } from '../services/auth_service';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const ProfileSettings = () => {
+  const navigate = useNavigate();
   const { currentUser, setCurrentUser } = useContext(AppContext);
   const [firstName, setFirstName] = useState(currentUser?.nombre?.split(' ')[0] || '');
   const [lastName,  setLastName]  = useState(currentUser?.nombre?.split(' ').slice(1).join(' ') || '');
@@ -65,6 +67,13 @@ const ProfileSettings = () => {
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
       <div>
+        <button 
+          onClick={() => navigate('/dashboard')} 
+          className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4 w-max"
+        >
+          <ArrowLeftIcon className="w-4 h-4" /> Volver
+        </button>
+
         <h1 className="text-3xl font-bold text-url-blue mb-2 font-serif">Configuración de Perfil</h1>
         <p className="text-gray-500">Consulta y administra tu información personal en el sistema.</p>
       </div>
