@@ -17,13 +17,14 @@ const Teachers = () => {
   const [facultades,         setFacultades]         = useState([]);
   const [cursosPorDocente,   setCursosPorDocente]   = useState({});
   const [promedioPorDocente, setPromedioPorDocente] = useState({});
+  const [totalDocentes,     setTotalDocentes]     = useState(0);
   const [loading,            setLoading]            = useState(true);
   const [saving,             setSaving]             = useState(false);
 
   const [filtroTexto,  setFiltroTexto]  = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [currentPage,  setCurrentPage]  = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 10;
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFormModalOpen,   setIsFormModalOpen]   = useState(false);
@@ -37,44 +38,41 @@ const Teachers = () => {
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [currentPage, filtroTexto]); // Recargar cuando cambie página o búsqueda
 
   const fetchInitialData = async () => {
     setLoading(true);
     try {
+      const offset = (currentPage - 1) * itemsPerPage;
+      const params = {
+        limit: itemsPerPage,
+        offset: offset,
+        search: filtroTexto
+      };
+
       const [docentesData, semData, facsData] = await Promise.all([
-        getDocentes(),
+        getDocentes(params),
         getSemestres({ activo_para_carga: true }),
         getFacultades()
       ]);
 
-      const lista = Array.isArray(docentesData) ? docentesData : docentesData.results ?? [];
+      const lista = docentesData.results ?? [];
       setDocentes(lista);
+      setTotalDocentes(docentesData.count ?? lista.length);
       setFacultades(Array.isArray(facsData) ? facsData : facsData.results ?? []);
 
-      // Mapeamos los promedios que ya vienen del backend
+      // Mapeamos los promedios y conteos que ya vienen del backend
       const promedios = {};
+      const conteos = {};
       lista.forEach(doc => {
         if (doc.promedio_punteo !== null && doc.promedio_punteo !== undefined) {
           promedios[doc.id] = doc.promedio_punteo;
         }
+        conteos[doc.id] = doc.conteo_cursos ?? 0;
       });
       setPromedioPorDocente(promedios);
+      setCursosPorDocente(conteos);
 
-      const semList = Array.isArray(semData) ? semData : semData.results ?? [];
-      const semestreActivo = semList[0];
-
-      if (semestreActivo && lista.length > 0) {
-        const cursosData = await getCursosDados({ semestre: semestreActivo.id });
-        const cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
-
-        const mapa = {};
-        cursosList.forEach(c => {
-          if (!mapa[c.docente]) mapa[c.docente] = [];
-          mapa[c.docente].push(c.CursosNombre);
-        });
-        setCursosPorDocente(mapa);
-      }
     } catch (error) {
       console.error("Error al cargar datos:", error);
     } finally {
@@ -100,17 +98,16 @@ const Teachers = () => {
   const handleSearch = () => setCurrentPage(1);
   const handleFilter = (estado) => { setFiltroEstado(filtroEstado === estado ? '' : estado); setCurrentPage(1); };
 
+  // Nota: filtroEstado sigue siendo local por ahora sobre la página actual
   const docentesFiltrados = docentes.filter(doc => {
     const estado = clasificarEstado(doc);
-    const matchTexto  = doc.nombre_completo.toLowerCase().includes(filtroTexto.toLowerCase())
-                     || doc.codigo_docente.toLowerCase().includes(filtroTexto.toLowerCase());
     const matchEstado = filtroEstado === '' || estado === filtroEstado;
-    return matchTexto && matchEstado;
+    return matchEstado;
   });
 
-  const totalPages      = Math.ceil(docentesFiltrados.length / itemsPerPage) || 1;
+  const totalPages      = Math.ceil(totalDocentes / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const currentItems    = docentesFiltrados.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
+  const currentItems    = docentesFiltrados; // Ya vienen paginados del backend
 
   const renderEstado = (estado) => {
     const colores = {
@@ -130,8 +127,6 @@ const Teachers = () => {
 
   const ejecutarEliminacion = async () => {
     try {
-      // Usamos el servicio de eliminar (que está en docente_service o podrías usar deleteUsuario)
-      // Como DocenteViewSet es independiente en el backend, usaremos un fetch por ahora o agregaré deleteDocente al service.
       const response = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, { 
         method: 'DELETE',
         headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` }
@@ -170,7 +165,6 @@ const Teachers = () => {
       if (docenteActual) {
         await updateDocente(docenteActual.id, payload);
       } else {
-        // Podríamos agregar createDocente al servicio, lo haré directamente aquí por brevedad
         const res = await fetch(`${API_URL}usuarios/docentes/`, {
           method: 'POST', 
           headers: { 
@@ -264,7 +258,7 @@ const Teachers = () => {
                   const estado    = clasificarEstado(doc);
                   const promedio  = getPromedioDocente(doc.id);
                   const iniciales = getIniciales(doc.nombre_completo);
-                  const cursos    = cursosPorDocente[doc.id] ?? [];
+                  const conteoCursos = cursosPorDocente[doc.id] ?? 0;
                   return (
                     <tr key={doc.id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
                       <td className="py-2 px-3 md:py-4 md:px-6">
@@ -279,13 +273,7 @@ const Teachers = () => {
                         </div>
                       </td>
                       <td className="py-2 px-3 md:py-4 md:px-6">
-                        {cursos.length === 0 ? (
-                          <span className="text-gray-400 text-xs">Sin cursos asignados</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {cursos.length}
-                          </div>
-                        )}
+                        <span className="font-semibold text-url-blue">{conteoCursos}</span>
                       </td>
                       <td className="py-2 px-3 md:py-4 md:px-6 text-center text-url-blue font-semibold text-xs md:text-sm">
                         {doc.FacultadNombre ?? '—'}

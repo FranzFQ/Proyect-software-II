@@ -1,5 +1,5 @@
-from django.db.models import Avg, Q, Prefetch
-from rest_framework import viewsets, filters
+from django.db.models import Avg, Q, Prefetch, Count
+from rest_framework import viewsets, filters, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -10,25 +10,37 @@ from academico.models import Semestre
 from evaluaciones.models import CursoDado, EvaluacionConsolidada, EvaluacionCurso
 from evaluaciones.serializers import CursoDadoSerializer, EvaluacionConsolidadaSerializer
 
+class StandardResultsSetPagination(pagination.LimitOffsetPagination):
+    default_limit = 20
+    max_limit = 100
+
 class DocenteViewSet(viewsets.ModelViewSet):
+    pagination_class = StandardResultsSetPagination
+    
     def get_queryset(self):
-        # 1. Queryset base con JOIN a facultad
-        queryset = Docente.objects.select_related('facultad').all()
-        
-        # 2. Buscamos el semestre activo (usando el nombre original)
+        # 1. Buscamos el semestre activo primero
         semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
         
-        # 3. SQL Aggregation: Usamos 'asignaciones' (related_name en CursoDado)
-        # y 'evaluacioncurso' (nombre por defecto para EvaluacionCurso)
+        # 2. Queryset base
+        queryset = Docente.objects.select_related('facultad')
+        
+        # 3. Solo promediamos y contamos si hay un semestre activo
         if semestre_activo:
             queryset = queryset.annotate(
                 promedio_punteo=Avg(
                     'asignaciones__evaluacioncurso__puntaje_curso',
                     filter=Q(asignaciones__semestre=semestre_activo)
+                ),
+                conteo_cursos=Count(
+                    'asignaciones',
+                    filter=Q(asignaciones__semestre=semestre_activo)
                 )
             )
         
-        return queryset.order_by('nombre_completo')
+        # 4. Retornamos ordenado y con campos limitados
+        return queryset.order_by('nombre_completo').only(
+            'id', 'codigo_docente', 'nombre_completo', 'facultad__nombre', 'tipo_plan'
+        )
 
     serializer_class = DocenteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -48,25 +60,22 @@ class DocenteViewSet(viewsets.ModelViewSet):
         if not semestre:
             return Response({"error": "Semestre no encontrado"}, status=404)
 
-        # Cursos del docente en ese semestre con sus puntajes
         cursos = CursoDado.objects.filter(
             docente=docente, 
             semestre=semestre
         ).select_related('curso').prefetch_related(
             Prefetch(
-                'evaluacioncurso_set', # Nombre por defecto de la relación inversa
+                'evaluacioncurso_set',
                 queryset=EvaluacionCurso.objects.all(),
                 to_attr='evaluaciones'
             )
         )
 
-        # Evaluación consolidada
         evaluacion_consolidada = EvaluacionConsolidada.objects.filter(
             docente=docente,
             semestre=semestre
         ).first()
 
-        # Serialización manual de la data combinada para máxima eficiencia
         cursos_data = []
         puntajes_map = {}
         for c in cursos:
