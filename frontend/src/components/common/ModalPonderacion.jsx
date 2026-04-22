@@ -3,8 +3,8 @@ import React, { useContext } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Button from './Button';
 
-const ModalPonderacion = ({ onClose, onError }) => {
-  const { ponderaciones, setPonderaciones } = useContext(AppContext);
+const ModalPonderacion = ({ onClose }) => {
+  const { ponderaciones, setPonderaciones, showToast } = useContext(AppContext);
 
   const handleChange = (criterio, valor) => {
     setPonderaciones({
@@ -17,10 +17,11 @@ const ModalPonderacion = ({ onClose, onError }) => {
 
   const handleGuardar = () => {
     if (total !== 100) {
-      onError(`La suma de las ponderaciones debe ser exactamente 100%. Actualmente suma ${total}%.`);
+      showToast(`Error: Las ponderaciones suman ${total}%. Deben sumar exactamente 100%.`, 'error');
       return;
     }
-    onClose("¡Ponderaciones actualizadas correctamente!");
+    showToast("¡Ponderaciones actualizadas correctamente!", 'success');
+    onClose();
   };
 
   return (
@@ -55,15 +56,12 @@ const ModalPonderacion = ({ onClose, onError }) => {
         ))}
       </div>
 
-      <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg transition-colors ${total === 100 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+      <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg transition-colors ${total === 100 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
         <span>Total Ponderación:</span>
         <span>{total}%</span>
       </div>
 
       <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-gray-100">
-        {/* <Button variant="secondary" onClick={onClose}>
-          Cancelar
-        </Button> */}
         <Button variant="primary" onClick={handleGuardar}>
           Actualizar Ponderaciones
         </Button>

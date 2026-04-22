@@ -37,7 +37,7 @@ const Dashboard = () => {
         <div>
           {/* Título y subtítulo actualizados según tu solicitud */}
           <h1 className="text-3xl font-bold text-url-blue">Dashboard</h1>
-          <p className="text-gray-500 font-semibold mt-1">Semestre actual: {semestreActivo}</p>
+          <p className="text-gray-500">Semestre actual: {semestreActivo}</p>
         </div>
       </div>
 
