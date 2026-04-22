@@ -21,9 +21,11 @@ class PensumSerializer(serializers.ModelSerializer):
         fields = ['id', 'carrera', 'CarreraNombre', 'nombre', 'activo']
 
 class SemestreSerializer(serializers.ModelSerializer):
+    estado = serializers.ReadOnlyField()
+
     class Meta:
         model = Semestre
-        fields = ['id', 'anio', 'ciclo', 'activo_para_carga', 'visible']
+        fields = ['id', 'anio', 'ciclo', 'disponibilidad_para_cargar', 'visibilidad', 'fecha', 'finalizado', 'estado']
 
 class CursoSerializer(serializers.ModelSerializer):
     PensumNombre = serializers.CharField(source='pensum.nombre', read_only=True)
