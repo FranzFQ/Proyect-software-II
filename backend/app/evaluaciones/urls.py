@@ -7,6 +7,7 @@ from .interface.viewsets.configuracion_ponderacion_viewset import ConfiguracionP
 from .interface.viewsets.evaluacion_consolidada_viewset import EvaluacionConsolidadaViewSet
 from .interface.viewsets.evaluacion_curso_viewset import EvaluacionCursoViewSet
 from .interface.viewsets.checklist_observation_viewset import ChecklistObservationViewSet
+from .interface.viewsets.checklist_viewset import ChecklistViewSet
 from .interface.viewsets.tipo_viewset import TipoViewSet
 from .interface.viewsets.analisis_texto_viewset import AnalisisTextoViewSet
 from .interface.viewsets.ingesta_viewset import IngestaViewSet
@@ -17,7 +18,8 @@ router.register(r'cursos-dados',            CursoDadoViewSet,                bas
 router.register(r'ponderaciones',           ConfiguracionPonderacionViewSet, basename='ponderacion')
 router.register(r'evaluaciones',            EvaluacionConsolidadaViewSet,    basename='evaluacion')
 router.register(r'evaluaciones-curso',      EvaluacionCursoViewSet,          basename='evaluacion-curso')
-router.register(r'checklists',              ChecklistObservationViewSet,     basename='checklist')
+router.register(r'checklists',              ChecklistViewSet,                basename='checklist')
+router.register(r'checklist-observaciones', ChecklistObservationViewSet,     basename='checklist-observation')
 router.register(r'tipos',                   TipoViewSet,                     basename='tipo')
 router.register(r'analisis-texto',          AnalisisTextoViewSet,            basename='analisis-texto')
 router.register(r'ingesta',                 IngestaViewSet,                  basename='ingesta')
