@@ -4,7 +4,9 @@ import { AppContext } from '../context/AppContext';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import ModalPonderacion from '../components/common/ModalPonderacion';
-import GLOBAL_API_URL from '../services/global_URL';
+
+// Importación de servicios
+import { subirExcels } from '../services/evaluaciones_service';
 
 import { 
   ArrowUpTrayIcon, TrashIcon, CheckCircleIcon, UserGroupIcon,
@@ -29,15 +31,16 @@ const Files = () => {
   const [archivoTemporal, setArchivoTemporal] = useState(null); 
   const [cargando, setCargando] = useState(false);
 
-  // Mapeo de IDs internos a nombres de origen esperados por el backend
+  // Mapeo de IDs internos a nombres de origen esperados por el backend (IngestaViewSet)
   const mapIdToOrigen = (id) => {
     switch(id) {
-      case 'pensum': return 'PENSUM';
-      case 'nomina': return 'NOMINA';
-      case 'ceat': return 'CEAT';
-      case 'autoevaluacion': return 'Evaluación Docente';
-      case 'coordinador': return 'Control Docente';
-      default: return id.toUpperCase();
+      case 'ceat': return 'ceat';
+      case 'estudiantil': return 'evaluacion_docente';
+      case 'autoevaluacion': return 'control_docente'; 
+      case 'coordinador': return 'control_docente';
+      case 'nomina': return 'nomina';
+      case 'pensum': return 'pensum';
+      default: return id;
     }
   };
 
@@ -47,21 +50,50 @@ const Files = () => {
     setIsUploadModalOpen(true); 
   };
   
-  const procesarCargaArchivo = () => {
+  const procesarCargaArchivo = async () => {
     if (!archivoTemporal) return setAlertMessage("Por favor selecciona un archivo.");
     
     const fileName = archivoTemporal.name.toLowerCase();
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
-      setDocumentos(docs => docs.map(doc => 
-        doc.id === activeUploadId 
-          ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } 
-          : doc
-      ));
-      setIsUploadModalOpen(false); 
-      setArchivoTemporal(null);
-    } else { 
-      setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx, .xls o .csv"); 
+    const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv');
+    
+    if (!isValidFormat) {
+      return setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx");
     }
+
+    // --- CARGA INMEDIATA PARA NÓMINA Y PENSUM ---
+    if (activeUploadId === 'nomina' || activeUploadId === 'pensum') {
+      setCargando(true);
+      const formData = new FormData();
+      formData.append('archivo', archivoTemporal);
+      formData.append('tipo', mapIdToOrigen(activeUploadId));
+
+      try {
+        await subirExcels(formData);
+        
+        setDocumentos(docs => docs.map(doc => 
+          doc.id === activeUploadId 
+            ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null }
+            : doc
+        ));
+        setAlertMessage(`¡${activeUploadId.toUpperCase()} cargado con éxito!`);
+        setIsUploadModalOpen(false);
+      } catch (error) {
+        setAlertMessage(`Error al cargar ${activeUploadId}: ${error.message}`);
+      } finally {
+        setCargando(false);
+        setArchivoTemporal(null);
+      }
+      return;
+    }
+
+    // --- CARGA DIFERIDA PARA EL RESTO (EVALUACIONES) ---
+    setDocumentos(docs => docs.map(doc => 
+      doc.id === activeUploadId 
+        ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } 
+        : doc
+    ));
+    setIsUploadModalOpen(false); 
+    setArchivoTemporal(null);
   };
 
   const handleEliminar = (e, id) => { 
@@ -84,7 +116,7 @@ const Files = () => {
     let errores = [];
     let exitos = 0;
 
-    // Ordenamos para procesar PENSUM y NOMINA primero (importante para la BD)
+    // Ordenamos para procesar PENSUM y NOMINA primero
     const ordenados = [...archivosAProcesar].sort((a, b) => {
       if (a.id === 'pensum') return -1;
       if (b.id === 'pensum') return 1;
@@ -96,22 +128,13 @@ const Files = () => {
     for (const doc of ordenados) {
       const formData = new FormData();
       formData.append('archivo', doc.file);
-      formData.append('origen', mapIdToOrigen(doc.id));
+      formData.append('tipo', mapIdToOrigen(doc.id));
 
       try {
-        const response = await fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/ingesta/`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          exitos++;
-        } else {
-          errores.push(`${doc.titulo}: ${data.error || data.message || "Error desconocido"}`);
-        }
+        await subirExcels(formData);
+        exitos++;
       } catch (error) {
-        errores.push(`${doc.titulo}: Error de conexión con el servidor`);
+        errores.push(`${doc.titulo}: ${error.message}`);
       }
     }
 
@@ -157,7 +180,6 @@ const Files = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Usamos documentosGrid en lugar de documentos */}
         {documentosGrid.map((doc) => (
           <div key={doc.id} onClick={() => doc.estado !== 'subido' ? abrirModalCarga(doc.id) : null} className={`bg-white border border-gray-200 rounded-xl p-6 flex items-center justify-between hover:shadow-lg transition-all cursor-pointer group min-h-[140px] ${doc.estado === 'subido' ? 'border-green-200 cursor-default' : ''}`}>
             <div className="flex items-center gap-6 w-full">
@@ -166,7 +188,7 @@ const Files = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-gray-800 text-lg">{doc.titulo}</h3>
-                <p className="text-sm text-gray-500 mt-1">{doc.estado === 'subido' ? `Archivo cargado: ${doc.nombreArchivo}` : 'Hacer clic para subir archivo (.xlsx, .xls, .csv)'}</p>
+                <p className="text-sm text-gray-500 mt-1">{doc.estado === 'subido' ? `Archivo cargado: ${doc.nombreArchivo}` : 'Hacer clic para subir archivo (.xlsx)'}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {doc.estado === 'subido' ? <CheckCircleSolid className="w-5 h-5 text-status-success" /> : <CheckCircleIcon className="w-5 h-5 text-gray-300" />}
@@ -211,7 +233,6 @@ const Files = () => {
           
           {isConfigOpen && (
              <div className="absolute bottom-full right-0 mb-3 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3 flex flex-col gap-2">
-                {/* CONECTADOS AL BACKEND: Ahora abren el modal de subida apuntando a "nomina" y "pensum" */}
                 <button onClick={() => { setIsConfigOpen(false); abrirModalCarga('nomina'); }} className="w-full text-center px-4 py-3 text-sm font-bold bg-blue-50 text-url-blue rounded-lg border border-blue-100 hover:bg-url-blue hover:text-white transition-all shadow-sm">
                   Agregar Docentes
                 </button>
@@ -246,16 +267,15 @@ const Files = () => {
         <ModalPonderacion 
         onClose={(msg) => {
           setIsModalOpen(false);
-          if (msg) setAlertMessage(msg); // Si hay mensaje de éxito, lo muestra el modal de alerta
+          if (msg) setAlertMessage(msg); 
           }} 
           onError={(msg) => setAlertMessage(msg)} 
         />
       </Modal>
 
-      {/* UN SOLO MODAL DE CARGA UNIFICADO (Sirve para todo, incluyendo Pensum y Docentes) */}
       <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={`Cargar: ${categoriaActivaObj?.titulo}`}>
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-gray-500">Sube el archivo (.xlsx, .xls, .csv) con los resultados correspondientes a esta categoría.</p>
+          <p className="text-sm text-gray-500">Sube el archivo (.xlsx) con los resultados correspondientes a esta categoría.</p>
           <label className="border-2 border-dashed border-url-blue bg-blue-50/50 hover:bg-blue-50 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors group">
             <input 
               type="file" 
@@ -266,7 +286,7 @@ const Files = () => {
             {archivoTemporal ? (
               <div className="text-center"><DocumentTextIcon className="w-16 h-16 text-url-blue mx-auto" /><p className="font-bold text-url-blue mt-2">{archivoTemporal.name}</p><p className="text-xs text-gray-500 mt-1">Clic para cambiar archivo</p></div>
             ) : (
-              <div className="text-center"><CloudArrowUpIcon className="w-16 h-16 text-url-blue mx-auto group-hover:scale-110 transition-transform" /><p className="font-bold text-url-blue text-lg mt-2">Haz clic o arrastra tu archivo aquí</p><p className="text-sm text-gray-500 mt-1">Formatos: .xlsx, .xls, .csv</p></div>
+              <div className="text-center"><CloudArrowUpIcon className="w-16 h-16 text-url-blue mx-auto group-hover:scale-110 transition-transform" /><p className="font-bold text-url-blue text-lg mt-2">Haz clic o arrastra tu archivo aquí</p><p className="text-sm text-gray-500 mt-1">Formatos: .xlsx</p></div>
             )}
           </label>
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">

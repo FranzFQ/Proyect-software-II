@@ -6,6 +6,7 @@ from .models import (
     EvaluacionConsolidada,
     EvaluacionCurso,
     ChecklistObservation,
+    Checklist,
     Tipo,
     AnalisisTexto,
 )
@@ -95,18 +96,45 @@ class AnalisisTextoSerializer(serializers.ModelSerializer):
         ]
 
 
+class ChecklistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Checklist
+        fields = ['id', 'titulo', 'datos', 'activo']
+
+
 class ChecklistObservationSerializer(serializers.ModelSerializer):
     CursoDadoStr = serializers.CharField(source='curso_dado.__str__', read_only=True)
     UsuarioNombre = serializers.CharField(source='usuario.username', read_only=True)
+    DocenteNombre = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
+    NombreCurso = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
+    ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
 
     class Meta:
         model = ChecklistObservation
         fields = [
             'id',
             'curso_dado', 'CursoDadoStr',
-            'titulo',
+            'DocenteNombre', 'NombreCurso',
+            'checklist', 'ChecklistTitulo',
             'usuario', 'UsuarioNombre',
             'fecha_observacion',
-            'datos',
+            'punteo',
         ]
         read_only_fields = ['fecha_observacion']
+
+class ChecklistObservationListSerializer(serializers.ModelSerializer):
+    """Serializador ligero para la lista, sin el JSON 'respuestas'"""
+    DocenteNombre = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
+    NombreCurso = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
+    CodigoDocente = serializers.CharField(source='curso_dado.docente.codigo_docente', read_only=True)
+    ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
+
+    class Meta:
+        model = ChecklistObservation
+        fields = [
+            'id',
+            'DocenteNombre', 'NombreCurso', 'CodigoDocente',
+            'checklist', 'ChecklistTitulo',
+            'fecha_observacion',
+            'punteo',
+        ]

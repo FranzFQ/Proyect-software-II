@@ -5,22 +5,46 @@ class ControlDocenteParser(BaseParser):
     @classmethod
     def procesar(cls, archivo, semestre):
         df = pd.read_excel(archivo)
-        cols_asistencia = [
-            'Asistencia reunón facultad 19 junio', 'Programa actualizado\n8 de julio',
-            'Configuración de notas\n8 de julio', 'Asistencia actualizada por sesión en el portal',
-            'Uso del portal académico ', 'Zonas al 20%\n23 de agosto',
-            'Zonas al 30%\n17 de septiembre', 'Zonas al 40%\n27 de septiembre',
-            'Zonas al 60%\n24 de octubre', 'Envío de propuestas de examen\n3 días hábiles',
-            'Actas de primera y segunda convocatoria\n3 días hábiles'
-        ]
+        
+        # Palabras clave para identificar columnas de calificación (asistencia, tareas, etc.)
+        keywords = ['asistencia', 'zonas', 'programa', 'portal', 'actas', 'propuesta', 'notas']
+        
         for _, fila in df.iterrows():
             nombre_docente = fila.get('Docente')
             if pd.isna(nombre_docente): continue
-            docente_obj = cls.buscar_docente_por_nombre(nombre_docente)
-            valores = pd.to_numeric([fila.get(c) for c in cols_asistencia if c in fila], errors='coerce')
-            valores_validos = valores[~pd.isna(valores)]
-            promedio = valores_validos.mean() if len(valores_validos) > 0 else 0
+            
+            # 1. Buscar Código
+            codigo_raw = fila.get('Código') or fila.get('Código Docente') or fila.get('Carné')
+            codigo = cls.extraer_codigo_docente(codigo_raw)
+            
+            # 2. Calcular promedio de cumplimiento (Escala 0-1)
+            puntos_obtenidos = []
+            for col in df.columns:
+                col_lower = str(col).lower()
+                # Si la columna contiene alguna palabra clave de las preguntas del coordinador
+                if any(k in col_lower for k in keywords):
+                    val = pd.to_numeric(fila.get(col), errors='coerce')
+                    if not pd.isna(val):
+                        puntos_obtenidos.append(float(val))
+            
+            # Calculamos el promedio de cumplimiento (ej: 0.85)
+            promedio_cumplimiento = sum(puntos_obtenidos) / len(puntos_obtenidos) if puntos_obtenidos else 0
+            
+            # Convertimos a escala 0-100% y limitamos al 100 (Techo)
+            nota_final = round(promedio_cumplimiento * 100, 2)
+            if nota_final > 100:
+                nota_final = 100.0
+            
+            # 3. Guardar en BD
             curso = fila.get('Curso')
-            seccion = fila.get('Sección')
-            cls.guardar_nota_en_bd(None, 'Criterios de Coordinador', promedio, semestre, 
-                              nombre_curso=curso, seccion=seccion, docente_obj=docente_obj)
+            seccion = str(fila.get('Sección')).split('.')[0] if not pd.isna(fila.get('Sección')) else "1"
+            
+            cls.guardar_nota_en_bd(
+                codigo, 
+                'Control Docente', 
+                nota_final, 
+                semestre, 
+                nombre_curso=curso, 
+                seccion=seccion, 
+                docente_obj=nombre_docente
+            )

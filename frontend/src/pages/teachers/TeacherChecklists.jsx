@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 function colorPunteo(val) {
   if (val >= 9) return '#22c55e';
@@ -136,8 +136,8 @@ const TeacherChecklists = () => {
       setError(null);
       try {
         const [docenteRes, cursosRes] = await Promise.all([
-          fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`),
-          fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${id}`),
+          fetch(`${API_URL}usuarios/docentes/${id}/`),
+          fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${id}`),
         ]);
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
 
@@ -150,7 +150,7 @@ const TeacherChecklists = () => {
 
           const checklistsResults = await Promise.all(
             cursosList.map(c =>
-              fetch(`${GLOBAL_API_URL}evaluaciones/checklists/?curso_dado=${c.id}`)
+              fetch(`${API_URL}evaluaciones/checklists/?curso_dado=${c.id}`)
                 .then(r => r.ok ? r.json() : [])
                 .then(d => Array.isArray(d) ? d : d.results ?? [])
             )
@@ -216,11 +216,11 @@ const TeacherChecklists = () => {
 
       <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-bold shadow-lg shrink-0">
+          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
             {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+            <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
             <p className="text-url-yellow font-semibold mb-4">
               {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''} · Checklists
             </p>
@@ -244,7 +244,7 @@ const TeacherChecklists = () => {
           {currentItems.map((checklist, idx) => {
             const datos  = checklist.datos ?? {};
             const punteo = datos.punteo_final != null ? parseFloat(datos.punteo_final) : 0;
-            const color  = datos.color ?? '#1a2744';
+            const color  = punteo > 0 ? colorPunteo(punteo) : '#1a2744';
             const fecha  = checklist.fecha_observacion
               ? new Date(checklist.fecha_observacion).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
               : '—';

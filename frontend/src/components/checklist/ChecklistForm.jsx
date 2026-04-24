@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Button from '../common/Button';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
   const [docentes,      setDocentes]      = useState([]);
@@ -19,7 +19,7 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
     const fetchDocentes = async () => {
       setLoadingDocs(true);
       try {
-        const res = await fetch(`${GLOBAL_API_URL}usuarios/docentes/`);
+        const res = await fetch(`${API_URL}usuarios/docentes/`);
         if (res.ok) {
           const data = await res.json();
           setDocentes(Array.isArray(data) ? data : data.results ?? []);
@@ -35,7 +35,7 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
     if (!docenteId) { setCursosDados([]); setCursoDadoId(''); return; }
     const fetchCursos = async () => {
       try {
-        const res = await fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`);
+        const res = await fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`);
         if (res.ok) {
           const data = await res.json();
           setCursosDados(Array.isArray(data) ? data : data.results ?? []);

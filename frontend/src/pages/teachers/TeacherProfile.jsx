@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import GLOBAL_API_URL from '../../services/global_URL';
+import { API_URL } from '../../services/global_URL';
 
 const TeacherProfile = () => {
   const navigate    = useNavigate();
@@ -24,60 +24,22 @@ const TeacherProfile = () => {
       setError(null);
       setCurrentPage(1);
       try {
-        const docenteRes = await fetch(`${GLOBAL_API_URL}usuarios/docentes/${id}/`);
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        const docenteData = await docenteRes.json();
-        setDocente(docenteData);
-
-        let semestreTarget = null;
+        let url = `${API_URL}usuarios/docentes/${id}/perfil/`;
         if (isHistorical && semesterId) {
-          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/${semesterId}/`);
-          if (semRes.ok) semestreTarget = await semRes.json();
-        } else {
-          const semRes = await fetch(`${GLOBAL_API_URL}academico/semestres/?activo_para_carga=true`);
-          if (semRes.ok) {
-            const semData = await semRes.json();
-            const list = Array.isArray(semData) ? semData : semData.results ?? [];
-            semestreTarget = list[0] ?? null;
-          }
+          url += `?semestre=${semesterId}`;
         }
-        setSemestre(semestreTarget);
 
-        if (semestreTarget) {
-          const [cursosRes, evalRes] = await Promise.all([
-            fetch(`${GLOBAL_API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
-            fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
-          ]);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('No se pudo cargar la información del perfil');
+        
+        const data = await res.json();
+        
+        setDocente(data.docente);
+        setSemestre(data.semestre);
+        setCursos(data.cursos);
+        setEvaluacion(data.evaluacion);
+        setPuntajesCurso(data.puntajes_map);
 
-          let cursosList = [];
-          if (cursosRes.ok) {
-            const cursosData = await cursosRes.json();
-            cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
-            setCursos(cursosList);
-          }
-          if (evalRes.ok) {
-            const evalData = await evalRes.json();
-            const list = Array.isArray(evalData) ? evalData : evalData.results ?? [];
-            setEvaluacion(list[0] ?? null);
-          }
-
-          if (cursosList.length > 0) {
-            const evalCursoResults = await Promise.all(
-              cursosList.map(c =>
-                fetch(`${GLOBAL_API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
-                  .then(r => r.ok ? r.json() : [])
-                  .then(d => Array.isArray(d) ? d : d.results ?? [])
-              )
-            );
-            const mapa = {};
-            evalCursoResults.forEach((results, i) => {
-              if (results.length > 0) {
-                mapa[cursosList[i].id] = parseFloat(results[0].puntaje_curso ?? 0);
-              }
-            });
-            setPuntajesCurso(mapa);
-          }
-        }
       } catch (e) {
         setError(e.message);
       } finally {
@@ -100,6 +62,20 @@ const TeacherProfile = () => {
   };
 
   const semNombre = semestre ? `${semestre.anio} - Semestre ${semestre.ciclo}` : '—';
+
+  // Promedio general = promedio de todos los puntajes de cursos con evaluacion
+  const promedioGeneral = (() => {
+    const valores = Object.values(puntajesCurso);
+    if (valores.length === 0) return null;
+    return valores.reduce((a, b) => a + (parseFloat(b) || 0), 0) / valores.length;
+  })();
+
+  const getEstadoLabel = (score) => {
+    if (score === null) return null;
+    if (score >= 8) return { label: 'Excelente', color: 'text-green-400' };
+    if (score >= 6) return { label: 'Buena',     color: 'text-orange-400' };
+    return              { label: 'Deficiente',   color: 'text-red-400' };
+  };
 
   const totalPages      = Math.ceil(cursos.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -183,6 +159,22 @@ const TeacherProfile = () => {
               </div>
             </div>
           </div>
+
+          {/* Score promedio general — esquina superior derecha del header */}
+          {promedioGeneral !== null && (() => {
+            const estado = getEstadoLabel(promedioGeneral);
+            return (
+              <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
+                <span className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1"></span>
+                <span className={`text-5xl font-bold leading-none text-url-yellow`}>
+                  {promedioGeneral.toFixed(1)}
+                </span>
+                <span className={`mt-2 text-xs font-bold px-3 py-1 rounded-md text-url-yellow`}>
+                  Punteo Final
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex flex-wrap justify-end gap-4 px-8 mt-6 pb-6">

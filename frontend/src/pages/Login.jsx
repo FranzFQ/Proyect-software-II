@@ -1,92 +1,97 @@
-// src/pages/Login.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppContext } from '../context/AppContext'; 
+import { AppContext } from '../context/AppContext';
+import { login } from '../services/auth_service';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import logoUrl from '../assets/logo-url.webp'; 
+import logoUrl from '../assets/logo-url.webp';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { setCurrentUser } = useContext(AppContext); 
-  
-  const [loginInput, setLoginInput] = useState('');
+
+  // Se Usa un setCurrentUser para guardar el usuario en el contexto
+  const { setCurrentUser } = useContext(AppContext);
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  // conexion al backend 
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!loginInput || !password) {
-      setError('Por favor, ingresa tu credencial y contraseña.');
+    // Validación básica en frontend
+    if (!email || !password) {
+      setError('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
+    if (!email.includes('@')) {
+      setError('Por favor, ingresa un correo válido.');
       return;
     }
 
     setIsLoading(true);
-    
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      const inputLower = loginInput.toLowerCase().trim();
 
-      // VALIDACIÓN: Acepta tanto el username como el correo completo
-      if ((inputLower === 'admin@url.edu.gt' || inputLower === 'admin') && password === 'admin123') {
-        setCurrentUser({ 
-          nombre: 'Juan Rodríguez', 
-          username: 'admin',
-          iniciales: 'JR', 
-          rol: 'Administrador', 
-          correo: 'admin@url.edu.gt' 
-        });
-        navigate('/dashboard');
-      } 
-      else if ((inputLower === 'coord@url.edu.gt' || inputLower === 'coord') && password === 'coord123') {
-        setCurrentUser({ 
-          nombre: 'Ana Mendoza', 
-          username: 'coord',
-          iniciales: 'AM', 
-          rol: 'Coordinador', 
-          correo: 'coord@url.edu.gt' 
-        });
-        navigate('/dashboard');
-      } 
-      else {
-        setError('Credenciales incorrectas. Verifica tu usuario/correo y contraseña.');
-      }
-    }, 1500); 
+    try {
+      // LLAMADA REAL AL BACKEND
+      const { user } = await login(email, password);
+      // Guardamos el usuario en el contexto global de React.
+      setCurrentUser(user);
+
+      // Redirigimos al dashboard
+      navigate('/dashboard');
+
+    } catch (err) {
+      // Mensaje de error del backend o de validacion
+      setError(err.message || 'Ocurrió un error al iniciar sesión. Intenta de nuevo.');
+    } finally {
+      // Siempre apagamos el spinner, haya error o no
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex">
+      {/* Panel izquierdo (decorativo) */}
       <div className="hidden md:flex md:w-1/2 bg-url-blue items-center justify-center p-12">
         <div className="text-white text-center flex flex-col items-center">
-          <img src={logoUrl} alt="Universidad Rafael Landívar" className="w-80 lg:w-96 mb-8 brightness-0 invert opacity-90" />
+          <img
+            src={logoUrl}
+            alt="Universidad Rafael Landívar"
+            className="w-80 lg:w-96 mb-8 brightness-0 invert opacity-90"
+          />
         </div>
       </div>
 
+      {/* Panel derecho (formulario) */}
       <div className="w-full md:w-1/2 bg-[#F8FAFC] flex flex-col justify-center items-center p-8 lg:p-16">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-url-blue mb-2">Bienvenido de vuelta</h2>
           <p className="text-gray-500 mb-8 text-sm">Ingresa tus credenciales institucionales para continuar</p>
 
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm font-semibold border border-red-200">{error}</div>}
+          {/* Mensaje de error del backend o de validación */}
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm font-semibold border border-red-200">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* CAMPO ACTUALIZADO: Acepta texto general en lugar de solo type="email" */}
-            <Input 
-              id="loginInput" 
-              type="text" 
-              label="CORREO INSTITUCIONAL O USUARIO" 
-              placeholder="Ej. admin o admin@url.edu.gt" 
-              value={loginInput} 
-              onChange={(e) => setLoginInput(e.target.value)} 
-              disabled={isLoading} 
+            <Input
+              id="email"
+              type="email"
+              label="CORREO INSTITUCIONAL"
+              placeholder="jrodriguez@correo.url.edu.gt"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
-            
+
+            {/* Campo contraseña con ojito */}
             <div className="flex flex-col gap-1">
               <label htmlFor="password" className="text-xs font-bold text-gray-500 uppercase tracking-wider">CONTRASEÑA</label>
               <div className="relative">

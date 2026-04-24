@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 class Facultad(models.Model):
     nombre = models.CharField(max_length=255, unique=True)
@@ -14,7 +15,6 @@ class Carrera(models.Model):
         return self.nombre
 
 class Pensum(models.Model):
-    # La FK dentro de la misma app puede ir directa o con string, usemos string por consistencia
     carrera = models.ForeignKey('academico.Carrera', on_delete=models.CASCADE, related_name='pensums')
     nombre = models.CharField(max_length=255)
     activo = models.BooleanField(default=True)
@@ -27,6 +27,31 @@ class Semestre(models.Model):
     ciclo = models.IntegerField()
     activo_para_carga = models.BooleanField(default=False)
     visible = models.BooleanField(default=False)
+    fecha = models.DateTimeField(null=True, blank=True)
+    finalizado = models.BooleanField(default=False)
+
+    @property
+    def estado(self):
+        ahora = timezone.now()
+        
+        if not self.finalizado:
+            return "Sin finalizar"
+
+        es_fecha_pasada = self.fecha and self.fecha < ahora
+
+        if es_fecha_pasada:
+            if self.visible:
+                if self.activo_para_carga:
+                    return "Activo"
+                else:
+                    return "Finalizado"
+        else:
+            if not self.visible and not self.activo_para_carga:
+                return "Próximo (Oculto)"
+            if self.visible and not self.activo_para_carga:
+                return "Próximo (Visible)"
+        
+        return "Indefinido"
 
     def save(self, *args, **kwargs):
         if self.activo_para_carga:
@@ -46,7 +71,7 @@ class Semestre(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.anio} - Ciclo {self.ciclo}"
+        return f"{self.anio} - Ciclo {self.ciclo} ({self.estado})"
 
 class Curso(models.Model):
     pensum = models.ForeignKey('academico.Pensum', on_delete=models.CASCADE, related_name='cursos')
