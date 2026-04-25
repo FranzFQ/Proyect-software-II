@@ -40,10 +40,12 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 class DocenteSerializer(serializers.ModelSerializer):
     FacultadNombre = serializers.CharField(source='facultad.nombre', read_only=True)
+    promedio_punteo = serializers.FloatField(read_only=True)
+    conteo_cursos = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Docente
-        fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan']
+        fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan', 'promedio_punteo', 'conteo_cursos']
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 

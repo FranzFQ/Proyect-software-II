@@ -9,7 +9,7 @@ class SemestreViewSet(viewsets.ModelViewSet):
     queryset = Semestre.objects.all()
     serializer_class = SemestreSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['anio', 'ciclo', 'activo_para_carga', 'visible']
+    filterset_fields = ['anio', 'ciclo', 'activo_para_carga', 'visible', 'fecha', 'finalizado']
 
     @action(detail=True, methods=['get'], url_path='cursos')
     def cursos(self, request, pk=None):

@@ -24,60 +24,22 @@ const TeacherProfile = () => {
       setError(null);
       setCurrentPage(1);
       try {
-        const docenteRes = await fetch(`${API_URL}usuarios/docentes/${id}/`);
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        const docenteData = await docenteRes.json();
-        setDocente(docenteData);
-
-        let semestreTarget = null;
+        let url = `${API_URL}usuarios/docentes/${id}/perfil/`;
         if (isHistorical && semesterId) {
-          const semRes = await fetch(`${API_URL}academico/semestres/${semesterId}/`);
-          if (semRes.ok) semestreTarget = await semRes.json();
-        } else {
-          const semRes = await fetch(`${API_URL}academico/semestres/?activo_para_carga=true`);
-          if (semRes.ok) {
-            const semData = await semRes.json();
-            const list = Array.isArray(semData) ? semData : semData.results ?? [];
-            semestreTarget = list[0] ?? null;
-          }
+          url += `?semestre=${semesterId}`;
         }
-        setSemestre(semestreTarget);
 
-        if (semestreTarget) {
-          const [cursosRes, evalRes] = await Promise.all([
-            fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
-            fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
-          ]);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('No se pudo cargar la información del perfil');
+        
+        const data = await res.json();
+        
+        setDocente(data.docente);
+        setSemestre(data.semestre);
+        setCursos(data.cursos);
+        setEvaluacion(data.evaluacion);
+        setPuntajesCurso(data.puntajes_map);
 
-          let cursosList = [];
-          if (cursosRes.ok) {
-            const cursosData = await cursosRes.json();
-            cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
-            setCursos(cursosList);
-          }
-          if (evalRes.ok) {
-            const evalData = await evalRes.json();
-            const list = Array.isArray(evalData) ? evalData : evalData.results ?? [];
-            setEvaluacion(list[0] ?? null);
-          }
-
-          if (cursosList.length > 0) {
-            const evalCursoResults = await Promise.all(
-              cursosList.map(c =>
-                fetch(`${API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
-                  .then(r => r.ok ? r.json() : [])
-                  .then(d => Array.isArray(d) ? d : d.results ?? [])
-              )
-            );
-            const mapa = {};
-            evalCursoResults.forEach((results, i) => {
-              if (results.length > 0) {
-                mapa[cursosList[i].id] = parseFloat(results[0].puntaje_curso ?? 0);
-              }
-            });
-            setPuntajesCurso(mapa);
-          }
-        }
       } catch (e) {
         setError(e.message);
       } finally {
@@ -105,7 +67,7 @@ const TeacherProfile = () => {
   const promedioGeneral = (() => {
     const valores = Object.values(puntajesCurso);
     if (valores.length === 0) return null;
-    return valores.reduce((a, b) => a + b, 0) / valores.length;
+    return valores.reduce((a, b) => a + (parseFloat(b) || 0), 0) / valores.length;
   })();
 
   const getEstadoLabel = (score) => {

@@ -6,102 +6,107 @@ from evaluaciones.models import CursoDado
 class NominaParser:
     @classmethod
     def procesar(cls, archivo, semestre=None):
-        # El archivo Nomina tiene los headers en la fila 10
         df = pd.read_excel(archivo, skiprows=10)
-        
-        # Eliminar columnas con todos NaN (limpiar un poco)
         df = df.dropna(axis=1, how='all')
         
-        # Si no se provee semestre, usar el activo
         if not semestre:
             semestre = Semestre.objects.filter(activo_para_carga=True).first()
-        
         if not semestre:
             return "Error: No hay un semestre activo para carga configurado."
 
-        cursos_asignados = 0
+        # --- OPTIMIZACIÓN: CACHE EN MEMORIA ---
+        # Cargamos todo lo necesario antes del bucle para evitar miles de queries
+        facultades_cache = {f.nombre: f for f in Facultad.objects.all()}
+        docentes_cache = {d.codigo_docente: d for d in Docente.objects.all()}
+        cursos_cache = {c.nombre_curso: c for c in Curso.objects.all()}
+        
+        # Para evitar duplicados en el mismo proceso
+        cursos_dados_existentes = {
+            f"{cd.curso_id}-{cd.docente_id}-{cd.semestre_id}-{cd.seccion}": cd 
+            for cd in CursoDado.objects.filter(semestre=semestre)
+        }
+
         docente_actual = None
         codigo_actual = None
         facultad_actual = None
+        
+        objetos_a_crear = []
+        docentes_nuevos = {}
+        facultades_nuevas = {}
 
         for _, fila in df.iterrows():
-            # Extraer valores, manejando posibles nombres de columnas
-            # (El inspeccion_nomina.py nos mostro los nombres de las columnas que Pandas asigno si skiprows=10)
-            # En la inspeccion: ['D', 'Título académico', 'Docente', 'Código  docente', ... 'Curso', 'Jornada', 'Sección', ... 'Total  de créditos']
-            
-            # Verificamos si la fila esta vacia o es un separador
             if pd.isna(fila.get('Curso')) and pd.isna(fila.get('Docente')) and pd.isna(fila.get('Código  docente')):
                 continue
 
-            # Propagar Docente, Codigo y Facultad si estan vacios (filas de multiples cursos para el mismo docente)
             docente_nombre = fila.get('Docente')
             codigo_docente = fila.get('Código  docente')
             nombre_facultad = fila.get('Facultad')
 
-            if not pd.isna(docente_nombre):
-                docente_actual = str(docente_nombre).strip()
-            if not pd.isna(codigo_docente):
-                codigo_actual = str(codigo_docente).strip().split('.')[0] # Quitar .0 si es float
-            if not pd.isna(nombre_facultad):
-                facultad_actual = str(nombre_facultad).strip()
+            if not pd.isna(docente_nombre): docente_actual = str(docente_nombre).strip()
+            if not pd.isna(codigo_docente): codigo_actual = str(codigo_docente).strip().split('.')[0]
+            if not pd.isna(nombre_facultad): facultad_actual = str(nombre_facultad).strip()
 
             if not docente_actual or not codigo_actual:
                 continue
 
-            # 0. Obtener o crear Facultad si existe
-            facultad_obj = None
-            if facultad_actual:
-                facultad_obj, _ = Facultad.objects.get_or_create(nombre=facultad_actual)
+            # 0. Manejo de Facultad (Cache + Nuevas)
+            if facultad_actual and facultad_actual not in facultades_cache and facultad_actual not in facultades_nuevas:
+                facultades_nuevas[facultad_actual] = Facultad(nombre=facultad_actual)
 
-            # Datos del curso
+            # 1. Manejo de Docente (Cache + Nuevos)
+            if codigo_actual not in docentes_cache and codigo_actual not in docentes_nuevos:
+                # Obtenemos la facultad del cache o de las nuevas
+                f_obj = facultades_cache.get(facultad_actual) or facultades_nuevas.get(facultad_actual)
+                docentes_nuevos[codigo_actual] = Docente(
+                    codigo_docente=codigo_actual,
+                    nombre_completo=docente_actual,
+                    facultad=f_obj
+                )
+
+            # 2. Manejo de Cursos
             nombre_curso = str(fila.get('Curso')).strip()
-            jornada = str(fila.get('Jornada')).strip()
-            seccion = str(fila.get('Sección')).strip().split('.')[0]
-            total_creditos = int(fila.get('Total  de créditos', 0))
-
-            # 1. Obtener o crear Docente
-            docente_obj, created = Docente.objects.get_or_create(
-                codigo_docente=codigo_actual,
-                defaults={
-                    'nombre_completo': docente_actual,
-                    'facultad': facultad_obj
-                }
-            )
-            
-            # Si el docente ya existia pero no tenia facultad, se la actualizamos
-            if not created and facultad_obj and not docente_obj.facultad:
-                docente_obj.facultad = facultad_obj
-                docente_obj.save()
-
-            # 2. Buscar el Curso (esto asume que el Pensum ya se cargo)
-            # Si no existe, podriamos tener un "Pensum General" o algo similar?
-            # Por ahora buscaremos por nombre_curso de forma flexible
-            curso_obj = Curso.objects.filter(nombre_curso__icontains=nombre_curso).first()
+            curso_obj = cursos_cache.get(nombre_curso)
+            if not curso_obj:
+                # Busqueda flexible si no esta en cache exacto
+                curso_obj = next((c for n, c in cursos_cache.items() if nombre_curso in n), None)
             
             if not curso_obj:
-                # Si no existe, podriamos crearlo en un pensum por defecto o arrojar warning
-                # Por simplicidad en este parser, buscaremos el pensum mas reciente o el primero
-                from academico.models import Pensum
-                pensum_defecto = Pensum.objects.first()
-                if pensum_defecto:
-                    curso_obj = Curso.objects.create(
-                        nombre_curso=nombre_curso,
-                        pensum=pensum_defecto,
-                        creditos=total_creditos
-                    )
-                else:
-                    print(f"  [!] Salteado: Curso '{nombre_curso}' no tiene pensum base.")
-                    continue
+                continue # O crear uno genérico si prefieres
 
-            # 3. Crear o actualizar CursoDado (Asignación)
-            CursoDado.objects.update_or_create(
-                curso=curso_obj,
-                docente=docente_obj,
-                semestre=semestre,
-                seccion=seccion,
-                defaults={'jornada': jornada}
-            )
+            # 3. Preparar CursoDado
+            doc_obj = docentes_cache.get(codigo_actual) or docentes_nuevos.get(codigo_actual)
+            seccion = str(fila.get('Sección')).strip().split('.')[0]
+            jornada = str(fila.get('Jornada')).strip()
             
-            cursos_asignados += 1
+            key = f"{curso_obj.id}-{doc_obj.id}-{semestre.id}-{seccion}"
+            if key not in cursos_dados_existentes:
+                objetos_a_crear.append(CursoDado(
+                    curso=curso_obj,
+                    docente=doc_obj,
+                    semestre=semestre,
+                    seccion=seccion,
+                    jornada=jornada
+                ))
+                cursos_dados_existentes[key] = True # Marcar para no duplicar en el mismo Excel
 
-        return f"Nómina procesada: {cursos_asignados} cursos asignados para {semestre}."
+        # --- PERSISTENCIA MASIVA (Atomic Operations) ---
+        if facultades_nuevas:
+            Facultad.objects.bulk_create(facultades_nuevas.values())
+            # Refrescar cache de facultades para los docentes nuevos
+            facultades_cache.update({f.nombre: f for f in Facultad.objects.filter(nombre__in=facultades_nuevas.keys())})
+            for d in docentes_nuevos.values():
+                if d.facultad and d.facultad.nombre in facultades_cache:
+                    d.facultad = facultades_cache[d.facultad.nombre]
+
+        if docentes_nuevos:
+            Docente.objects.bulk_create(docentes_nuevos.values())
+            # Refrescar cache de docentes para los CursoDado
+            docentes_cache.update({d.codigo_docente: d for d in Docente.objects.filter(codigo_docente__in=docentes_nuevos.keys())})
+            for cd in objetos_a_crear:
+                if cd.docente.codigo_docente in docentes_cache:
+                    cd.docente = docentes_cache[cd.docente.codigo_docente]
+
+        if objetos_a_crear:
+            CursoDado.objects.bulk_create(objetos_a_crear)
+
+        return f"Nómina procesada: {len(objetos_a_crear)} nuevas asignaciones creadas."
