@@ -102,7 +102,7 @@ export async function fetchWithAuth(url, options = {}) {
     },
   });
 
-  // 🔥 Token expirado → intentamos refresh
+  // REFRESCAR EL TOKEN SI ES NECESARIO 
   if (response.status === 401) {
     try {
       token = await refreshToken();
@@ -121,7 +121,7 @@ export async function fetchWithAuth(url, options = {}) {
     }
   }
 
-  // 🔥 MANEJO DE RESPUESTA AQUÍ
+  // MANEJO DE RESPUESTA AQUÍ
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || `Error ${response.status}`);
