@@ -27,7 +27,6 @@ async function handleResponse(response) {
   return response.json();
 }
 
-// --- EVALUACIONES CONSOLIDADAS (TABLA MACRO) ---
 export async function getEvaluaciones(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}evaluaciones/evaluaciones/${queryString ? `?${queryString}` : ""}`;
@@ -35,7 +34,6 @@ export async function getEvaluaciones(params = {}) {
   return handleResponse(response);
 }
 
-// --- EVALUACIONES POR CURSO (DETALLE Y COMENTARIOS) ---
 export async function getEvaluacionesCurso(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}evaluaciones/evaluaciones-curso/${queryString ? `?${queryString}` : ""}`;
@@ -43,10 +41,24 @@ export async function getEvaluacionesCurso(params = {}) {
   return handleResponse(response);
 }
 
-// --- CURSOS DADOS (AGENDA DOCENTE) ---
 export async function getCursosDados(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}evaluaciones/cursos-dados/${queryString ? `?${queryString}` : ""}`;
+  const response = await fetch(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+export async function getCursoDadoById(id) {
+  const response = await fetch(`${BASE_URL}evaluaciones/cursos-dados/${id}/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+// --- ANÁLISIS DE TEXTO (COMENTARIOS Y SUGERENCIAS) ---
+export async function getAnalisisTexto(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = `${BASE_URL}evaluaciones/analisis-texto/${queryString ? `?${queryString}` : ""}`;
   const response = await fetch(url, { headers: authHeaders() });
   return handleResponse(response);
 }
@@ -76,7 +88,6 @@ export async function updatePonderacion(id, data) {
     return handleResponse(response);
 }
 
-// --- INGESTA DE DATOS (EXCEL) ---
 /**
  * Envía archivos Excel al backend para su procesamiento.
  * @param {FormData} formData - Debe contener los archivos con las keys correctas

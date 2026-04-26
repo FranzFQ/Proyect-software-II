@@ -136,14 +136,14 @@ const TeacherProfile = () => {
 
         <div className="px-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mt-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-serif font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
+            <div className={`w-24 h-24 text-url-blue rounded-xl flex items-center justify-center text-4xl font-bold shadow-lg shrink-0 ${isHistorical ? 'bg-gray-300' : 'bg-url-yellow'}`}>
               {iniciales}
             </div>
             <div>
               <p className={`${isHistorical ? 'text-gray-300' : 'text-url-yellow'} text-sm mb-1 font-semibold`}>
                 {semNombre}
               </p>
-              <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
+              <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
               <p className="text-gray-300 text-sm">
                 {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
               </p>

@@ -1,63 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import Button from '../common/Button';
-import { API_URL } from '../../services/global_URL';
 
 export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
-  const [docentes,      setDocentes]      = useState([]);
-  const [cursosDados,   setCursosDados]   = useState([]);
-  const [loadingDocs,   setLoadingDocs]   = useState(true);
-
-  const [nombre,        setNombre]        = useState(checklist?.nombre        || '');
-  const [docenteId,     setDocenteId]     = useState(checklist?.docenteId     || '');
-  const [cursoDadoId,   setCursoDadoId]   = useState(checklist?.cursoDadoId   || '');
+  const [titulo,        setTitulo]        = useState(checklist?.titulo || '');
   const [criterios,     setCriterios]     = useState(checklist?.criteriosList || []);
   const [nuevoCriterio, setNuevoCriterio] = useState('');
   const [mostrarInput,  setMostrarInput]  = useState(false);
+  const [color,         setColor]         = useState(checklist?.color || '#1a2744');
   const inputRef = useRef(null);
-
-  useEffect(() => {
-    const fetchDocentes = async () => {
-      setLoadingDocs(true);
-      try {
-        const res = await fetch(`${API_URL}usuarios/docentes/`);
-        if (res.ok) {
-          const data = await res.json();
-          setDocentes(Array.isArray(data) ? data : data.results ?? []);
-        }
-      } finally {
-        setLoadingDocs(false);
-      }
-    };
-    fetchDocentes();
-  }, []);
-
-  useEffect(() => {
-    if (!docenteId) { setCursosDados([]); setCursoDadoId(''); return; }
-    const fetchCursos = async () => {
-      try {
-        const res = await fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCursosDados(Array.isArray(data) ? data : data.results ?? []);
-        }
-      } catch {
-        setCursosDados([]);
-      }
-    };
-    fetchCursos();
-  }, [docenteId]);
 
   useEffect(() => {
     if (mostrarInput) inputRef.current?.focus();
   }, [mostrarInput]);
-
-  const docenteSeleccionado = docentes.find(d => String(d.id) === String(docenteId));
-  const cursoDadoSeleccionado = cursosDados.find(c => String(c.id) === String(cursoDadoId));
-
-  const handleDocenteChange = (e) => {
-    setDocenteId(e.target.value);
-    setCursoDadoId('');
-  };
 
   const agregarCriterio = () => {
     if (!nuevoCriterio.trim()) return;
@@ -76,21 +30,14 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
   const eliminarCriterio = (idx) => setCriterios(prev => prev.filter((_, i) => i !== idx));
 
   const handleGuardar = () => {
-    if (!nombre.trim() || !docenteId || !cursoDadoId) return;
-    onGuardar({
-      cursoDadoId:   parseInt(cursoDadoId),
-      nombre,
-      docenteId:     parseInt(docenteId),
-      codigoDocente: docenteSeleccionado?.codigo_docente ?? '',
-      docente:       docenteSeleccionado?.nombre_completo ?? '',
-      nombreCurso:   cursoDadoSeleccionado?.CursosNombre ?? '',
-      seccion:       cursoDadoSeleccionado?.seccion ?? '',
-      criteriosList: criterios,
-      criterios:     criterios.length,
-    });
+    if (!titulo.trim()) return;
+    onGuardar({ titulo, criteriosList: criterios, color });
   };
 
-  const selectClass = 'border border-gray-300 rounded-md p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-url-blue focus:border-transparent bg-white w-full transition-all';
+  const COLORES = [
+    '#1a2744', '#2563eb', '#7c3aed', '#db2777',
+    '#ea580c', '#16a34a', '#0891b2', '#854d0e',
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
@@ -101,81 +48,55 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
             {checklist ? 'Editar Checklist' : 'Crear Nueva Checklist'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Define el nombre y agrega los criterios de evaluacion que se usaran durante la visita de clase
+            Define el título y los criterios de evaluación. Podrás asignar docentes al ejecutar la checklist.
           </p>
         </div>
 
         <div className="px-6 py-5 space-y-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Nombre de la Checklist
-              </label>
-              <input
-                placeholder="Ej. Observacion Metodologica"
-                className="px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-url-blue focus:border-transparent transition-all"
-                value={nombre}
-                onChange={e => setNombre(e.target.value)}
-              />
-            </div>
+          {/* Título */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Título de la Checklist
+            </label>
+            <input
+              placeholder="Ej. Observación Metodológica"
+              className="px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-url-blue focus:border-transparent transition-all"
+              value={titulo}
+              onChange={e => setTitulo(e.target.value)}
+            />
+          </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Docente
-              </label>
-              <select className={selectClass} value={docenteId} onChange={handleDocenteChange} disabled={loadingDocs}>
-                <option value="">{loadingDocs ? 'Cargando...' : 'Seleccionar docente...'}</option>
-                {docentes.map(d => (
-                  <option key={d.id} value={d.id}>{d.nombre_completo}</option>
-                ))}
-              </select>
+          {/* Color */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Color identificador
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {COLORES.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-full border-4 transition-all ${color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                  style={{ background: c }}
+                />
+              ))}
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Curso
-              </label>
-              <select
-                className={selectClass}
-                value={cursoDadoId}
-                onChange={e => setCursoDadoId(e.target.value)}
-                disabled={!docenteId}
-              >
-                <option value="">
-                  {docenteId ? 'Seleccionar curso...' : 'Primero selecciona docente'}
-                </option>
-                {cursosDados.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.CursosNombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Sección
-              </label>
-              <input
-                className="px-4 py-2.5 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500"
-                value={cursoDadoSeleccionado?.seccion ? `Sección ${cursoDadoSeleccionado.seccion}` : '—'}
-                disabled
-                readOnly
-              />
-            </div>
-          </div>
-
+          {/* Criterios */}
           <div>
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">
-              Criterios de Evaluacion:
+              Criterios de Evaluación:
             </label>
             <div className="flex flex-wrap gap-2 min-h-[40px] items-center">
               {criterios.map((c, i) => (
-                <span key={i} className="bg-url-blue text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2">
+                <span
+                  key={i}
+                  className="text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2"
+                  style={{ background: color }}
+                >
                   {c}
-                  <button onClick={() => eliminarCriterio(i)} className="hover:text-url-yellow transition text-base leading-none">
+                  <button onClick={() => eliminarCriterio(i)} className="hover:opacity-70 transition text-base leading-none">
                     ×
                   </button>
                 </span>
@@ -217,7 +138,7 @@ export default function ChecklistForm({ checklist, onGuardar, onCancelar }) {
           <Button
             variant="primary"
             onClick={handleGuardar}
-            className={!nombre.trim() || !docenteId || !cursoDadoId ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}
+            className={!titulo.trim() ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}
           >
             Guardar Checklist
           </Button>

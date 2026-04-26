@@ -119,6 +119,7 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
             'usuario', 'UsuarioNombre',
             'fecha_observacion',
             'punteo',
+            'datos',
         ]
         read_only_fields = ['fecha_observacion']
 
@@ -137,4 +138,5 @@ class ChecklistObservationListSerializer(serializers.ModelSerializer):
             'checklist', 'ChecklistTitulo',
             'fecha_observacion',
             'punteo',
+            'datos',
         ]
