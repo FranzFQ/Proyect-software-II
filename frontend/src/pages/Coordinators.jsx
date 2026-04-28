@@ -186,18 +186,11 @@ const cargarCoordinadores = async () => {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button
-            variant="secondary"
-            className="flex items-center gap-2 border-url-blue text-url-blue hover:bg-url-blue hover:text-white"
-            onClick={() => navigate("/semesters")}
-          >
-            <CalendarIcon className="w-5 h-5" /> Activar semestre
-          </Button>
-          <Button
             variant="primary"
             className="flex items-center gap-2"
             onClick={() => abrirFormulario(null)}
           >
-            <UserPlusIcon className="w-5 h-5" /> Agregar Administrador
+            <UserPlusIcon className="w-5 h-5" /> Agregar Coordinador
           </Button>
         </div>
       </div>

@@ -1,4 +1,3 @@
-// src/pages/Files.jsx
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
@@ -23,35 +22,21 @@ const Files = () => {
     documentos = [], 
     setDocumentos, 
     setEvaluacionesCompletadas, 
-    showToast = () => {}, 
-    semestres = [], 
-    setSemestres 
+    showToast = () => {}
   } = useContext(AppContext) || {};
   
-  // --- ESTADOS DE UI Y MENÚS DESPLEGABLES ---
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); 
-  const [isAddSemestreOpen, setIsAddSemestreOpen] = useState(false); 
-
-  // Estado único para controlar qué menú está abierto ('config', 'archivos' o null)
   const [activeDropdown, setActiveDropdown] = useState(null);
   
-  // Referencia para detectar clics fuera de los botones
   const dropdownContainerRef = useRef(null);
 
-  // --- ESTADOS DE CARGA Y BACKEND ---
   const [activeUploadId, setActiveUploadId] = useState(null); 
   const [archivoTemporal, setArchivoTemporal] = useState(null); 
   const [cargando, setCargando] = useState(false);
 
-  // Estados del Formulario de Semestres (Calendario)
-  const [nuevoPeriodo, setNuevoPeriodo] = useState('Semestre I');
-  const [nuevaFecha, setNuevaFecha] = useState('');
-
-  // --- EFECTO PARA CERRAR MENÚS AL HACER CLIC AFUERA ---
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Si el clic ocurrió fuera del contenedor de botones, cerramos los menús
       if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(event.target)) {
         setActiveDropdown(null);
       }
@@ -60,7 +45,6 @@ const Files = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Mapeo de IDs internos al backend
   const mapIdToOrigen = (id) => {
     switch(id) {
       case 'ceat': return 'ceat';
@@ -74,7 +58,6 @@ const Files = () => {
     }
   };
 
-  // --- LÓGICA DE CONTADORES (Solo 5 categorías) ---
   const categoriasPrincipalesIds = ['estudiantil', 'autoevaluacion', 'coordinador', 'ceat', 'apoyo'];
   const completadasPrincipales = documentos.filter(d => d.estado === 'subido' && categoriasPrincipalesIds.includes(d.id)).length;
 
@@ -137,7 +120,6 @@ const Files = () => {
     let errores = [];
     let exitos = 0;
 
-    // Ordenamos para procesar PENSUM y NOMINA primero
     const ordenados = [...archivosAProcesar].sort((a, b) => {
       if (a.id === 'pensum') return -1;
       if (b.id === 'pensum') return 1;
@@ -171,24 +153,6 @@ const Files = () => {
     }
   };
 
-  const agregarSemestre = (e) => {
-    e.preventDefault();
-    if (!nuevaFecha) return showToast("Por favor seleccione una fecha en el calendario.", 'error');
-    
-    const year = new Date(nuevaFecha).getFullYear();
-    const existe = semestres.some(s => s.semestre === nuevoPeriodo && String(s.anio) === String(year));
-    
-    if (existe) {
-      showToast(`Error: El ${nuevoPeriodo} del año ${year} ya existe en el sistema.`, 'error');
-      return;
-    }
-
-    const nuevo = { id: Date.now(), semestre: nuevoPeriodo, anio: year, estado: 'Proximo' };
-    setSemestres([nuevo, ...semestres]);
-    setIsAddSemestreOpen(false);
-    showToast("¡Semestre configurado con éxito!", 'success');
-  };
-
   const getIconForCategory = (id) => {
     switch(id) {
       case 'pensum': return <BookOpenIcon className="w-8 h-8" />;
@@ -209,13 +173,11 @@ const Files = () => {
   return (
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-[#112240] mb-2 ">Carga de Archivos e Información</h1>
+        <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Carga de Archivos e Información</h1>
         <p className="text-gray-500">Semestre I — 2025 · {completadasPrincipales} de 5 archivos cargados</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Las 6 Tarjetas de Documentos */}
         {documentosGrid.map((doc) => (
           <div key={doc.id} onClick={() => doc.estado !== 'subido' ? abrirModalCarga(doc.id) : null} className={`bg-white border border-gray-200 rounded-xl p-6 flex items-center justify-between hover:shadow-lg transition-all cursor-pointer group min-h-[140px] ${doc.estado === 'subido' ? 'border-green-200 cursor-default' : ''}`}>
             <div className="flex items-center gap-6 w-full">
@@ -256,10 +218,9 @@ const Files = () => {
            </div>
         </div>
 
-        {/* LOS 3 BOTONES DE ACCIÓN (Mismo tamaño, mismos colores, click-outside handling) */}
+        {/* LOS BOTONES DE ACCIÓN */}
         <div className="flex flex-col lg:flex-row justify-end items-end gap-3 h-full pt-4 md:pt-0 w-full" ref={dropdownContainerRef}>
            
-           {/* 1. Botón Configuración */}
            <div className="relative w-full lg:w-auto">
              <Button 
                variant="primary" 
@@ -271,17 +232,13 @@ const Files = () => {
              
              {activeDropdown === 'config' && (
                 <div className="absolute bottom-full right-0 mb-2 w-full lg:w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1">
-                   <button onClick={() => { setActiveDropdown(null); setIsModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100">
+                   <button onClick={() => { setActiveDropdown(null); setIsModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                      Editar ponderación
-                   </button>
-                   <button onClick={() => { setActiveDropdown(null); setIsAddSemestreOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                     Configurar semestres
                    </button>
                 </div>
              )}
            </div>
 
-           {/* 2. Botón Archivos Principales */}
            <div className="relative w-full lg:w-auto">
              <Button 
                variant="primary" 
@@ -303,7 +260,6 @@ const Files = () => {
              )}
            </div>
 
-           {/* 3. Botón Procesar */}
            <Button 
              variant="primary" 
              className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] text-white hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
@@ -316,44 +272,11 @@ const Files = () => {
 
       </div>
 
-      {/* MODAL: PONDERACIONES */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Modificación de Ponderaciones">
         <ModalPonderacion onClose={() => setIsModalOpen(false)} />
       </Modal>
 
-      {/* MODAL NUEVO: CONFIGURAR SEMESTRES (CALENDARIO) */}
-      <Modal isOpen={isAddSemestreOpen} onClose={() => setIsAddSemestreOpen(false)} title="Configurar Nuevo Semestre">
-        <form onSubmit={agregarSemestre} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Semestre</label>
-            <select 
-              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
-              value={nuevoPeriodo}
-              onChange={(e) => setNuevoPeriodo(e.target.value)}
-            >
-              <option value="Semestre I">Semestre I</option>
-              <option value="Semestre II">Semestre II</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Seleccionar Fecha (Define el Año)</label>
-            <input 
-              type="date" 
-              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" 
-              value={nuevaFecha}
-              onChange={(e) => setNuevaFecha(e.target.value)}
-              required 
-            />
-          </div>
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
-            <Button type="button" variant="secondary" onClick={() => setIsAddSemestreOpen(false)}>Cancelar</Button>
-            <Button type="submit" variant="primary" className="bg-[#112240] text-white">Guardar Semestre</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* MODAL CARGA ARCHIVOS */}
-      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={`Cargar: ${categoriaActivaObj?.titulo}`}>
+      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={categoriaActivaObj ? `Cargar: ${categoriaActivaObj.titulo}` : 'Cargar Archivo'}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-500">Sube el archivo (.xlsx) con los resultados correspondientes a esta categoría.</p>
           <label className="border-2 border-dashed border-url-blue bg-blue-50/50 hover:bg-blue-50 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors group">
