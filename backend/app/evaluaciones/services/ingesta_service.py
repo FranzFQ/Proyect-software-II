@@ -3,6 +3,7 @@ from evaluaciones.parsers.evaluacion_docente_parser import EvaluacionDocentePars
 from evaluaciones.parsers.control_docente_parser import ControlDocenteParser
 from evaluaciones.parsers.pensum_parser import PensumParser
 from evaluaciones.parsers.nomina_parser import NominaParser
+from evaluaciones.parsers.comentarios_parser import ComentariosParser
 
 class IngestaService:
     @staticmethod
@@ -24,3 +25,7 @@ class IngestaService:
     @staticmethod
     def procesar_nomina(archivo, semestre_actual):
         return NominaParser.procesar(archivo, semestre_actual)
+
+    @staticmethod
+    def procesar_comentarios(archivo, semestre_actual):
+        ComentariosParser.procesar(archivo, semestre_actual)

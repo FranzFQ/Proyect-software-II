@@ -50,6 +50,8 @@ class EvaluacionConsolidadaViewSet(viewsets.ModelViewSet):
                 IngestaService.procesar_evaluacion_docente(archivo, semestre_actual)
             elif origen == 'Control Docente':
                 IngestaService.procesar_control_docente(archivo, semestre_actual)
+            elif origen == 'COMENTARIOS':
+                IngestaService.procesar_comentarios(archivo, semestre_actual)
             elif origen == 'PENSUM':
                 msg = IngestaService.procesar_pensum(archivo)
                 return Response({'status': 'success', 'message': msg})
