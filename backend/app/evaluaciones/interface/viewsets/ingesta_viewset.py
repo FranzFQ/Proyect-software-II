@@ -38,6 +38,8 @@ class IngestaViewSet(viewsets.ViewSet):
                 IngestaService.procesar_evaluacion_docente(archivo, semestre)
             elif tipo == 'control_docente':
                 IngestaService.procesar_control_docente(archivo, semestre)
+            elif tipo == 'comentarios':
+                IngestaService.procesar_comentarios(archivo, semestre)
             elif tipo == 'nomina':
                 IngestaService.procesar_nomina(archivo, semestre)
             elif tipo == 'pensum':
