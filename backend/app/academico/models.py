@@ -47,9 +47,9 @@ class Semestre(models.Model):
             return "Activo"
 
         if self.es_visible:
-            return "Próximo (Visible)"
-        
-        return "Próximo (Oculto)"
+            return "Disponible"
+
+        return "Próximo"
 
     def save(self, *args, **kwargs):
         if self.activo_para_carga:
