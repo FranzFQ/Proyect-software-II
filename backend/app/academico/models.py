@@ -31,42 +31,47 @@ class Semestre(models.Model):
     finalizado = models.BooleanField(default=False)
 
     @property
+    def es_visible(self):
+        if self.visible:
+            return True
+        if self.fecha and self.fecha <= timezone.now():
+            return True
+        return False
+
+    @property
     def estado(self):
-        ahora = timezone.now()
+        if self.finalizado:
+            return "Finalizado"
         
-        if not self.finalizado:
-            return "Sin finalizar"
+        if self.activo_para_carga:
+            return "Activo"
 
-        es_fecha_pasada = self.fecha and self.fecha < ahora
-
-        if es_fecha_pasada:
-            if self.visible:
-                if self.activo_para_carga:
-                    return "Activo"
-                else:
-                    return "Finalizado"
-        else:
-            if not self.visible and not self.activo_para_carga:
-                return "Próximo (Oculto)"
-            if self.visible and not self.activo_para_carga:
-                return "Próximo (Visible)"
+        if self.es_visible:
+            return "Próximo (Visible)"
         
-        return "Indefinido"
+        return "Próximo (Oculto)"
 
     def save(self, *args, **kwargs):
         if self.activo_para_carga:
+            # Desactivar otros semestres activos para carga
             Semestre.objects.filter(activo_para_carga=True).exclude(pk=self.pk).update(activo_para_carga=False)
             
+            # Lógica para crear el siguiente semestre automáticamente si no existe
             prox_anio = self.anio
             prox_ciclo = self.ciclo + 1
             if prox_ciclo > 2:
                 prox_anio += 1
                 prox_ciclo = 1
             
+            # El siguiente semestre se crea oculto por defecto
             Semestre.objects.get_or_create(
                 anio=prox_anio,
                 ciclo=prox_ciclo,
-                defaults={'activo_para_carga': False, 'visible': False}
+                defaults={
+                    'activo_para_carga': False, 
+                    'visible': False,
+                    'finalizado': False
+                }
             )
         super().save(*args, **kwargs)
 
