@@ -76,7 +76,15 @@ export async function updatePonderacion(id, data) {
     return handleResponse(response);
 }
 
-// --- INGESTA DE DATOS (EXCEL) ---
+
+export async function getAnalisisTexto(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = `${BASE_URL}evaluaciones/analisis-texto/${queryString ? `?${queryString}` : ""}`;
+  const response = await fetch(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+//INGESTA DE DATOS (EXCEL)
 /**
  * Envía archivos Excel al backend para su procesamiento.
  * @param {FormData} formData - Debe contener los archivos con las keys correctas
