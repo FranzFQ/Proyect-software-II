@@ -1,6 +1,7 @@
 // src/context/AppContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
-import { listaDocentesGlobal, listaCoordinadores, listaSemestres } from '../utils/mockData';
+import { listaDocentesGlobal, listaCoordinadores } from '../utils/mockData';
+import { getSemestres } from '../services/academico_service';
 
 export const AppContext = createContext();
 
@@ -8,11 +9,9 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
-  const [semestres, setSemestres] = useState(listaSemestres);
+  const [semestres, setSemestres] = useState([]);
+  const [semestreActivo, setSemestreActivo] = useState(null);
   
-  // NUEVO: Semestres programados por el Admin
-  const [semestresProgramados, setSemestresProgramados] = useState([]);
-
   const [evaluacionesCompletadas, setEvaluacionesCompletadas] = useState("0%");
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
@@ -36,33 +35,29 @@ export const AppProvider = ({ children }) => {
     { id: 'comentarios',   titulo: 'Comentarios del Ingeniero',estado: 'pendiente', nombreArchivo: '' }
   ]);
 
-  // Lógica de activación automática por fecha
+  // Cargar semestres desde el backend
   useEffect(() => {
-    const interval = setInterval(() => {
-      const hoy = new Date();
-      setSemestresProgramados(prevProgramados => {
-        const aActivar = prevProgramados.filter(s => new Date(s.fechaInicio) <= hoy);
+    const fetchSemestres = async () => {
+      try {
+        // Obtenemos solo los visibles (por defecto)
+        const data = await getSemestres();
+        const results = data ? (Array.isArray(data) ? data : data.results || []) : [];
+        setSemestres(results);
         
-        if (aActivar.length > 0) {
-          // Pasamos los que ya cumplieron fecha a la lista oficial de semestres
-          const nuevosSemestres = aActivar.map(s => ({
-            id: s.id,
-            semestre: s.semestre,
-            anio: s.anio,
-            estado: 'Activo'
-          }));
-          setSemestres(prev => [...nuevosSemestres, ...prev]);
-          showToast(`Se ha activado automáticamente: ${nuevosSemestres[0].semestre} ${nuevosSemestres[0].anio}`);
-          
-          // Retornamos la lista filtrada (quitando los activados)
-          return prevProgramados.filter(s => new Date(s.fechaInicio) > hoy);
+        // Buscamos el activo
+        const activo = results.find(s => s.activo_para_carga);
+        if (activo) {
+          setSemestreActivo(`Ciclo ${activo.ciclo} — ${activo.anio}`);
+        } else if (results.length > 0) {
+          setSemestreActivo(`Ciclo ${results[0].ciclo} — ${results[0].anio}`);
         }
-        return prevProgramados;
-      });
-    }, 10000); // Revisa cada 10 segundos (para la demo)
+      } catch (error) {
+        console.error("Error al cargar semestres iniciales:", error);
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, [semestresProgramados]);
+    fetchSemestres();
+  }, [currentUser]); // Recargar cuando el usuario inicia sesión
 
   return (
     <AppContext.Provider value={{
@@ -70,7 +65,7 @@ export const AppProvider = ({ children }) => {
       docentes, setDocentes,
       coordinadores, setCoordinadores,
       semestres, setSemestres,
-      semestresProgramados, setSemestresProgramados,
+      semestreActivo, setSemestreActivo,
       ponderaciones, setPonderaciones,
       documentos, setDocumentos,
       evaluacionesCompletadas, setEvaluacionesCompletadas,

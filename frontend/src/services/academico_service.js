@@ -44,8 +44,34 @@ export async function getCarreras(params = {}) {
 }
 
 // --- SEMESTRES ---
-export async function getSemestres() {
+export async function getSemestres(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  const url = `${BASE_URL}academico/semestres/${queryString ? `?${queryString}` : ""}`;
+  const response = await fetch(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+export async function createSemestre(data) {
   const response = await fetch(`${BASE_URL}academico/semestres/`, {
+    method: "POST",
+    headers: authHeaders(true),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function updateSemestre(id, data) {
+  const response = await fetch(`${BASE_URL}academico/semestres/${id}/`, {
+    method: "PATCH",
+    headers: authHeaders(true),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteSemestre(id) {
+  const response = await fetch(`${BASE_URL}academico/semestres/${id}/`, {
+    method: "DELETE",
     headers: authHeaders(),
   });
   return handleResponse(response);

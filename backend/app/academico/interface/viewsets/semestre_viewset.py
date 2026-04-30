@@ -14,13 +14,21 @@ class SemestreViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         ahora = timezone.now()
+        
+        # Sincronización automática: Si ya pasó la fecha, marcar como visible en la DB
+        Semestre.objects.filter(
+            fecha__lte=ahora, 
+            visible=False
+        ).update(visible=True)
+        
         show_all = self.request.query_params.get('all', 'false').lower() == 'true'
         
         queryset = Semestre.objects.all().order_by('-anio', '-ciclo')
         
-        if not show_all:
+        # Si es una acción de detalle (retrieve, update, partial_update, destroy)
+        # o si se pide ver todo (all=true), no filtramos por fecha.
+        if self.action == 'list' and not show_all:
             # En el resto del sistema, solo mostrar si ya llegó la fecha
-            # Si no tiene fecha, se considera oculto
             queryset = queryset.filter(fecha__lte=ahora)
             
         return queryset
