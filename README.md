@@ -27,14 +27,54 @@ ci: Cambios en integración continua.
 
 ## Backend
 
+## Pre-requisitos para backend
+- Tener instalado python 3.10 en adelante
+- Tener instalado pip cualquier version de pip
+- Tener cualquier editor de codigo
+- Tener conocimiento de Github
+
+### Está organizado de la siguiente manera:
+
+app/api → Proyecto de django
+
+app/academico → App para la administracion academica
+
+app/evaluaciones → App para la gestion de evaluaciones
+
+app/usuarios → App para la gestion de usuarios
+
+requiment.txt → Documento con las dependencias del proyecto
+
+### Ejecutar el proyecto
+¡Aviso: En caso de ser primera vez en el proyecto se necesita un entorno virtual de python!
+Ejecutar en windows:
+python -m venv .venv
+Para activar:
+.venv\script\activate
+
+Ejecutar en macOS y linux:
+python -m venv venv
+Para activar:
+source venv/bin/activate
+
+1. Clonar el repositorio
+
+2. Ubicarse en proyecto en el carpeta de backend
+
+3. Instalar las dependencias: pip install -r requirements.txt
+
+4. Ejecutar el servidor de desarrollo: python app/manage.py runserver
+
+5. Dirigirse a la siguiente ruta donde estara disponible: http://localhost:8000/
+
 ## Frontend
 
-## Pre-requisitos
+## Pre-requisitos para frontend
 - Tener instalado nvm y node
-- Cualquier editor de codigo
-- Conocimiento de Github
+- Tener cualquier editor de codigo
+- Tener conocimiento de Github
 
-### El proyecto está organizado de la siguiente manera:
+### Está organizado de la siguiente manera:
 
 src/assets/ → Imagenes, iconos y fuentes
 
