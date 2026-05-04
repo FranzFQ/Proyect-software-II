@@ -14,6 +14,7 @@ const TeacherProfile = () => {
   const [semestre,     setSemestre]     = useState(null);
   const [cursos,       setCursos]       = useState([]);
   const [evaluacion,   setEvaluacion]   = useState(null);
+  const [evaluacionesDesglose, setEvaluacionesDesglose] = useState([]);
   const [puntajesCurso,setPuntajesCurso]= useState({});
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
@@ -44,6 +45,7 @@ const TeacherProfile = () => {
         setSemestre(data.semestre);
         setCursos(data.cursos);
         setEvaluacion(data.evaluacion);
+        setEvaluacionesDesglose(data.evaluaciones_desglose || []);
         setPuntajesCurso(data.puntajes_map);
 
       } catch (e) {
@@ -57,21 +59,13 @@ const TeacherProfile = () => {
 
   // --- PREPARACIÓN DE DATOS PARA LA GRÁFICA DE DONA ---
   const chartData = useMemo(() => {
-    if (!evaluacion) return [];
+    if (!evaluacionesDesglose || evaluacionesDesglose.length === 0) return [];
     
-    // Tratamos de mapear todos los posibles campos del backend
-    const rawData = [
-      { name: 'Estudiantil', value: Number(evaluacion.puntaje_estudiantil || evaluacion.estudiantil || evaluacion.evaluacion_docente || 0) },
-      { name: 'CEAT', value: Number(evaluacion.puntaje_ceat || evaluacion.ceat || 0) },
-      { name: 'Autoevaluación', value: Number(evaluacion.puntaje_autoevaluacion || evaluacion.autoevaluacion || 0) },
-      { name: 'Coordinador', value: Number(evaluacion.puntaje_coordinador || evaluacion.coordinador || evaluacion.control_docente || 0) },
-      { name: 'Checklists', value: Number(evaluacion.puntaje_visitas || evaluacion.visitas || 0) },
-      { name: 'Apoyo', value: Number(evaluacion.puntaje_apoyo || evaluacion.apoyo || 0) }
-    ];
-
-    // Filtramos para enviar a la gráfica SOLO las categorías que tienen punteo mayor a 0
-    return rawData.filter(item => item.value > 0);
-  }, [evaluacion]);
+    return evaluacionesDesglose.map(ev => ({
+        name: ev.CriterioNombre,
+        value: Number(ev.puntaje_final || 0)
+    })).filter(item => item.value > 0);
+  }, [evaluacionesDesglose]);
 
   const getColorBarra = (score) => {
     if (score >= 8) return 'bg-green-500';

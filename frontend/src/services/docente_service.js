@@ -43,6 +43,13 @@ export async function getDocenteById(id) {
   return handleResponse(response);
 }
 
+export async function getTopDocentes() {
+    const response = await fetch(`${BASE_URL}usuarios/docentes/top_docentes/`, {
+      headers: authHeaders(),
+    });
+    return handleResponse(response);
+}
+
 /**
  * Permite actualizar datos del docente (si es necesario).
  */

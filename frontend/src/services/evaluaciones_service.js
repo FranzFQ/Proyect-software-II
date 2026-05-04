@@ -84,6 +84,28 @@ export async function getAnalisisTexto(params = {}) {
   return handleResponse(response);
 }
 
+// 
+export async function getDashboardEstadisticas() {
+  const response = await fetch(`${BASE_URL}evaluaciones/dashboard/estadisticas/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function getDashboardPromediosCriterios() {
+  const response = await fetch(`${BASE_URL}evaluaciones/dashboard/promedios_criterios/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function getDashboardDistribucionRendimiento() {
+  const response = await fetch(`${BASE_URL}evaluaciones/dashboard/distribucion_rendimiento/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
 //INGESTA DE DATOS (EXCEL)
 /**
  * Envía archivos Excel al backend para su procesamiento.
