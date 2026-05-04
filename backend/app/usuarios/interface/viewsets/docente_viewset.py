@@ -33,7 +33,8 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 ),
                 conteo_cursos=Count(
                     'asignaciones',
-                    filter=Q(asignaciones__semestre=semestre_activo)
+                    filter=Q(asignaciones__semestre=semestre_activo),
+                    distinct=True
                 )
             )
         
