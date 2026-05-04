@@ -22,7 +22,8 @@ const Files = () => {
     documentos = [], 
     setDocumentos, 
     setEvaluacionesCompletadas, 
-    showToast = () => {}
+    showToast = () => {},
+    semestreActivo
   } = useContext(AppContext) || {};
   
   const [isModalOpen, setIsModalOpen] = useState(false); 
@@ -174,7 +175,7 @@ const Files = () => {
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
         <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Carga de Archivos e Información</h1>
-        <p className="text-gray-500">Semestre I — 2025 · {completadasPrincipales} de 5 archivos cargados</p>
+        <p className="text-gray-500">{semestreActivo || 'Cargando semestre...'} · {completadasPrincipales} de 5 archivos cargados</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

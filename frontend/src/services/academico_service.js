@@ -77,6 +77,13 @@ export async function deleteSemestre(id) {
   return handleResponse(response);
 }
 
+export async function getSemestreActivo() {
+    const response = await fetch(`${BASE_URL}academico/semestres/activo/`, {
+      headers: authHeaders(),
+    });
+    return handleResponse(response);
+}
+
 // --- CURSOS ---
 export async function getCursos(params = {}) {
   const queryString = new URLSearchParams(params).toString();

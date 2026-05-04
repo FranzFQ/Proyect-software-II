@@ -1,53 +1,75 @@
 // src/components/common/ModalPonderacion.jsx
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { AppContext } from '../../context/AppContext';
+import { getPonderaciones, updatePonderacion } from '../../services/evaluaciones_service';
 import Button from './Button';
 
 const ModalPonderacion = ({ onClose }) => {
-  const { ponderaciones, setPonderaciones, showToast } = useContext(AppContext);
+  const { showToast } = useContext(AppContext);
+  const [ponderacionesList, setPonderacionesList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleChange = (criterio, valor) => {
-    setPonderaciones({
-      ...ponderaciones,
-      [criterio]: Number(valor)
-    });
+  useEffect(() => {
+    const fetchPonderaciones = async () => {
+      try {
+        const data = await getPonderaciones();
+        // Nota: El backend debería filtrar por semestre activo, 
+        // pero por ahora manejamos la lista que viene.
+        setPonderacionesList(data);
+      } catch (error) {
+        showToast("Error al cargar ponderaciones", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPonderaciones();
+  }, []);
+
+  const handleChange = (id, valor) => {
+    setPonderacionesList(prev => prev.map(p => 
+        p.id === id ? { ...p, porcentaje_asignado: Number(valor) } : p
+    ));
   };
 
-  const total = Object.values(ponderaciones).reduce((acc, curr) => acc + curr, 0);
+  const total = ponderacionesList.reduce((acc, curr) => acc + curr.porcentaje_asignado, 0);
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (total !== 100) {
       showToast(`Error: Las ponderaciones suman ${total}%. Deben sumar exactamente 100%.`, 'error');
       return;
     }
-    showToast("¡Ponderaciones actualizadas correctamente!", 'success');
-    onClose();
+
+    try {
+        // Actualizar cada ponderación individualmente (o podrías crear un endpoint batch)
+        await Promise.all(ponderacionesList.map(p => 
+            updatePonderacion(p.id, { porcentaje_asignado: p.porcentaje_asignado })
+        ));
+        showToast("¡Ponderaciones actualizadas correctamente!", 'success');
+        onClose();
+    } catch (error) {
+        showToast("Error al guardar ponderaciones", "error");
+    }
   };
+
+  if (loading) return <p className="text-center p-4">Cargando ponderaciones...</p>;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-gray-500 text-sm mb-2">
-        Ajuste los porcentajes para cada criterio de evaluación. La suma total debe ser obligatoriamente 100%.
+        Ajuste los porcentajes para cada criterio de evaluación del semestre activo. La suma total debe ser obligatoriamente 100%.
       </p>
 
       <div className="space-y-3">
-        {Object.entries({
-          estudiantil: 'Evaluación Estudiantil',
-          ceat: 'Evaluaciones CEAT',
-          autoevaluacion: 'Autoevaluaciones',
-          coordinador: 'Criterios de Coordinador',
-          visitas: 'Checklist',
-          apoyo: 'Apoyo y Colaboración'
-        }).map(([key, label]) => (
-          <div key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-            <label className="font-semibold text-gray-700 text-sm">{label}</label>
+        {ponderacionesList.map((item) => (
+          <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <label className="font-semibold text-gray-700 text-sm">{item.CriterioNombre}</label>
             <div className="flex items-center gap-2">
               <input 
                 type="number" 
                 min="0" 
                 max="100"
-                value={ponderaciones[key]} 
-                onChange={(e) => handleChange(key, e.target.value)}
+                value={item.porcentaje_asignado} 
+                onChange={(e) => handleChange(item.id, e.target.value)}
                 className="w-20 px-3 py-1 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-url-blue"
               />
               <span className="text-gray-500 font-bold">%</span>

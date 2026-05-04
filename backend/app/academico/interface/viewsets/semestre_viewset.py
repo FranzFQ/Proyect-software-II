@@ -33,6 +33,14 @@ class SemestreViewSet(viewsets.ModelViewSet):
             
         return queryset
 
+    @action(detail=False, methods=['get'], url_path='activo')
+    def get_activo(self, request):
+        semestre = Semestre.objects.filter(activo_para_carga=True).first()
+        if not semestre:
+            return Response({"error": "No hay semestre activo"}, status=404)
+        serializer = SemestreSerializer(semestre)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['get'], url_path='cursos')
     def cursos(self, request, pk=None):
         semestre = self.get_object()

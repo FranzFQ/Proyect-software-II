@@ -1,7 +1,7 @@
 // src/context/AppContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
-import { listaDocentesGlobal, listaCoordinadores } from '../utils/mockData';
-import { getSemestres } from '../services/academico_service';
+import { listaDocentesGlobal, listaCoordinadores, listaSemestres } from '../utils/mockData';
+import { getSemestres, getSemestreActivo } from '../services/academico_service';
 
 export const AppContext = createContext();
 
@@ -11,7 +11,10 @@ export const AppProvider = ({ children }) => {
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
   const [semestres, setSemestres] = useState([]);
   const [semestreActivo, setSemestreActivo] = useState(null);
-  
+
+  // NUEVO: Semestres programados por el Admin (Si se usa en el Dashboard)
+  const [semestresProgramados, setSemestresProgramados] = useState([]);
+
   const [evaluacionesCompletadas, setEvaluacionesCompletadas] = useState("0%");
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
@@ -19,6 +22,21 @@ export const AppProvider = ({ children }) => {
     setNotification({ show: true, message, type });
     setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 4000);
   };
+
+  useEffect(() => {
+    const fetchActiveSemester = async () => {
+        try {
+            const s = await getSemestreActivo();
+            if (s) {
+              setSemestreActivo(`${s.anio} - Ciclo ${s.ciclo}`);
+            }
+        } catch (error) {
+            console.error("No se pudo cargar el semestre activo:", error);
+            setSemestreActivo("Semestre I — 2025"); // Fallback
+        }
+    };
+    fetchActiveSemester();
+  }, []);
 
   const [ponderaciones, setPonderaciones] = useState({
     estudiantil: 30, ceat: 20, autoevaluacion: 10, coordinador: 20, visitas: 10, apoyo: 10
@@ -48,7 +66,7 @@ export const AppProvider = ({ children }) => {
         const activo = results.find(s => s.activo_para_carga);
         if (activo) {
           setSemestreActivo(`Ciclo ${activo.ciclo} — ${activo.anio}`);
-        } else if (results.length > 0) {
+        } else if (results.length > 0 && !semestreActivo) {
           setSemestreActivo(`Ciclo ${results[0].ciclo} — ${results[0].anio}`);
         }
       } catch (error) {
@@ -66,6 +84,7 @@ export const AppProvider = ({ children }) => {
       coordinadores, setCoordinadores,
       semestres, setSemestres,
       semestreActivo, setSemestreActivo,
+      semestresProgramados, setSemestresProgramados,
       ponderaciones, setPonderaciones,
       documentos, setDocumentos,
       evaluacionesCompletadas, setEvaluacionesCompletadas,

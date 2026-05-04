@@ -64,6 +64,7 @@ class EvaluacionCursoSerializer(serializers.ModelSerializer):
 class EvaluacionConsolidadaSerializer(serializers.ModelSerializer):
     DocenteNombre  = serializers.CharField(source='docente.nombre_completo', read_only=True)
     SemestreStr    = serializers.CharField(source='semestre.__str__', read_only=True)
+    CriterioNombre = serializers.CharField(source='criterio.nombre', read_only=True)
 
     class Meta:
         model = EvaluacionConsolidada
@@ -71,6 +72,7 @@ class EvaluacionConsolidadaSerializer(serializers.ModelSerializer):
             'id',
             'docente', 'DocenteNombre',
             'semestre', 'SemestreStr',
+            'criterio', 'CriterioNombre',
             'puntaje_final',
             'resumen_ia',
         ]

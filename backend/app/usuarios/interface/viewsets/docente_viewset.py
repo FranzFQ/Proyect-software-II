@@ -47,6 +47,37 @@ class DocenteViewSet(viewsets.ModelViewSet):
     filterset_fields = ['tipo_plan']
     search_fields = ['codigo_docente', 'nombre_completo']
 
+    @action(detail=False, methods=['get'])
+    def top_docentes(self, request):
+        semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
+        if not semestre_activo:
+            return Response([])
+
+        # Top 4 docentes por promedio de curso
+        top = Docente.objects.select_related('facultad').annotate(
+            promedio=Avg(
+                'asignaciones__evaluacioncurso__puntaje_curso',
+                filter=Q(asignaciones__semestre=semestre_activo)
+            )
+        ).filter(promedio__isnull=False).order_by('-promedio')[:4]
+
+        data = []
+        for d in top:
+            # Determinamos estado para el badge
+            p = d.promedio
+            estado = "Excelente" if p >= 8 else "Buena" if p >= 6 else "Deficiente"
+            
+            data.append({
+                "id": d.id,
+                "nombre": d.nombre_completo,
+                "iniciales": "".join([n[0] for n in d.nombre_completo.split()[:2]]).upper(),
+                "facultad": d.facultad.nombre if d.facultad else "",
+                "ponderacion": round(p, 1),
+                "estado": estado
+            })
+
+        return Response(data)
+
     @action(detail=True, methods=['get'], url_path='perfil')
     def perfil(self, request, pk=None):
         docente = self.get_object()
@@ -71,10 +102,13 @@ class DocenteViewSet(viewsets.ModelViewSet):
             )
         )
 
-        evaluacion_consolidada = EvaluacionConsolidada.objects.filter(
+        evaluaciones_consolidadas = EvaluacionConsolidada.objects.filter(
             docente=docente,
             semestre=semestre
-        ).first()
+        ).select_related('criterio')
+
+        # Buscar el consolidado total (donde criterio es None) para los KPI rápidos
+        evaluacion_total = evaluaciones_consolidadas.filter(criterio__isnull=True).first()
 
         cursos_data = []
         puntajes_map = {}
@@ -101,7 +135,8 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 "estado": semestre.estado
             },
             "cursos": cursos_data,
-            "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_consolidada).data if evaluacion_consolidada else None,
+            "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_total).data if evaluacion_total else None,
+            "evaluaciones_desglose": EvaluacionConsolidadaSerializer(evaluaciones_consolidadas.filter(criterio__isnull=False), many=True).data,
             "puntajes_map": puntajes_map
         }
 
