@@ -11,7 +11,7 @@ import { subirExcels } from '../services/evaluaciones_service';
 import { 
   ArrowUpTrayIcon, TrashIcon, CheckCircleIcon, UserGroupIcon,
   DocumentTextIcon, ClipboardDocumentCheckIcon, AcademicCapIcon, 
-  CloudArrowUpIcon, ChevronDownIcon, FolderOpenIcon, 
+  HandRaisedIcon, CloudArrowUpIcon, ChevronDownIcon, FolderOpenIcon, 
   Cog6ToothIcon, BookOpenIcon, IdentificationIcon, ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
@@ -22,24 +22,18 @@ const Files = () => {
     documentos = [], 
     setDocumentos, 
     setEvaluacionesCompletadas, 
-    showToast = () => {}, 
-    semestres = [], 
-    setSemestres 
+    showToast = () => {}
   } = useContext(AppContext) || {};
   
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); 
-  const [isAddSemestreOpen, setIsAddSemestreOpen] = useState(false); 
-
   const [activeDropdown, setActiveDropdown] = useState(null);
+  
   const dropdownContainerRef = useRef(null);
 
   const [activeUploadId, setActiveUploadId] = useState(null); 
   const [archivoTemporal, setArchivoTemporal] = useState(null); 
   const [cargando, setCargando] = useState(false);
-
-  const [nuevoPeriodo, setNuevoPeriodo] = useState('Semestre I');
-  const [nuevaFecha, setNuevaFecha] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -55,6 +49,7 @@ const Files = () => {
     switch(id) {
       case 'ceat': return 'ceat';
       case 'estudiantil': return 'evaluacion_docente';
+      case 'autoevaluacion': return 'control_docente'; 
       case 'coordinador': return 'control_docente';
       case 'nomina': return 'nomina';
       case 'pensum': return 'pensum';
@@ -63,8 +58,7 @@ const Files = () => {
     }
   };
 
-  // --- LÓGICA DE CONTADORES ACTUALIZADA (Solo 3 categorías base) ---
-  const categoriasPrincipalesIds = ['estudiantil', 'coordinador', 'ceat'];
+  const categoriasPrincipalesIds = ['estudiantil', 'autoevaluacion', 'coordinador', 'ceat', 'apoyo'];
   const completadasPrincipales = documentos.filter(d => d.estado === 'subido' && categoriasPrincipalesIds.includes(d.id)).length;
 
   const abrirModalCarga = (idCategoria) => { 
@@ -150,8 +144,7 @@ const Files = () => {
     setCargando(false);
 
     if (exitos > 0) {
-      // Cálculo ahora es sobre las 3 principales en vez de 5
-      const porcentaje = Math.round((completadasPrincipales / 3) * 100);
+      const porcentaje = Math.round((completadasPrincipales / 5) * 100);
       setEvaluacionesCompletadas(`${porcentaje}%`);
       showToast(`¡Proceso completado! Archivos procesados con éxito: ${exitos}`, "success");
       if (errores.length > 0) showToast("Se guardaron algunos archivos pero otros tuvieron errores.", "error");
@@ -166,27 +159,25 @@ const Files = () => {
       case 'nomina': return <IdentificationIcon className="w-8 h-8" />;
       case 'comentarios': return <ChatBubbleLeftIcon className="w-8 h-8" />;
       case 'estudiantil': return <UserGroupIcon className="w-8 h-8" />;
+      case 'autoevaluacion': return <DocumentTextIcon className="w-8 h-8" />;
       case 'coordinador': return <ClipboardDocumentCheckIcon className="w-8 h-8" />;
       case 'ceat': return <AcademicCapIcon className="w-8 h-8" />;
+      case 'apoyo': return <HandRaisedIcon className="w-8 h-8" />;
       default: return <DocumentTextIcon className="w-8 h-8" />;
     }
   };
 
-  // --- FILTRO VISUAL PARA IGNORAR AUTOEVALUACIÓN Y APOYO ---
   const categoriaActivaObj = documentos.find(d => d.id === activeUploadId);
-  const documentosGrid = documentos.filter(doc => 
-    doc.id !== 'pensum' && doc.id !== 'nomina' && doc.id !== 'autoevaluacion' && doc.id !== 'apoyo'
-  );
+  const documentosGrid = documentos.filter(doc => doc.id !== 'pensum' && doc.id !== 'nomina');
 
   return (
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-[#112240] mb-2">Carga de Archivos e Información</h1>
-        <p className="text-gray-500 font-medium">Semestre I — 2025 · {completadasPrincipales} de 3 archivos cargados</p>
+        <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Carga de Archivos e Información</h1>
+        <p className="text-gray-500">Semestre I — 2025 · {completadasPrincipales} de 5 archivos cargados</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
         {documentosGrid.map((doc) => (
           <div key={doc.id} onClick={() => doc.estado !== 'subido' ? abrirModalCarga(doc.id) : null} className={`bg-white border border-gray-200 rounded-xl p-6 flex items-center justify-between hover:shadow-lg transition-all cursor-pointer group min-h-[140px] ${doc.estado === 'subido' ? 'border-green-200 cursor-default' : ''}`}>
             <div className="flex items-center gap-6 w-full">
@@ -210,6 +201,7 @@ const Files = () => {
           </div>
         ))}
 
+        {/* Tarjeta de Checklists */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col justify-between hover:shadow-lg transition-all min-h-[140px]">
            <div className="flex items-start gap-6">
               <div className="w-16 h-16 rounded-xl bg-blue-50 text-url-blue flex items-center justify-center shrink-0 shadow-sm">
@@ -226,7 +218,9 @@ const Files = () => {
            </div>
         </div>
 
+        {/* LOS BOTONES DE ACCIÓN */}
         <div className="flex flex-col lg:flex-row justify-end items-end gap-3 h-full pt-4 md:pt-0 w-full" ref={dropdownContainerRef}>
+           
            <div className="relative w-full lg:w-auto">
              <Button 
                variant="primary" 
@@ -235,9 +229,10 @@ const Files = () => {
              >
                <Cog6ToothIcon className="w-5 h-5" /> Configuración <ChevronDownIcon className={`w-4 h-4 transition-transform ${activeDropdown === 'config' ? 'rotate-180' : ''}`} />
              </Button>
+             
              {activeDropdown === 'config' && (
                 <div className="absolute bottom-full right-0 mb-2 w-full lg:w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1">
-                   <button onClick={() => { setActiveDropdown(null); setIsModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100">
+                   <button onClick={() => { setActiveDropdown(null); setIsModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                      Editar ponderación
                    </button>
                 </div>
@@ -252,6 +247,7 @@ const Files = () => {
              >
                <FolderOpenIcon className="w-5 h-5" /> Archivos Principales <ChevronDownIcon className={`w-4 h-4 transition-transform ${activeDropdown === 'archivos' ? 'rotate-180' : ''}`} />
              </Button>
+             
              {activeDropdown === 'archivos' && (
                 <div className="absolute bottom-full right-0 mb-2 w-full lg:w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1">
                    <button onClick={() => { setActiveDropdown(null); abrirModalCarga('nomina'); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-url-blue hover:bg-blue-50 rounded-lg transition-colors border-b border-gray-100">
@@ -266,24 +262,30 @@ const Files = () => {
 
            <Button 
              variant="primary" 
-             className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+             className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] text-white hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
              onClick={handleProcesarTotales}
              disabled={cargando || completadasPrincipales === 0}
            >
              {cargando ? 'Procesando...' : 'Procesar Archivos'}
            </Button>
         </div>
+
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Modificación de Ponderaciones">
         <ModalPonderacion onClose={() => setIsModalOpen(false)} />
       </Modal>
 
-      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={`Cargar: ${categoriaActivaObj?.titulo}`}>
+      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={categoriaActivaObj ? `Cargar: ${categoriaActivaObj.titulo}` : 'Cargar Archivo'}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-500">Sube el archivo (.xlsx) con los resultados correspondientes a esta categoría.</p>
           <label className="border-2 border-dashed border-url-blue bg-blue-50/50 hover:bg-blue-50 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors group">
-            <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => setArchivoTemporal(e.target.files[0])} />
+            <input 
+              type="file" 
+              className="hidden" 
+              accept=".xlsx, .xls, .csv" 
+              onChange={(e) => setArchivoTemporal(e.target.files[0])}
+            />
             {archivoTemporal ? (
               <div className="text-center"><DocumentTextIcon className="w-16 h-16 text-url-blue mx-auto" /><p className="font-bold text-url-blue mt-2">{archivoTemporal.name}</p><p className="text-xs text-gray-500 mt-1">Clic para cambiar archivo</p></div>
             ) : (
@@ -296,6 +298,7 @@ const Files = () => {
           </div>
         </div>
       </Modal>
+
     </div>
   );
 };
