@@ -18,9 +18,11 @@ const TeacherProfile = () => {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
   const [currentPage,  setCurrentPage]  = useState(1);
+  
+  // Limite modificado a 3 cursos por página
   const itemsPerPage = 3;
 
-  const COLORS_PALETTE = ['#112240', '#1a365d', '#3182ce', '#63b3ed'];
+  const COLORS_PALETTE = ['#112240', '#1a365d', '#2c5282', '#3182ce', '#4299e1', '#63b3ed'];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,60 +30,22 @@ const TeacherProfile = () => {
       setError(null);
       setCurrentPage(1);
       try {
-        const docenteRes = await fetch(`${API_URL}usuarios/docentes/${id}/`);
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        const docenteData = await docenteRes.json();
-        setDocente(docenteData);
-
-        let semestreTarget = null;
+        let url = `${API_URL}usuarios/docentes/${id}/perfil/`;
         if (isHistorical && semesterId) {
-          const semRes = await fetch(`${API_URL}academico/semestres/${semesterId}/`);
-          if (semRes.ok) semestreTarget = await semRes.json();
-        } else {
-          const semRes = await fetch(`${API_URL}academico/semestres/?activo_para_carga=true`);
-          if (semRes.ok) {
-            const semData = await semRes.json();
-            const list = Array.isArray(semData) ? semData : semData.results ?? [];
-            semestreTarget = list[0] ?? null;
-          }
+          url += `?semestre=${semesterId}`;
         }
-        setSemestre(semestreTarget);
 
-        if (semestreTarget) {
-          const [cursosRes, evalRes] = await Promise.all([
-            fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${id}&semestre=${semestreTarget.id}`),
-            fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semestreTarget.id}`),
-          ]);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('No se pudo cargar la información del perfil');
+        
+        const data = await res.json();
+        
+        setDocente(data.docente);
+        setSemestre(data.semestre);
+        setCursos(data.cursos);
+        setEvaluacion(data.evaluacion);
+        setPuntajesCurso(data.puntajes_map);
 
-          let cursosList = [];
-          if (cursosRes.ok) {
-            const cursosData = await cursosRes.json();
-            cursosList = Array.isArray(cursosData) ? cursosData : cursosData.results ?? [];
-            setCursos(cursosList);
-          }
-          if (evalRes.ok) {
-            const evalData = await evalRes.json();
-            const list = Array.isArray(evalData) ? evalData : evalData.results ?? [];
-            setEvaluacion(list[0] ?? null);
-          }
-
-          if (cursosList.length > 0) {
-            const evalCursoResults = await Promise.all(
-              cursosList.map(c =>
-                fetch(`${API_URL}evaluaciones/evaluaciones-curso/?curso_dado=${c.id}`)
-                  .then(r => r.ok ? r.json() : [])
-                  .then(d => Array.isArray(d) ? d : d.results ?? [])
-              )
-            );
-            const mapa = {};
-            evalCursoResults.forEach((results, i) => {
-              if (results.length > 0) {
-                mapa[cursosList[i].id] = parseFloat(results[0].puntaje_curso ?? 0);
-              }
-            });
-            setPuntajesCurso(mapa);
-          }
-        }
       } catch (e) {
         setError(e.message);
       } finally {
@@ -91,17 +55,21 @@ const TeacherProfile = () => {
     fetchData();
   }, [id, semesterId]);
 
-  // --- PREPARACIÓN DE DATOS (Sin Autoevaluación ni Apoyo) ---
+  // --- PREPARACIÓN DE DATOS PARA LA GRÁFICA DE DONA ---
   const chartData = useMemo(() => {
     if (!evaluacion) return [];
     
+    // Tratamos de mapear todos los posibles campos del backend
     const rawData = [
       { name: 'Estudiantil', value: Number(evaluacion.puntaje_estudiantil || evaluacion.estudiantil || evaluacion.evaluacion_docente || 0) },
       { name: 'CEAT', value: Number(evaluacion.puntaje_ceat || evaluacion.ceat || 0) },
+      { name: 'Autoevaluación', value: Number(evaluacion.puntaje_autoevaluacion || evaluacion.autoevaluacion || 0) },
       { name: 'Coordinador', value: Number(evaluacion.puntaje_coordinador || evaluacion.coordinador || evaluacion.control_docente || 0) },
       { name: 'Checklists', value: Number(evaluacion.puntaje_visitas || evaluacion.visitas || 0) },
+      { name: 'Apoyo', value: Number(evaluacion.puntaje_apoyo || evaluacion.apoyo || 0) }
     ];
 
+    // Filtramos para enviar a la gráfica SOLO las categorías que tienen punteo mayor a 0
     return rawData.filter(item => item.value > 0);
   }, [evaluacion]);
 
@@ -122,7 +90,7 @@ const TeacherProfile = () => {
   const promedioGeneral = (() => {
     const valores = Object.values(puntajesCurso);
     if (valores.length === 0) return null;
-    return valores.reduce((a, b) => a + b, 0) / valores.length;
+    return valores.reduce((a, b) => a + (parseFloat(b) || 0), 0) / valores.length;
   })();
 
   const getEstadoLabel = (score) => {
@@ -167,8 +135,12 @@ const TeacherProfile = () => {
 
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
+
       <div className="flex justify-between items-center">
-        <button onClick={() => navigate(isHistorical ? `/teachers/${id}/history` : '/teachers')} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
+        <button
+          onClick={() => navigate(isHistorical ? `/teachers/${id}/history` : '/teachers')}
+          className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition"
+        >
           &larr; Volver a {isHistorical ? 'Histórico de Semestres' : 'Docentes'}
         </button>
         {isHistorical && (
@@ -191,9 +163,13 @@ const TeacherProfile = () => {
               {iniciales}
             </div>
             <div>
-              <p className={`${isHistorical ? 'text-gray-300' : 'text-url-yellow'} text-sm mb-1 font-semibold`}>{semNombre}</p>
+              <p className={`${isHistorical ? 'text-gray-300' : 'text-url-yellow'} text-sm mb-1 font-semibold`}>
+                {semNombre}
+              </p>
               <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
-              <p className="text-gray-300 text-sm">{docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}</p>
+              <p className="text-gray-300 text-sm">
+                {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
+              </p>
               <div className="flex flex-wrap gap-3 mt-4">
                 {evaluacion && (
                   <span className={`${isHistorical ? 'bg-gray-600 text-white' : 'bg-url-yellow text-url-blue'} px-4 py-1.5 rounded-md text-sm font-bold`}>
@@ -208,6 +184,7 @@ const TeacherProfile = () => {
           </div>
 
           {promedioGeneral !== null && (() => {
+            const estado = getEstadoLabel(promedioGeneral);
             return (
               <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
                 <span className={`text-5xl font-bold leading-none text-url-yellow`}>
@@ -222,15 +199,24 @@ const TeacherProfile = () => {
         </div>
 
         <div className="flex flex-wrap justify-end gap-4 px-8 mt-6 pb-6">
-          <button onClick={() => navigate(`/teachers/${id}/checklists`)} className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm">
+          <button
+            onClick={() => navigate(`/teachers/${id}/checklists`)}
+            className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
+          >
             Checklists
           </button>
           {!isHistorical && (
             <>
-              <button onClick={() => navigate(`/teachers/${id}/history`)} className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm">
+              <button
+                onClick={() => navigate(`/teachers/${id}/history`)}
+                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
+              >
                 Histórico
               </button>
-              <button onClick={() => navigate(`/teachers/${id}/comparison`)} className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm">
+              <button
+                onClick={() => navigate(`/teachers/${id}/comparison`)}
+                className="px-8 py-2.5 rounded-md font-bold text-sm bg-url-yellow text-url-blue hover:bg-yellow-500 transition-colors shadow-sm"
+              >
                 Comparación
               </button>
             </>
@@ -238,9 +224,13 @@ const TeacherProfile = () => {
         </div>
       </div>
 
+      {/* DISEÑO 50/50: CURSOS Y GRÁFICA */}
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 pb-8">
+        
+        {/* LADO IZQUIERDO: CURSOS (Máximo 3) */}
         <div className="flex flex-col h-full">
           <h3 className="font-bold text-lg text-url-blue mb-4">Cursos impartidos ({semNombre})</h3>
+
           {cursos.length === 0 ? (
             <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm">
               <p>No hay cursos registrados para este semestre.</p>
@@ -254,16 +244,23 @@ const TeacherProfile = () => {
                     <div className={`h-2 w-full ${score !== null ? getColorBarra(score) : 'bg-gray-500'}`} />
                     <div className="p-4 px-5 flex-1 flex flex-col justify-between">
                       <div>
-                        <h4 className="text-white font-bold text-lg leading-tight line-clamp-1 mb-1">{curso.CursosNombre}</h4>
+                        <h4 className="text-white font-bold text-lg leading-tight line-clamp-1 mb-1">
+                          {curso.CursosNombre}
+                        </h4>
                         <p className="text-gray-400 text-xs">Sección {curso.seccion || 'A'}</p>
                       </div>
                       <div className="flex justify-between items-end mt-2">
                         {score !== null ? (
-                          <span className={`text-3xl font-bold leading-none ${getScoreColor(score)}`}>{score.toFixed(1)}</span>
+                          <span className={`text-3xl font-bold leading-none ${getScoreColor(score)}`}>
+                            {score.toFixed(1)}
+                          </span>
                         ) : (
                           <span className="text-gray-500 text-sm">Sin punteo</span>
                         )}
-                        <button onClick={() => navigate(`/teachers/${id}/course/${curso.id}`)} className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1">
+                        <button
+                          onClick={() => navigate(`/teachers/${id}/course/${curso.id}`)}
+                          className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1"
+                        >
                           Ver Detalles &rarr;
                         </button>
                       </div>
@@ -273,17 +270,20 @@ const TeacherProfile = () => {
               })}
             </div>
           )}
+
           {totalPages > 1 && (
             <div className="mt-4 flex justify-between items-center pt-2 text-sm text-url-blue font-bold">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 hover:bg-gray-200 transition-colors">&larr; Anterior</button>
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors">&larr; Anterior</button>
               <span>Página {safeCurrentPage} de {totalPages}</span>
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 hover:bg-gray-200 transition-colors">Siguiente &rarr;</button>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors">Siguiente &rarr;</button>
             </div>
           )}
         </div>
 
+        {/* LADO DERECHO: GRÁFICA DE RENDIMIENTO */}
         <div className="flex flex-col h-full">
           <h3 className="font-bold text-lg text-url-blue mb-4">Rendimiento por Categoría</h3>
+          
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 flex-1 flex flex-col items-center justify-center min-h-[350px]">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -313,7 +313,9 @@ const TeacherProfile = () => {
             )}
           </div>
         </div>
+
       </div>
+
     </div>
   );
 };
