@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_URL } from '../../services/global_URL';
+import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 function colorPunteo(val) {
-  if (val >= 9) return '#22c55e';
-  if (val >= 7) return '#facc15';
-  return '#ef4444';
+  if (val >= 9) return 'bg-green-500 text-green-600';
+  if (val >= 7) return 'bg-yellow-500 text-yellow-600';
+  return 'bg-red-500 text-red-600';
+}
+
+function colorTextoPunteo(val) {
+  if (val >= 9) return 'text-green-600';
+  if (val >= 7) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+function colorBgBarra(val) {
+  if (val >= 9) return 'bg-green-500';
+  if (val >= 7) return 'bg-yellow-500';
+  return 'bg-red-500';
 }
 
 function punteoPromedio(checklists) {
@@ -18,12 +31,13 @@ function punteoPromedio(checklists) {
 }
 
 function scoreBadgeStyle(score) {
-  if (score === null) return { background: '#f1f5f9', color: '#94a3b8' };
-  if (score >= 9)     return { background: '#dcfce7', color: '#14532d' };
-  if (score >= 7)     return { background: '#fde68a', color: '#713f12' };
-  return               { background: '#fee2e2', color: '#991b1b' };
+  if (score === null) return 'bg-gray-100 text-gray-400 border border-gray-200';
+  if (score >= 9)     return 'bg-green-50 text-green-700 border border-green-200';
+  if (score >= 7)     return 'bg-yellow-50 text-yellow-700 border border-yellow-200';
+  return              'bg-red-50 text-red-700 border border-red-200';
 }
 
+// Vista de Detalles individual
 function VisitaDetalleView({ docente, checklist, onBack }) {
   const datos       = checklist.datos ?? {};
   const criterios   = datos.criteriosList ?? [];
@@ -42,58 +56,69 @@ function VisitaDetalleView({ docente, checklist, onBack }) {
     : '—';
 
   return (
-    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
-      <div>
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)] pb-10">
+      
+      <div className="mb-2">
         <button onClick={onBack} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
-          &larr; Visitas / {checklist.titulo} / Detalles de checklist
+          <ArrowLeftIcon className="w-4 h-4"/> Volver a Listado de Checklists
         </button>
+        <h1 className="text-3xl font-black text-[#112240] mb-1 font-serif">Detalle de Checklist</h1>
       </div>
 
-      <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-url-yellow" />
+        
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-bold shadow-lg shrink-0">
+          <div className="w-24 h-24 bg-blue-50 border border-blue-100 text-url-blue rounded-xl flex items-center justify-center text-4xl font-black font-serif shadow-sm shrink-0">
             {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
-            <p className="text-url-yellow font-semibold mb-4">Checklist · {fecha}</p>
-            <span className="bg-url-yellow text-url-blue px-6 py-2 rounded-md font-bold text-sm">
-              Total de criterios: {criterios.length}
+            <h1 className="text-3xl font-black text-[#112240] mb-1">{docente?.nombre_completo ?? '—'}</h1>
+            <p className="text-gray-500 font-bold mb-3">{checklist.titulo} · <span className="text-gray-400 font-medium">{fecha}</span></p>
+            <span className="bg-blue-50 text-url-blue border border-blue-100 px-4 py-1 rounded-md text-xs font-bold">
+              Total de criterios evaluados: {criterios.length}
             </span>
           </div>
         </div>
-        <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
-          <span className="text-5xl font-bold text-url-yellow mb-1">{punteo}</span>
-          <span className="text-xs text-gray-300 font-semibold uppercase tracking-wider">Punteo final</span>
+
+        <div className="flex flex-col lg:items-end mt-6 md:mt-0">
+          <div className="flex flex-col lg:items-end bg-gray-50 px-8 py-4 rounded-xl border border-gray-100 shadow-sm">
+            <span className={`text-5xl font-black leading-none ${punteo !== '—' ? colorTextoPunteo(parseFloat(punteo)) : 'text-gray-400'}`}>
+              {punteo}
+            </span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Punteo final</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 mt-4 flex-1">
-        <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100">
-            <h3 className="font-bold text-xl text-url-blue">Criterios de Evaluacion</h3>
+      <div className="flex flex-col lg:flex-row gap-6 mt-2 flex-1">
+        
+        {/* Criterios evaluados */}
+        <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100 bg-gray-50/50">
+            <h3 className="font-bold text-lg text-[#112240]">Criterios de Evaluación</h3>
             {completados > 0 && (
-              <span className="bg-green-100 text-green-700 px-6 py-1.5 rounded-full font-bold text-sm border border-green-200">
-                {completados} completados
+              <span className="bg-green-50 text-green-700 px-4 py-1 rounded-md font-bold text-xs border border-green-200 flex items-center gap-1.5">
+                <CheckCircleIcon className="w-4 h-4" /> {completados} completados
               </span>
             )}
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col p-2">
             {criterios.map((nombre, i) => {
               const ev = evaluaciones[i] ?? { completado: false, score: null };
               return (
-                <div key={i} className={`flex items-center gap-4 px-8 py-4 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition ${!ev.completado ? 'opacity-55' : ''}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${ev.completado ? 'bg-green-500' : 'border-2 border-gray-200'}`}>
+                <div key={i} className={`flex items-center gap-4 px-6 py-4 border-b border-gray-50 last:border-b-0 transition hover:bg-gray-50 rounded-lg ${!ev.completado ? 'opacity-60 grayscale' : ''}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${ev.completado ? 'bg-green-500' : 'border-2 border-gray-300 bg-gray-100'}`}>
                     {ev.completado && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className={`flex-1 font-semibold text-[15px] ${ev.completado ? 'text-url-blue' : 'text-gray-400'}`}>
+                  <span className={`flex-1 font-semibold text-sm ${ev.completado ? 'text-[#112240]' : 'text-gray-400'}`}>
                     {nombre}
                   </span>
-                  <span className="px-5 py-1.5 rounded-md text-sm font-bold min-w-[72px] text-center" style={scoreBadgeStyle(ev.completado ? ev.score : null)}>
+                  <span className={`px-4 py-1.5 rounded-md text-xs font-bold min-w-[72px] text-center ${scoreBadgeStyle(ev.completado ? ev.score : null)}`}>
                     {ev.completado && ev.score !== null ? `${ev.score} / 10` : '— / 10'}
                   </span>
                 </div>
@@ -102,13 +127,14 @@ function VisitaDetalleView({ docente, checklist, onBack }) {
           </div>
         </div>
 
+        {/* Observaciones */}
         <div className="w-full lg:w-1/3">
-          <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm h-full">
-            <p className="font-bold text-url-blue mb-4">Observaciones generales:</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[8rem]">
+          <div className="bg-white border border-gray-200 p-8 rounded-xl shadow-sm h-full">
+            <h3 className="font-bold text-lg text-[#112240] mb-4">Observaciones generales</h3>
+            <div className="bg-[#FFFAF0] border border-yellow-200 rounded-xl p-6 min-h-[12rem] shadow-inner text-gray-700">
               {observaciones
-                ? <p className="text-gray-600 text-sm">{observaciones}</p>
-                : <p className="text-gray-400 text-sm">Sin observaciones.</p>
+                ? <p className="italic leading-relaxed">{observaciones}</p>
+                : <p className="text-gray-400 italic">Sin observaciones registradas para este checklist.</p>
               }
             </div>
           </div>
@@ -118,6 +144,7 @@ function VisitaDetalleView({ docente, checklist, onBack }) {
   );
 }
 
+// Vista Principal
 const TeacherChecklists = () => {
   const navigate = useNavigate();
   const { id }   = useParams();
@@ -181,22 +208,13 @@ const TeacherChecklists = () => {
     return <VisitaDetalleView docente={docente} checklist={selectedChecklist} onBack={() => setSelectedChecklist(null)} />;
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1,2,3,4].map(i => <div key={i} className="bg-gray-200 rounded-xl h-48 animate-pulse" />)}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-12 animate-pulse text-[#112240] font-bold text-center">Cargando checklists...</div>;
 
   if (error) {
     return (
       <div className="flex flex-col gap-6">
         <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
-          &larr; Volver
+          <ArrowLeftIcon className="w-4 h-4"/> Volver
         </button>
         <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center text-red-600">
           <p className="font-bold mb-1">Error al cargar los checklists</p>
@@ -207,44 +225,49 @@ const TeacherChecklists = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
-      <div>
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)] pb-12">
+      <div className="mb-2">
         <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
-          &larr; Volver
+          <ArrowLeftIcon className="w-4 h-4"/> Volver
         </button>
+        <h1 className="text-3xl font-black text-[#112240] mb-1">Checklists Realizadas</h1>
       </div>
 
-      <div className="bg-url-blue rounded-xl p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-md gap-6 shrink-0">
+      <div className="bg-white border border-gray-200 rounded-xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm relative overflow-hidden">
+        
         <div className="flex items-center gap-6">
-          <div className="w-28 h-28 bg-url-yellow text-url-blue rounded-xl flex items-center justify-center text-5xl font-serif font-bold shadow-lg shrink-0">
+          <div className="w-24 h-24 bg-blue-50 border border-blue-100 text-url-blue rounded-xl flex items-center justify-center text-4xl font-serif font-black shadow-sm shrink-0">
             {iniciales}
           </div>
           <div>
-            <h1 className="text-3xl font-serif font-bold mb-2">{docente?.nombre_completo ?? '—'}</h1>
-            <p className="text-url-yellow font-semibold mb-4">
-              {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''} · Checklists
+            <h1 className="text-3xl font-black text-[#112240] mb-1">{docente?.nombre_completo ?? '—'}</h1>
+            <p className="text-gray-500 font-bold mb-3">
+              {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
             </p>
-            <span className="bg-url-yellow text-url-blue px-6 py-2 rounded-md font-bold text-sm">
-              Total de checklists: {checklists.length}
+            <span className="bg-blue-50 text-url-blue border border-blue-100 px-4 py-1.5 rounded-md font-bold text-xs">
+              Total registrados: {checklists.length}
             </span>
           </div>
         </div>
-        <div className="border-4 border-url-yellow rounded-2xl flex flex-col items-center justify-center w-32 h-32 bg-url-blue shadow-lg">
-          <span className="text-5xl font-bold text-url-yellow mb-1">{promedio}</span>
-          <span className="text-xs text-gray-300 font-semibold uppercase tracking-wider">Punteo final</span>
+
+        <div className="flex flex-col lg:items-end mt-6 md:mt-0">
+          <div className="flex flex-col lg:items-end bg-gray-50 px-8 py-4 rounded-xl border border-gray-100 shadow-sm relative pt-1 overflow-hidden">
+             <span className="text-5xl font-black text-[#112240] leading-none">{promedio}</span>
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Punteo Promedio</span>
+          </div>
         </div>
       </div>
 
       {checklists.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex items-center justify-center">
-          <p>Este docente no tiene checklists registrados aún.</p>
+        <div className="bg-white rounded-xl p-12 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex flex-col items-center justify-center mt-4">
+          <p className="font-bold text-lg">Sin resultados</p>
+          <p className="text-sm">Este docente no tiene checklists registrados aún.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 flex-1 content-start">
-          {currentItems.map((checklist, idx) => {
+          {currentItems.map((checklist) => {
             const datos  = checklist.datos ?? {};
             const punteo = datos.punteo_final != null ? parseFloat(datos.punteo_final) : 0;
-            const color  = punteo > 0 ? colorPunteo(punteo) : '#1a2744';
             const fecha  = checklist.fecha_observacion
               ? new Date(checklist.fecha_observacion).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' })
               : '—';
@@ -252,35 +275,44 @@ const TeacherChecklists = () => {
             return (
               <div
                 key={checklist.id}
-                className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200 min-h-[220px]"
-                style={{ borderLeft: `12px solid ${color}` }}
+                className="bg-white rounded-xl overflow-hidden shadow-sm flex flex-col justify-between border border-gray-200 min-h-[220px] relative hover:shadow-md transition-shadow"
               >
+                <div className={`absolute top-0 left-0 right-0 h-1.5 ${punteo > 0 ? colorBgBarra(punteo) : 'bg-gray-300'}`} />
+                
                 <div className="p-6 pb-2">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-bold text-xl text-url-blue mb-1">{checklist.titulo}</h4>
-                      <p className="text-sm text-gray-500">{checklist.CursoDadoStr}</p>
+                      <h4 className="font-bold text-xl text-[#112240] mb-1 line-clamp-1">{checklist.titulo}</h4>
+                      <p className="text-sm text-gray-500 font-semibold">{checklist.CursoDadoStr}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-4xl font-bold leading-none" style={{ color: colorPunteo(punteo) }}>
+                      <span className={`text-4xl font-black leading-none ${punteo > 0 ? colorTextoPunteo(punteo) : 'text-gray-400'}`}>
                         {punteo > 0 ? punteo.toFixed(1) : '—'}
                       </span>
-                      {punteo > 0 && <span className="text-sm text-gray-400 font-semibold ml-1">/10</span>}
                     </div>
                   </div>
-                  <span className="bg-gray-100 text-gray-500 text-xs px-6 py-1.5 rounded-full font-bold inline-block mb-4 border border-gray-300">
+                  
+                  <span className="bg-gray-50 text-gray-500 text-[10px] px-3 py-1 rounded-md font-bold uppercase tracking-wider inline-block mb-4 border border-gray-200">
                     {fecha}
                   </span>
-                  <p className="text-sm text-gray-500 mb-4">
+                  
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+                    <div className={`h-1.5 rounded-full ${punteo > 0 ? colorBgBarra(punteo) : 'bg-transparent'}`} style={{ width: `${Math.min(punteo > 10 ? punteo : punteo * 10, 100)}%` }}></div>
+                  </div>
+                  <p className="text-xs text-gray-400 font-semibold mb-4 uppercase tracking-widest">
                     {(datos.criteriosList?.length ?? 0)} criterios evaluados
                   </p>
                 </div>
-                <div className="p-6 pt-0 mt-auto">
+
+                <div className="p-6 pt-0 mt-auto flex justify-between items-center">
+                  <span className="bg-[#112240] text-white text-[10px] font-bold px-3 py-1 rounded-md">
+                    ID CL: {checklist.id}
+                  </span>
                   <button
                     onClick={() => setSelectedChecklist(checklist)}
-                    className="bg-url-blue text-white w-full py-3 font-bold hover:bg-blue-900 transition rounded-md text-sm"
+                    className="border border-[#112240] text-[#112240] text-sm font-bold px-6 py-1.5 rounded-md hover:bg-[#112240] hover:text-white transition-colors"
                   >
-                    Ver detalle
+                    Ver Detalles
                   </button>
                 </div>
               </div>
@@ -290,19 +322,19 @@ const TeacherChecklists = () => {
       )}
 
       {totalPages > 1 && (
-        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-url-blue font-bold gap-4">
+        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={safePage === 1}
-            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
           >
             &larr; Anterior
           </button>
-          <span>Página {safePage} de {totalPages}</span>
+          <span className="text-gray-500">Página {safePage} de {totalPages}</span>
           <button
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={safePage === totalPages}
-            className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
           >
             Siguiente &rarr;
           </button>
