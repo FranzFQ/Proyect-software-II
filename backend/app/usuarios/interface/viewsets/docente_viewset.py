@@ -103,6 +103,7 @@ class DocenteViewSet(viewsets.ModelViewSet):
             )
         )
 
+        # 1. Obtener criterios globales ya consolidados (ej: CEAT)
         evaluaciones_consolidadas = EvaluacionConsolidada.objects.filter(
             docente=docente,
             semestre=semestre
@@ -111,12 +112,63 @@ class DocenteViewSet(viewsets.ModelViewSet):
         # Buscar el consolidado total (donde criterio es None) para los KPI rápidos
         evaluacion_total = evaluaciones_consolidadas.filter(criterio__isnull=True).first()
 
+        # 2. Obtener promedios de evaluaciones por curso para este docente
+        # (ej: Estudiantil, Coordinador)
+        promedios_cursos = EvaluacionCurso.objects.filter(
+            curso_dado__docente=docente,
+            curso_dado__semestre=semestre
+        ).values('criterio__nombre').annotate(valor=Avg('puntaje_curso'))
+
+        # Mapeo para normalizar nombres
+        mapping = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':       'CEAT',
+            'Autoevaluaciones':          'Autoevaluación',
+            'Control Docente':           'Coordinador',
+            'Criterios de Coordinador':  'Coordinador',
+            'Checklist':                 'visitas',
+            'Apoyo y Colaboración':      'Apoyo'
+        }
+
+        # Construir desglose combinado
+        desglose_final = []
+        criterios_procesados = set()
+
+        # Agregar consolidados globales
+        for ec in evaluaciones_consolidadas.filter(criterio__isnull=False):
+            nombre_bd = ec.criterio.nombre
+            if nombre_bd in mapping:
+                nombre_corto = mapping[nombre_bd]
+                val = ec.puntaje_final or 0
+                if val > 10.1: val = val / 10
+                desglose_final.append({
+                    "CriterioNombre": nombre_corto,
+                    "puntaje_final": round(val, 1)
+                })
+                criterios_procesados.add(nombre_corto)
+
+        # Agregar promedios por curso (solo si no están ya en el desglose)
+        for pc in promedios_cursos:
+            nombre_bd = pc['criterio__nombre']
+            if nombre_bd in mapping:
+                nombre_corto = mapping[nombre_bd]
+                if nombre_corto not in criterios_procesados:
+                    val = pc['valor'] or 0
+                    if val > 10.1: val = val / 10
+                    desglose_final.append({
+                        "CriterioNombre": nombre_corto,
+                        "puntaje_final": round(val, 1)
+                    })
+                    criterios_procesados.add(nombre_corto)
+
         cursos_data = []
         puntajes_map = {}
         for c in cursos:
-            punteo = None
-            if hasattr(c, 'evaluaciones') and c.evaluaciones:
-                punteo = c.evaluaciones[0].puntaje_curso
+            # Punteo promedio del curso (promediando sus distintos criterios)
+            punteo = EvaluacionCurso.objects.filter(curso_dado=c).aggregate(Avg('puntaje_curso'))['puntaje_curso__avg']
+            if punteo:
+                if punteo > 10.1: punteo = punteo / 10
+                punteo = round(punteo, 1)
                 puntajes_map[c.id] = punteo
 
             cursos_data.append({
@@ -137,7 +189,7 @@ class DocenteViewSet(viewsets.ModelViewSet):
             },
             "cursos": cursos_data,
             "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_total).data if evaluacion_total else None,
-            "evaluaciones_desglose": EvaluacionConsolidadaSerializer(evaluaciones_consolidadas.filter(criterio__isnull=False), many=True).data,
+            "evaluaciones_desglose": desglose_final,
             "puntajes_map": puntajes_map
         }
 
