@@ -296,7 +296,7 @@ export default function Checklist() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue">Checklists</h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 font-medium">
             {semLabel} · <strong>{totalChecklists} registrados</strong>
           </p>
         </div>
