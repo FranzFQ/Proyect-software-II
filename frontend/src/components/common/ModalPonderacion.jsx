@@ -9,13 +9,34 @@ const ModalPonderacion = ({ onClose }) => {
   const [ponderacionesList, setPonderacionesList] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const mapping = {
+    'Evaluaciones Estudiantes': 'Estudiantil',
+    'Capacitaciones CEAT':       'CEAT',
+    'Autoevaluaciones':          'Autoevaluación',
+    'Control Docente':           'Coordinador',
+    'Criterios de Coordinador':  'Coordinador',
+    'Checklist':                 'visitas',
+    'Apoyo y Colaboración':      'Apoyo'
+  };
+
   useEffect(() => {
     const fetchPonderaciones = async () => {
       try {
         const data = await getPonderaciones();
-        // Nota: El backend debería filtrar por semestre activo, 
-        // pero por ahora manejamos la lista que viene.
-        setPonderacionesList(data);
+        
+        // Agrupar por el nombre mapeado para evitar duplicados si existen en la BD
+        const groupedData = {};
+        data.forEach(item => {
+          const shortName = mapping[item.CriterioNombre];
+          if (shortName) {
+            // Aquí tomamos el primero que aparezca.
+            if (!groupedData[shortName]) {
+              groupedData[shortName] = item;
+            }
+          }
+        });
+
+        setPonderacionesList(Object.values(groupedData));
       } catch (error) {
         showToast("Error al cargar ponderaciones", "error");
       } finally {
@@ -62,7 +83,9 @@ const ModalPonderacion = ({ onClose }) => {
       <div className="space-y-3">
         {ponderacionesList.map((item) => (
           <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-            <label className="font-semibold text-gray-700 text-sm">{item.CriterioNombre}</label>
+            <label className="font-semibold text-gray-700 text-sm">
+              {mapping[item.CriterioNombre] || item.CriterioNombre}
+            </label>
             <div className="flex items-center gap-2">
               <input 
                 type="number" 
