@@ -6,7 +6,7 @@ import { getSemestres, getSemestreActivo } from '../services/academico_service';
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => getSavedUser());
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
   const [semestres, setSemestres] = useState([]);

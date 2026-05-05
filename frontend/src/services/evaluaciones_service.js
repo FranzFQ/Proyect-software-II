@@ -1,4 +1,4 @@
-import { fetchWithAuth } from "./auth_service";
+import { getToken, fetchWithAuth } from "./auth_service";
 import { API_URL } from "./global_URL";
 
 const BASE_URL = API_URL;

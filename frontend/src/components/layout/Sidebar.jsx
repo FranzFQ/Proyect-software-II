@@ -1,13 +1,14 @@
-import React, { useState, useContext } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { AppContext } from '../../context/AppContext';
-import { 
-  HomeIcon, DocumentArrowUpIcon, UsersIcon, 
-  ClipboardDocumentCheckIcon, UserGroupIcon, 
-  ArrowLeftOnRectangleIcon, XMarkIcon, ChevronUpIcon, 
-  Cog6ToothIcon, CalendarDaysIcon 
-} from '@heroicons/react/24/outline';
-import logoUrl from '../../assets/logo-url.webp'; 
+  import React, { useState, useContext } from 'react';
+  import { NavLink, useNavigate } from 'react-router-dom';
+  import { AppContext } from '../../context/AppContext';
+  import { 
+    HomeIcon, DocumentArrowUpIcon, UsersIcon, 
+    ClipboardDocumentCheckIcon, UserGroupIcon, 
+    ArrowLeftOnRectangleIcon, XMarkIcon, ChevronUpIcon, 
+    Cog6ToothIcon, CalendarDaysIcon 
+  } from '@heroicons/react/24/outline';
+  import logoUrl from '../../assets/logo-url.webp'; 
+  import { logout } from '../../services/auth_service';
 
 const Sidebar = ({ onClose = () => {} }) => {
   const navigate = useNavigate();
@@ -23,11 +24,12 @@ const Sidebar = ({ onClose = () => {} }) => {
     }`;
   };
 
-  const handleLogout = () => {
-    setIsProfileMenuOpen(false);
-    setCurrentUser(null); 
-    navigate('/login');
-  };
+    const handleLogout = () => {
+      setIsProfileMenuOpen(false);
+      logout();
+      setCurrentUser(null);
+      navigate('/login');
+    };
 
   return (
     <aside className="w-64 bg-[#112240] text-white min-h-screen flex flex-col shadow-2xl relative z-50">
