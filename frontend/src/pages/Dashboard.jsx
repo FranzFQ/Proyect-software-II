@@ -60,11 +60,23 @@ const Dashboard = () => {
             };
         }));
 
-        // Formatear ponderaciones para el gráfico de pie
-        setDataPonderaciones(pond.map(item => ({
-            name: item.CriterioNombre,
-            value: item.porcentaje_asignado
-        })));
+        // Formatear ponderaciones para el gráfico de pie con mapeo y filtrado
+        const mappingPond = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':       'CEAT',
+            'Autoevaluaciones':          'Autoevaluación',
+            'Criterios de Coordinador':  'Coordinador',
+            'Checklist':                 'Visitas',
+            'Apoyo y Colaboración':      'Apoyo'
+        };
+
+        setDataPonderaciones(pond
+            .filter(item => mappingPond[item.CriterioNombre])
+            .map(item => ({
+                name: mappingPond[item.CriterioNombre],
+                value: item.porcentaje_asignado
+            }))
+        );
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

@@ -76,26 +76,50 @@ class DashboardViewSet(viewsets.ViewSet):
         if not semestre_activo:
             return response.Response([])
 
-        # Promedios por criterio desde consolidados
-        promedios = list(EvaluacionConsolidada.objects.filter(
+        # Mapeo de nombres largos (BD) a nombres cortos (Dashboard)
+        mapping = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':       'CEAT',
+            'Autoevaluaciones':          'Autoevaluación',
+            'Control Docente':           'Coordinador',
+            'Criterios de Coordinador':  'Coordinador',
+            'Checklist':                 'visitas',
+            'Apoyo y Colaboración':      'Apoyo'
+        }
+
+        data_map = {}
+
+        # 1. Obtener promedios desde EvaluacionConsolidada (Criterios Globales)
+        promedios_consolidados = EvaluacionConsolidada.objects.filter(
             semestre=semestre_activo,
             criterio__isnull=False
-        ).values('criterio__nombre').annotate(valor=Avg('puntaje_final')))
+        ).values('criterio__nombre').annotate(valor=Avg('puntaje_final'))
 
-        # Si no hay consolidados, buscamos en EvaluacionCurso
-        if not promedios:
-            from evaluaciones.models import EvaluacionCurso
-            promedios = list(EvaluacionCurso.objects.filter(
-                curso_dado__semestre=semestre_activo
-            ).values('criterio__nombre').annotate(valor=Avg('puntaje_curso')))
+        for p in promedios_consolidados:
+            nombre_bd = p['criterio__nombre']
+            if nombre_bd in mapping:
+                val = p['valor'] or 0
+                if val > 10.1: val = val / 10
+                data_map[mapping[nombre_bd]] = round(val, 1)
 
-        data = []
-        for p in promedios:
-            val = p['valor'] or 0
-            if val > 10.1: val = val / 10
-            data.append({"name": p['criterio__nombre'], "valor": round(val, 1)})
+        # 2. Obtener promedios desde EvaluacionCurso (Criterios por Curso)
+        from evaluaciones.models import EvaluacionCurso
+        promedios_cursos = EvaluacionCurso.objects.filter(
+            curso_dado__semestre=semestre_activo
+        ).values('criterio__nombre').annotate(valor=Avg('puntaje_curso'))
+
+        for p in promedios_cursos:
+            nombre_bd = p['criterio__nombre']
+            if nombre_bd in mapping:
+                val = p['valor'] or 0
+                if val > 10.1: val = val / 10
+                # Aquí simplemente nos aseguramos de que ambos se sumen al mapa
+                data_map[mapping[nombre_bd]] = round(val, 1)
+
+        # Convertir el mapa a la lista final
+        final_data = [{"name": name, "valor": val} for name, val in data_map.items()]
             
-        return response.Response(data)
+        return response.Response(final_data)
 
     @decorators.action(detail=False, methods=['get'])
     def distribucion_rendimiento(self, request):
