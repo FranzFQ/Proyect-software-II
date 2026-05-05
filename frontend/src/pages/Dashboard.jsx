@@ -12,15 +12,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { ponderaciones, docentes, evaluacionesCompletadas, semestreActivo = "Semestre I — 2025" } = useContext(AppContext);
 
-  // --- PREPARACIÓN DE DATOS ---
-
+  // --- PREPARACIÓN DE DATOS (Sin Autoevaluación ni Apoyo) ---
   const dataPromedios = [
     { name: 'Estudiantil', valor: 8.5 }, 
     { name: 'CEAT', valor: 9.2 },
-    { name: 'Auto-eval', valor: 7.8 },
     { name: 'Coord.', valor: 8.9 },
-    { name: 'Visitas', valor: 9.5 },
-    { name: 'Apoyo', valor: 8.2 },
+    { name: 'Checklists', valor: 9.5 },
   ];
 
   const distributionData = useMemo(() => {
@@ -36,7 +33,6 @@ const Dashboard = () => {
       .sort((a, b) => b.ponderacion - a.ponderacion)
       .slice(0, 4)
       .map(doc => {
-        // Normalizador: Si el backend envía 9.5, lo mostramos como 95 para base 100.
         const normalizedScore = doc.ponderacion <= 10 ? doc.ponderacion * 10 : doc.ponderacion;
         return {
           ...doc,
@@ -50,15 +46,13 @@ const Dashboard = () => {
   }, [docentes]);
 
   const dataPonderaciones = [
-    { name: 'Estudiantil', value: ponderaciones.estudiantil },
-    { name: 'CEAT', value: ponderaciones.ceat },
-    { name: 'Autoevaluación', value: ponderaciones.autoevaluacion },
-    { name: 'Coordinador', value: ponderaciones.coordinador },
-    { name: 'Visitas', value: ponderaciones.visitas },
-    { name: 'Apoyo', value: ponderaciones.apoyo },
+    { name: 'Estudiantil', value: ponderaciones?.estudiantil || 0 },
+    { name: 'CEAT', value: ponderaciones?.ceat || 0 },
+    { name: 'Coordinador', value: ponderaciones?.coordinador || 0 },
+    { name: 'Checklists', value: ponderaciones?.visitas || 0 },
   ];
 
-  const COLORS_PALETTE = ['#112240', '#1a365d', '#2c5282', '#3182ce', '#4299e1', '#63b3ed'];
+  const COLORS_PALETTE = ['#112240', '#1a365d', '#3182ce', '#63b3ed'];
 
   const totalDocentes = docentes.length;
   const sumaPonderaciones = docentes.reduce((acc, doc) => acc + (doc.ponderacion || 0), 0);
@@ -98,8 +92,6 @@ const Dashboard = () => {
 
       {/* 2. GRÁFICAS DE ANÁLISIS CENTRAL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Gráfica de Barras */}
         <div className="lg:col-span-2">
           <Card title="Puntuación Promedio por Evaluación">
             <div className="h-80 w-full mt-4">
@@ -116,7 +108,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Gráfica Circular con Labels visibles */}
         <div className="lg:col-span-1">
           <Card title="Distribución de Rendimiento">
             <div className="h-80 w-full mt-4">
@@ -129,7 +120,7 @@ const Dashboard = () => {
                     outerRadius={75}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`} // <- Dato siempre a la vista
+                    label={({ name, value }) => `${name}: ${value}`}
                   >
                     {distributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -146,8 +137,6 @@ const Dashboard = () => {
 
       {/* 3. SECCIÓN INFERIOR */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Rendimiento por Docente (Ahora con Etiqueta de Estado recuperada) */}
         <div className="lg:col-span-2">
           <Card title="Rendimiento de Docentes (Top 4)">
             <div className="flex flex-col gap-6 mt-6">
@@ -163,8 +152,6 @@ const Dashboard = () => {
                         <span className="text-[11px] text-gray-400 font-semibold uppercase">{doc.facultad}</span>
                       </div>
                     </div>
-                    
-                    {/* Etiqueta de estado y punteo normalizado */}
                     <div className="flex flex-col items-end gap-1">
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${doc.bgBadge}`}>
                         {doc.estado}
@@ -174,9 +161,7 @@ const Dashboard = () => {
                         <span className="text-xs text-gray-400 ml-1">/ 100</span>
                       </div>
                     </div>
-
                   </div>
-                  {/* Barra horizontal con color dinámico y ancho ajustado */}
                   <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -192,7 +177,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* % Ponderación (Pie Chart estético) */}
         <div className="lg:col-span-1">
           <Card className="h-full">
             <div className="flex justify-between items-start mb-2">
@@ -235,7 +219,6 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
-
       </div>
     </div>
   );

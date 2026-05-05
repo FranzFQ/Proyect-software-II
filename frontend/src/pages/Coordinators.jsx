@@ -8,6 +8,7 @@ import {
   deleteUsuario,
   normalizeCoordinador,
 } from '../services/user_service'; 
+import { API_URL } from '../services/global_URL';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import {
@@ -18,23 +19,18 @@ import {
   TrashIcon,
   UserPlusIcon,
   PencilSquareIcon,
-  CloudArrowUpIcon,
-  DocumentTextIcon,
-  CalendarIcon,
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 
 const Coordinators = () => {
   const navigate = useNavigate();
-  const { currentUser, setCurrentUser } = useContext(AppContext);
+  const { currentUser } = useContext(AppContext);
   const { coordinadores, setCoordinadores } = useContext(AppContext);
   const [filtroTexto, setFiltroTexto]           = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isCargarPensumOpen, setIsCargarPensumOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [coordinadorActual, setCoordinadorActual] = useState(null);
-  const [archivoPensum, setArchivoPensum] = useState(null);
   const [esAdminForm, setEsAdminForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,33 +44,62 @@ const Coordinators = () => {
   const [alertMessage, setAlertMessage]   = useState('');
   const [alertType, setAlertType]         = useState('success');
 
+  // Estados para Facultades y Carreras
+  const [facultades, setFacultades] = useState([]);
+  const [carreras, setCarreras] = useState([]);
+  const [formFacultadId, setFormFacultadId] = useState('');
+  const [formCarreraId, setFormCarreraId] = useState('');
+
   useEffect(() => {
-const cargarCoordinadores = async () => {
-  setIsLoadingList(true);
-  setListError("");
+    const cargarCatalogos = async () => {
+      try {
+        const [facRes, carRes] = await Promise.all([
+          fetch(`${API_URL}academico/facultades/`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+          }).catch(() => ({ ok: false })),
+          fetch(`${API_URL}academico/carreras/`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+          }).catch(() => ({ ok: false }))
+        ]);
+        
+        if (facRes && facRes.ok) {
+          const dataF = await facRes.json();
+          setFacultades(Array.isArray(dataF) ? dataF : dataF.results ?? []);
+        }
+        if (carRes && carRes.ok) {
+          const dataC = await carRes.json();
+          setCarreras(Array.isArray(dataC) ? dataC : dataC.results ?? []);
+        }
+      } catch (e) {
+        console.error("Error al cargar catálogos:", e);
+      }
+    };
+    
+    const cargarCoordinadores = async () => {
+      setIsLoadingList(true);
+      setListError("");
 
-  try {
-    const data = await getUsuarios();
+      try {
+        const data = await getUsuarios();
+        const lista = Array.isArray(data) ? data : data.results || [];
 
-    const lista = Array.isArray(data) ? data : data.results || [];
+        const filtrados = lista.filter((u) =>
+          u.is_active === true &&     
+          u.is_staff === false &&     
+          u.id !== currentUser?.id    
+        );
 
-    // FILTRO CORRECTO
-    const filtrados = lista.filter((u) =>
-      u.is_active === true &&     // solo activos
-      u.is_staff === false &&     // solo coordinadores
-      u.id !== currentUser?.id    // excluir usuario actual
-    );
+        setCoordinadores(filtrados.map(normalizeCoordinador));
+      } catch (err) {
+        setListError(
+          err.message || "No se pudo cargar la lista de coordinadores."
+        );
+      } finally {
+        setIsLoadingList(false);
+      }
+    };
 
-    setCoordinadores(filtrados.map(normalizeCoordinador));
-
-  } catch (err) {
-    setListError(
-      err.message || "No se pudo cargar la lista de coordinadores."
-    );
-  } finally {
-    setIsLoadingList(false);
-  }
-};
+    cargarCatalogos();
     cargarCoordinadores();
   }, []);
 
@@ -85,7 +110,6 @@ const cargarCoordinadores = async () => {
   );
 
   const handleSearch = () => {
-    // El filtro ya se aplica en tiempo real al cambiar el texto
   };
 
   const confirmarEliminacion = (coord) => {
@@ -96,7 +120,6 @@ const cargarCoordinadores = async () => {
   const ejecutarEliminacion = async () => {
     setIsDeleting(true);
     try {
-      // Ejecuta eliminar usuario
       await deleteUsuario(coordinadorActual.id);
       setCoordinadores(prev => prev.filter(c => c.id !== coordinadorActual.id));
       setIsDeleteModalOpen(false);
@@ -109,7 +132,6 @@ const cargarCoordinadores = async () => {
   };
 
   const abrirFormulario = (coord = null) => {
-    console.log("Abriendo formulario para:", coord);
     setCoordinadorActual(coord);
     setEsAdminForm(coord ? coord.esAdmin : false);
     setPasswordValue("");
@@ -117,36 +139,47 @@ const cargarCoordinadores = async () => {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setFormError("");
+
+    if (coord) {
+      const facMatch = facultades.find(f => f.nombre === coord.facultad);
+      setFormFacultadId(facMatch ? facMatch.id : '');
+      const carMatch = carreras.find(c => c.nombre === coord.carrera);
+      setFormCarreraId(carMatch ? carMatch.id : '');
+    } else {
+      setFormFacultadId('');
+      setFormCarreraId('');
+    }
+
     setIsFormModalOpen(true);
   };
+
+  const carrerasFiltradas = carreras.filter(c => String(c.facultad) === String(formFacultadId));
 
   const guardarCoordinador = async (e) => {
     e.preventDefault();
     setFormError("");
 
-    // Validación de contraseñas en frontend
     if (passwordValue && passwordValue !== confirmPasswordValue) {
       setFormError("Las contraseñas no coinciden. Por favor verifícalas.");
       return;
     }
 
-    // Leemos los valores del formulario usando FormData
     const formData = new FormData(e.target);
 
-    // Construimos el objeto que espera el backend
     const payload = {
       first_name: formData.get('first_name'),
       last_name:  formData.get('last_name'),
       email:      formData.get('email'),
       username:   formData.get('username'),
       is_staff:   esAdminForm,
+      facultad:   formFacultadId ? parseInt(formFacultadId) : null,
+      carrera:    formCarreraId ? parseInt(formCarreraId) : null
     };
 
     if (passwordValue) {
       payload.password = passwordValue;
     }
 
-    console.log("Payload a enviar:", payload);
     setIsSaving(true);
     try {
       if (coordinadorActual) {
@@ -173,14 +206,12 @@ const cargarCoordinadores = async () => {
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue mb-2">
             Coordinadores
           </h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 font-medium">
             Mostrando {coordinadoresFiltrados.length} perfiles
           </p>
         </div>
@@ -195,7 +226,6 @@ const cargarCoordinadores = async () => {
         </div>
       </div>
 
-      {/* Buscador */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="flex w-full md:w-1/2">
           <input
@@ -217,7 +247,6 @@ const cargarCoordinadores = async () => {
         </div>
       </div>
 
-      {/* Estados de carga / error */}
       {isLoadingList && (
         <div className="flex justify-center py-12">
           <svg className="animate-spin h-8 w-8 text-url-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -233,7 +262,6 @@ const cargarCoordinadores = async () => {
         </div>
       )}
 
-      {/* Tabla */}
       {!isLoadingList && !listError && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-2">
         <div className="overflow-x-auto">
@@ -265,28 +293,24 @@ const cargarCoordinadores = async () => {
                   >
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-4">
-                        {/* Avatar */}
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ${coord.esAdmin ? "bg-url-yellow" : "bg-url-blue"}`}
                         >
                           {coord.iniciales}
                         </div>
 
-                        {/* Información de texto */}
                         <div className="flex flex-col">
                           <h4 className="font-bold text-url-blue text-sm leading-tight">
                             {coord.nombre_completo}
                           </h4>
 
                           <div className="flex items-center gap-2 mt-1.5">
-                            {/* Username con ancho fijo para alinear el correo */}
                             <div className="shrink-0">
                               <span className="text-[10px] font-bold bg-blue-50 text-url-blue px-2 py-0.5 rounded-md border border-blue-100 inline-block w-full text-center">
                                 @{coord.username || coord.correo.split("@")[0]}
                               </span>
                             </div>
 
-                            {/* Correo - Ahora todos empezarán en el mismo punto vertical */}
                             <p className="text-[11px] text-gray-400 font-medium italic">
                               {coord.correo}
                             </p>
@@ -332,6 +356,11 @@ const cargarCoordinadores = async () => {
           }
         >
           <form onSubmit={guardarCoordinador} className="flex flex-col gap-5">
+            {formError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm font-semibold">
+                {formError}
+              </div>
+            )}
             <div className="flex justify-end items-center gap-3">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                 {esAdminForm ? "Quitar Administrador" : "Dar Administrador"}
@@ -348,7 +377,6 @@ const cargarCoordinadores = async () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nombre */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">
                   Nombre
@@ -405,32 +433,43 @@ const cargarCoordinadores = async () => {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                   Facultad
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ej. Ingeniería"
-                  defaultValue={coordinadorActual?.facultad}
-                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                <select 
+                  className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                  value={formFacultadId}
+                  onChange={(e) => {
+                    setFormFacultadId(e.target.value);
+                    setFormCarreraId('');
+                  }}
                   required
-                />
+                >
+                  <option value="">Seleccione una facultad...</option>
+                  {facultades.map(fac => (
+                    <option key={fac.id} value={fac.id}>{fac.nombre}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">
-                  Carrera
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Carrera a cargo
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ej. Informática y sistemas"
-                  defaultValue={coordinadorActual?.carrera}
-                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                <select 
+                  className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                  value={formCarreraId}
+                  onChange={(e) => setFormCarreraId(e.target.value)}
                   required
-                />
+                  disabled={!formFacultadId}
+                >
+                  <option value="">Seleccione la carrera...</option>
+                  {carrerasFiltradas.map(car => (
+                    <option key={car.id} value={car.id}>{car.nombre}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* Contraseña */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">
                   Contraseña
