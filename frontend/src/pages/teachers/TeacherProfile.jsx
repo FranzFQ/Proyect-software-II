@@ -81,11 +81,11 @@ const TeacherProfile = () => {
 
   const semNombre = semestre ? `${semestre.anio} - Semestre ${semestre.ciclo || 'I'}` : '—';
 
-  const promedioGeneral = (() => {
-    const valores = Object.values(puntajesCurso);
-    if (valores.length === 0) return null;
-    return valores.reduce((a, b) => a + (parseFloat(b) || 0), 0) / valores.length;
-  })();
+  const promedioGeneral = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const suma = chartData.reduce((acc, item) => acc + item.value, 0);
+    return suma / chartData.length;
+  }, [chartData]);
 
   const getEstadoLabel = (score) => {
     if (score === null) return null;

@@ -51,12 +51,14 @@ class ConfiguracionPonderacionSerializer(serializers.ModelSerializer):
 
 class EvaluacionCursoSerializer(serializers.ModelSerializer):
     CursoNombre = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
+    CriterioNombre = serializers.CharField(source='criterio.nombre', read_only=True)
 
     class Meta:
         model = EvaluacionCurso
         fields = [
             'id',
             'curso_dado', 'CursoNombre',
+            'criterio', 'CriterioNombre',
             'puntaje_curso',
         ]
 
