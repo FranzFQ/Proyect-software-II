@@ -74,8 +74,8 @@ const ProfileSettings = () => {
           <ArrowLeftIcon className="w-4 h-4" /> Volver
         </button>
 
-        <h1 className="text-3xl font-bold text-url-blue mb-2 font-serif">Configuración de Perfil</h1>
-        <p className="text-gray-500">Consulta y administra tu información personal en el sistema.</p>
+        <h1 className="text-3xl font-bold text-url-blue mb-2">Configuración de Perfil</h1>
+        <p className="text-gray-500 font-medium ">Consulta y administra tu información personal en el sistema.</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm max-w-4xl w-full mt-4 mx-auto">
