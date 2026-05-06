@@ -10,105 +10,115 @@ class ComentariosParser(BaseParser):
     def procesar(cls, archivo, semestre):
         """
         Procesa un archivo Excel de comentarios.
-        - Docente: Se encuentra en una columna con formato (codigo) Nombre
-        - Comentario: Se encuentra en la columna índice 4 (Unnamed: 4)
+        - Docente: (codigo) Nombre
+        - Curso: Nombre del curso en las primeras columnas.
+        - Comentario: Columna índice 4.
         """
         df = pd.read_excel(archivo)
         
         docente_actual = None
         codigo_actual = None
+        curso_actual = None
         comentarios_acumulados = []
 
-        print("--- Iniciando extracción y guardado de comentarios ---")
+        print("--- Iniciando extracción optimizada de comentarios ---")
 
-        # Asegurar que el tipo 'COMENTARIOS' exista
         tipo_comentarios, _ = Tipo.objects.get_or_create(nombre='COMENTARIOS')
 
         for i, fila in df.iterrows():
-            docente_detectado = False
-            for col_idx, valor_celda in enumerate(fila):
-                valor_str = str(valor_celda).strip()
-                if pd.isna(valor_celda) or valor_str.lower() == 'nan':
-                    continue
-                
-                match = re.search(r'\((\d+)\)\s*(.*)', valor_str)
-                if match:
-                    # Guardar comentarios del docente anterior antes de cambiar
-                    if docente_actual and comentarios_acumulados:
-                        cls.guardar_comentarios_db(codigo_actual, docente_actual, comentarios_acumulados, semestre, tipo_comentarios)
-                    
-                    codigo_actual = match.group(1)
-                    docente_actual = match.group(2).strip()
-                    comentarios_acumulados = []
-                    docente_detectado = True
-                    
-                    # Verificar si hay comentario en la misma fila del nombre
-                    if len(fila) > 4:
-                        comentario_mismo_nivel = str(fila.iloc[4]).strip()
-                        if comentario_mismo_nivel and not pd.isna(fila.iloc[4]) and comentario_mismo_nivel.lower() not in ['nan', 'comentario']:
-                            comentarios_acumulados.append(comentario_mismo_nivel)
-                    break
+            # 1. Obtener texto de las primeras 4 columnas (identificación)
+            # Esto evita que palabras en el comentario (col 4) activen detecciones falsas
+            identificacion_str = " ".join([str(fila.iloc[c]) for c in range(min(4, len(fila))) if not pd.isna(fila.iloc[c])])
             
-            if docente_detectado:
-                continue
+            # 2. DETECCIÓN DE DOCENTE
+            match_docente = re.search(r'\((\d+)\)\s*(.*)', identificacion_str)
+            
+            if match_docente:
+                # Si ya veníamos procesando algo, guardamos el bloque anterior
+                if docente_actual and comentarios_acumulados:
+                    cls.guardar_comentarios_db(codigo_actual, docente_actual, curso_actual or "CURSO NO DETECTADO", comentarios_acumulados, semestre, tipo_comentarios)
+                
+                codigo_actual = match_docente.group(1)
+                docente_actual = match_docente.group(2).strip()
+                curso_actual = None 
+                comentarios_acumulados = []
+                
+                # Intentar ver si el curso está en esta misma fila del docente
+                posibles = CursoDado.objects.filter(docente__codigo_docente=codigo_actual, semestre=semestre)
+                for asignacion in posibles:
+                    if asignacion.curso.nombre_curso.lower() in identificacion_str.lower():
+                        curso_actual = asignacion.curso.nombre_curso
+                        break
+            
+            # 3. DETECCIÓN DE CURSO (Solo si ya tenemos docente y no detectamos un nuevo docente en esta fila)
+            elif docente_actual:
+                posibles_cursos = CursoDado.objects.filter(docente__codigo_docente=codigo_actual, semestre=semestre)
+                for asignacion in posibles_cursos:
+                    if asignacion.curso.nombre_curso.lower() in identificacion_str.lower():
+                        # Si el curso detectado es diferente al que llevamos, guardamos y cambiamos
+                        if curso_actual != asignacion.curso.nombre_curso:
+                            if comentarios_acumulados:
+                                cls.guardar_comentarios_db(codigo_actual, docente_actual, curso_actual or "CURSO NO DETECTADO", comentarios_acumulados, semestre, tipo_comentarios)
+                                comentarios_acumulados = []
+                            curso_actual = asignacion.curso.nombre_curso
+                        break
 
-            if len(fila) > 4:
+            # 4. EXTRACCIÓN DE COMENTARIO (Se ejecuta para TODAS las filas que tengan contenido en col 4)
+            if len(fila) > 4 and docente_actual:
                 comentario = str(fila.iloc[4]).strip()
-                if comentario and not pd.isna(fila.iloc[4]) and comentario.lower() != 'nan' and comentario.lower() != 'comentario':
-                    if docente_actual:
-                        comentarios_acumulados.append(comentario)
+                # Validar que sea un comentario real y no basura o encabezados
+                if comentario and not pd.isna(fila.iloc[4]) and comentario.lower() not in ['nan', 'comentario', 'comentarios', 'observaciones']:
+                    comentarios_acumulados.append(comentario)
         
-        # Guardar el último docente
+        # Guardar el último bloque al finalizar el archivo
         if docente_actual and comentarios_acumulados:
-            cls.guardar_comentarios_db(codigo_actual, docente_actual, comentarios_acumulados, semestre, tipo_comentarios)
+            cls.guardar_comentarios_db(codigo_actual, docente_actual, curso_actual or "CURSO NO DETECTADO", comentarios_acumulados, semestre, tipo_comentarios)
             
         print("--- Fin del procesamiento ---")
 
     @classmethod
-    def guardar_comentarios_db(cls, codigo, nombre, comentarios, semestre, tipo_obj):
-        # 1. Intentar buscar al docente
+    def guardar_comentarios_db(cls, codigo, nombre, nombre_curso, comentarios, semestre, tipo_obj):
         docente = Docente.objects.filter(codigo_docente=codigo).first()
         if not docente:
             docente = Docente.objects.filter(nombre_completo__icontains=nombre).first()
             
         print(f"\n" + "="*60)
         if not docente:
-            print(f"DOCENTE: {nombre} [!] (NO ENCONTRADO EN BASE DE DATOS)")
-            print(f"CÓDIGO:  {codigo}")
+            print(f"DOCENTE: {nombre} [!] (NO ENCONTRADO EN BD)")
         else:
-            print(f"DOCENTE: {docente.nombre_completo}")
-            print(f"CÓDIGO:  {docente.codigo_docente}")
+            print(f"DOCENTE: {docente.nombre_completo} ({docente.codigo_docente})")
         
-        # 2. Buscar asignaciones solo si el docente existe
-        asignaciones = None
-        if docente:
-            asignaciones = CursoDado.objects.filter(docente=docente, semestre=semestre)
-            if not asignaciones.exists():
-                print(f"CURSO:   [!] No tiene cursos asignados en este semestre")
-            else:
-                cursos_nombres = ", ".join([ad.curso.nombre_curso for ad in asignaciones])
-                print(f"CURSO(S): {cursos_nombres}")
-        else:
-            print(f"CURSO:   [!] No se puede asociar (Docente no existe)")
+        print(f"CURSO:   {nombre_curso}")
 
+        curso_dado = None
+        if docente:
+            curso_dado = CursoDado.objects.filter(
+                docente=docente, 
+                semestre=semestre, 
+                curso__nombre_curso__icontains=nombre_curso
+            ).first()
+        
+        if not curso_dado:
+            print(f"  [!] No se pudo vincular a un curso registrado. No se guardará en BD.")
+        
         print(f"TOTAL COMENTARIOS: {len(comentarios)}")
         print("-" * 30)
-        print("COMENTARIOS EXTRAÍDOS:")
         for i, c in enumerate(comentarios, 1):
             limpio = " ".join(c.split())
             print(f"  {i}. {limpio}")
 
-        # 3. Guardar en la base de datos si es posible
-        if docente and asignaciones and asignaciones.exists():
-            for curso_dado in asignaciones:
-                analisis, created = AnalisisTexto.objects.get_or_create(
-                    curso_dado=curso_dado,
-                    tipo=tipo_obj,
-                    defaults={'contenido': []}
-                )
-                nuevos = [c for c in comentarios if c not in analisis.contenido]
-                if nuevos:
-                    analisis.contenido.extend(nuevos)
-                    analisis.save()
+        if curso_dado:
+            analisis, created = AnalisisTexto.objects.get_or_create(
+                curso_dado=curso_dado,
+                tipo=tipo_obj,
+                defaults={'contenido': []}
+            )
+            nuevos = [c for c in comentarios if c not in analisis.contenido]
+            if nuevos:
+                analisis.contenido.extend(nuevos)
+                analisis.save()
+                print(f"  [+] {len(nuevos)} comentarios guardados en: {curso_dado.curso.nombre_curso}")
+            else:
+                print(f"  [~] Sin comentarios nuevos (ya existían).")
         
         print("="*60)
