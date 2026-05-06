@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext'; 
 import Card from '../components/common/Card';
@@ -7,67 +7,99 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { 
+  getDashboardEstadisticas, 
+  getDashboardPromediosCriterios, 
+  getDashboardDistribucionRendimiento,
+  getPonderaciones 
+} from '../services/evaluaciones_service';
+import { getTopDocentes } from '../services/docente_service';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { ponderaciones, docentes, evaluacionesCompletadas, semestreActivo = "Semestre I — 2025" } = useContext(AppContext);
+  const { semestreActivo = "Semestre I — 2025" } = useContext(AppContext);
 
-  // --- PREPARACIÓN DE DATOS ---
+  const [stats, setStats] = useState({
+    total_docentes: 0,
+    promedio_general: 0,
+    docentes_riesgo: 0,
+    progreso_evaluacion: "0%"
+  });
+  const [dataPromedios, setDataPromedios] = useState([]);
+  const [distributionData, setDistributionData] = useState([]);
+  const [topDocentes, setTopDocentes] = useState([]);
+  const [dataPonderaciones, setDataPonderaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const dataPromedios = [
-    { name: 'Estudiantil', valor: 8.5 }, 
-    { name: 'CEAT', valor: 9.2 },
-    { name: 'Auto-eval', valor: 7.8 },
-    { name: 'Coord.', valor: 8.9 },
-    { name: 'Visitas', valor: 9.5 },
-    { name: 'Apoyo', valor: 8.2 },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [s, p, d, t, pond] = await Promise.all([
+          getDashboardEstadisticas(),
+          getDashboardPromediosCriterios(),
+          getDashboardDistribucionRendimiento(),
+          getTopDocentes(),
+          getPonderaciones()
+        ]);
 
-  const distributionData = useMemo(() => {
-    return [
-      { name: 'Excelente', value: docentes.filter(d => d.estado === 'Excelente').length, color: '#10B981' }, 
-      { name: 'Buena', value: docentes.filter(d => d.estado === 'Buena').length, color: '#F59E0B' },      
-      { name: 'Deficiente', value: docentes.filter(d => d.estado === 'Deficiente').length, color: '#EF4444' } 
-    ];
-  }, [docentes]);
+        setStats(s);
+        setDataPromedios(p);
+        setDistributionData(d);
 
-  const topDocentes = useMemo(() => {
-    return [...docentes]
-      .sort((a, b) => b.ponderacion - a.ponderacion)
-      .slice(0, 4)
-      .map(doc => {
-        // Normalizador: Si el backend envía 9.5, lo mostramos como 95 para base 100.
-        const normalizedScore = doc.ponderacion <= 10 ? doc.ponderacion * 10 : doc.ponderacion;
-        return {
-          ...doc,
-          scoreVisual: normalizedScore,
-          color: doc.estado === 'Excelente' ? '#10B981' : doc.estado === 'Buena' ? '#F59E0B' : '#EF4444',
-          bgBadge: doc.estado === 'Excelente' ? 'bg-green-100 text-green-700 border-green-200' : 
-                   doc.estado === 'Buena' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 
-                   'bg-red-100 text-red-700 border-red-200'
+        // Formatear top docentes
+        setTopDocentes(t.map(doc => {
+            const normalizedScore = doc.ponderacion <= 10 ? doc.ponderacion * 10 : doc.ponderacion;
+            return {
+              ...doc,
+              scoreVisual: normalizedScore,
+              color: doc.estado === 'Excelente' ? '#10B981' : doc.estado === 'Buena' ? '#F59E0B' : '#EF4444',
+              bgBadge: doc.estado === 'Excelente' ? 'bg-green-100 text-green-700 border-green-200' : 
+                       doc.estado === 'Buena' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 
+                       'bg-red-100 text-red-700 border-red-200'
+            };
+        }));
+
+        // Formatear ponderaciones para el gráfico de pie con mapeo y filtrado
+        const mappingPond = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':       'CEAT',
+            'Autoevaluaciones':          'Autoevaluación',
+            'Criterios de Coordinador':  'Coordinador',
+            'Checklist':                 'Visitas',
+            'Apoyo y Colaboración':      'Apoyo'
         };
-      });
-  }, [docentes]);
 
-  const dataPonderaciones = [
-    { name: 'Estudiantil', value: ponderaciones.estudiantil },
-    { name: 'CEAT', value: ponderaciones.ceat },
-    { name: 'Autoevaluación', value: ponderaciones.autoevaluacion },
-    { name: 'Coordinador', value: ponderaciones.coordinador },
-    { name: 'Visitas', value: ponderaciones.visitas },
-    { name: 'Apoyo', value: ponderaciones.apoyo },
-  ];
+        setDataPonderaciones(pond
+            .filter(item => mappingPond[item.CriterioNombre])
+            .map(item => ({
+                name: mappingPond[item.CriterioNombre],
+                value: item.porcentaje_asignado
+            }))
+        );
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const COLORS_PALETTE = ['#112240', '#1a365d', '#2c5282', '#3182ce', '#4299e1', '#63b3ed'];
 
-  const totalDocentes = docentes.length;
-  const sumaPonderaciones = docentes.reduce((acc, doc) => acc + (doc.ponderacion || 0), 0);
-  const promedioGeneral = totalDocentes > 0 ? (sumaPonderaciones / totalDocentes).toFixed(1) : 0;
-  const docentesRiesgo = docentes.filter(d => d.estado === 'Deficiente').length;
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <p className="text-xl font-bold text-url-blue animate-pulse">Cargando métricas...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-10">
-      
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -80,25 +112,25 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="text-center border-l-4 border-l-url-blue shadow-sm">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Docentes</p>
-          <p className="text-4xl font-black text-url-blue">{totalDocentes}</p>
+          <p className="text-4xl font-black text-url-blue">{stats.total_docentes}</p>
         </Card>
         <Card className="text-center border-l-4 border-l-green-500 shadow-sm">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Promedio General</p>
-          <p className="text-4xl font-black text-url-blue">{promedioGeneral}</p>
+          <p className="text-4xl font-black text-url-blue">{stats.promedio_general}</p>
         </Card>
         <Card className="text-center border-l-4 border-l-red-500 shadow-sm">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Docentes en Riesgo</p>
-          <p className="text-4xl font-black text-red-600">{docentesRiesgo}</p>
+          <p className="text-4xl font-black text-red-600">{stats.docentes_riesgo}</p>
         </Card>
         <Card className="text-center border-l-4 border-l-url-yellow shadow-sm">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Progreso Semestre</p>
-          <p className="text-4xl font-black text-url-blue">{evaluacionesCompletadas}</p>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Progreso Evaluación</p>
+          <p className="text-4xl font-black text-url-blue">{stats.progreso_evaluacion}</p>
         </Card>
       </div>
 
       {/* 2. GRÁFICAS DE ANÁLISIS CENTRAL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Gráfica de Barras */}
         <div className="lg:col-span-2">
           <Card title="Puntuación Promedio por Evaluación">
@@ -146,7 +178,7 @@ const Dashboard = () => {
 
       {/* 3. SECCIÓN INFERIOR */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Rendimiento por Docente (Ahora con Etiqueta de Estado recuperada) */}
         <div className="lg:col-span-2">
           <Card title="Rendimiento de Docentes (Top 4)">
@@ -163,7 +195,7 @@ const Dashboard = () => {
                         <span className="text-[11px] text-gray-400 font-semibold uppercase">{doc.facultad}</span>
                       </div>
                     </div>
-                    
+
                     {/* Etiqueta de estado y punteo normalizado */}
                     <div className="flex flex-col items-end gap-1">
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${doc.bgBadge}`}>
@@ -201,25 +233,31 @@ const Dashboard = () => {
                 <ArrowRightIcon className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dataPonderaciones}
-                    cx="50%" cy="50%"
-                    outerRadius={70}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                  >
-                    {dataPonderaciones.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS_PALETTE[index % COLORS_PALETTE.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {dataPonderaciones.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                    <Pie
+                        data={dataPonderaciones}
+                        cx="50%" cy="50%"
+                        outerRadius={70}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    >
+                        {dataPonderaciones.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS_PALETTE[index % COLORS_PALETTE.length]} />
+                        ))}
+                    </Pie>
+                    <Tooltip />
+                    </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-400 text-sm">Sin ponderaciones configuradas</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 mt-4">

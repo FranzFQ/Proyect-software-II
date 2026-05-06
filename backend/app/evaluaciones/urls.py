@@ -11,6 +11,7 @@ from .interface.viewsets.checklist_viewset import ChecklistViewSet
 from .interface.viewsets.tipo_viewset import TipoViewSet
 from .interface.viewsets.analisis_texto_viewset import AnalisisTextoViewSet
 from .interface.viewsets.ingesta_viewset import IngestaViewSet
+from .interface.viewsets.dashboard_viewset import DashboardViewSet
 
 router = DefaultRouter()
 router.register(r'criterios',               CriterioEvaluacionViewSet,      basename='criterio')
@@ -23,6 +24,7 @@ router.register(r'checklist-observaciones', ChecklistObservationViewSet,     bas
 router.register(r'tipos',                   TipoViewSet,                     basename='tipo')
 router.register(r'analisis-texto',          AnalisisTextoViewSet,            basename='analisis-texto')
 router.register(r'ingesta',                 IngestaViewSet,                  basename='ingesta')
+router.register(r'dashboard',               DashboardViewSet,                basename='dashboard')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -33,7 +33,8 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 ),
                 conteo_cursos=Count(
                     'asignaciones',
-                    filter=Q(asignaciones__semestre=semestre_activo)
+                    filter=Q(asignaciones__semestre=semestre_activo),
+                    distinct=True
                 )
             )
         
@@ -46,6 +47,37 @@ class DocenteViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['tipo_plan']
     search_fields = ['codigo_docente', 'nombre_completo']
+
+    @action(detail=False, methods=['get'])
+    def top_docentes(self, request):
+        semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
+        if not semestre_activo:
+            return Response([])
+
+        # Top 4 docentes por promedio de curso
+        top = Docente.objects.select_related('facultad').annotate(
+            promedio=Avg(
+                'asignaciones__evaluacioncurso__puntaje_curso',
+                filter=Q(asignaciones__semestre=semestre_activo)
+            )
+        ).filter(promedio__isnull=False).order_by('-promedio')[:4]
+
+        data = []
+        for d in top:
+            # Determinamos estado para el badge
+            p = d.promedio
+            estado = "Excelente" if p >= 8 else "Buena" if p >= 6 else "Deficiente"
+            
+            data.append({
+                "id": d.id,
+                "nombre": d.nombre_completo,
+                "iniciales": "".join([n[0] for n in d.nombre_completo.split()[:2]]).upper(),
+                "facultad": d.facultad.nombre if d.facultad else "",
+                "ponderacion": round(p, 1),
+                "estado": estado
+            })
+
+        return Response(data)
 
     @action(detail=True, methods=['get'], url_path='perfil')
     def perfil(self, request, pk=None):
@@ -71,17 +103,72 @@ class DocenteViewSet(viewsets.ModelViewSet):
             )
         )
 
-        evaluacion_consolidada = EvaluacionConsolidada.objects.filter(
+        # 1. Obtener criterios globales ya consolidados (ej: CEAT)
+        evaluaciones_consolidadas = EvaluacionConsolidada.objects.filter(
             docente=docente,
             semestre=semestre
-        ).first()
+        ).select_related('criterio')
+
+        # Buscar el consolidado total (donde criterio es None) para los KPI rápidos
+        evaluacion_total = evaluaciones_consolidadas.filter(criterio__isnull=True).first()
+
+        # 2. Obtener promedios de evaluaciones por curso para este docente
+        # (ej: Estudiantil, Coordinador)
+        promedios_cursos = EvaluacionCurso.objects.filter(
+            curso_dado__docente=docente,
+            curso_dado__semestre=semestre
+        ).values('criterio__nombre').annotate(valor=Avg('puntaje_curso'))
+
+        # Mapeo para normalizar nombres
+        mapping = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':       'CEAT',
+            'Autoevaluaciones':          'Autoevaluación',
+            'Control Docente':           'Coordinador',
+            'Criterios de Coordinador':  'Coordinador',
+            'Checklist':                 'visitas',
+            'Apoyo y Colaboración':      'Apoyo'
+        }
+
+        # Construir desglose combinado
+        desglose_final = []
+        criterios_procesados = set()
+
+        # Agregar consolidados globales
+        for ec in evaluaciones_consolidadas.filter(criterio__isnull=False):
+            nombre_bd = ec.criterio.nombre
+            if nombre_bd in mapping:
+                nombre_corto = mapping[nombre_bd]
+                val = ec.puntaje_final or 0
+                if val > 10.1: val = val / 10
+                desglose_final.append({
+                    "CriterioNombre": nombre_corto,
+                    "puntaje_final": round(val, 1)
+                })
+                criterios_procesados.add(nombre_corto)
+
+        # Agregar promedios por curso (solo si no están ya en el desglose)
+        for pc in promedios_cursos:
+            nombre_bd = pc['criterio__nombre']
+            if nombre_bd in mapping:
+                nombre_corto = mapping[nombre_bd]
+                if nombre_corto not in criterios_procesados:
+                    val = pc['valor'] or 0
+                    if val > 10.1: val = val / 10
+                    desglose_final.append({
+                        "CriterioNombre": nombre_corto,
+                        "puntaje_final": round(val, 1)
+                    })
+                    criterios_procesados.add(nombre_corto)
 
         cursos_data = []
         puntajes_map = {}
         for c in cursos:
-            punteo = None
-            if hasattr(c, 'evaluaciones') and c.evaluaciones:
-                punteo = c.evaluaciones[0].puntaje_curso
+            # Punteo promedio del curso (promediando sus distintos criterios)
+            punteo = EvaluacionCurso.objects.filter(curso_dado=c).aggregate(Avg('puntaje_curso'))['puntaje_curso__avg']
+            if punteo:
+                if punteo > 10.1: punteo = punteo / 10
+                punteo = round(punteo, 1)
                 puntajes_map[c.id] = punteo
 
             cursos_data.append({
@@ -101,7 +188,8 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 "estado": semestre.estado
             },
             "cursos": cursos_data,
-            "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_consolidada).data if evaluacion_consolidada else None,
+            "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_total).data if evaluacion_total else None,
+            "evaluaciones_desglose": desglose_final,
             "puntajes_map": puntajes_map
         }
 

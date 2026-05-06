@@ -85,8 +85,14 @@ const Teachers = () => {
   };
 
   const clasificarEstado = (doc) => {
-    const p = getPromedioDocente(doc.id);
+    let p = getPromedioDocente(doc.id);
     if (p === null) return 'Sin datos';
+    
+    // Normalizar a escala 0-10 si viene en escala 0-100
+    if (p > 10.1) {
+      p = p / 10;
+    }
+
     if (p >= 8) return 'Excelente';
     if (p >= 6) return 'Buena';
     return 'Deficiente';
