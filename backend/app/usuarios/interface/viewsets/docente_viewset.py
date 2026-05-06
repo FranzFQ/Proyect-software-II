@@ -79,6 +79,59 @@ class DocenteViewSet(viewsets.ModelViewSet):
 
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='comparacion')
+    def comparacion(self, request, pk=None):
+        docente = self.get_object()
+        sem_a_id = request.query_params.get('semestre_a')
+        sem_b_id = request.query_params.get('semestre_b')
+
+        if not sem_a_id or not sem_b_id:
+            return Response({"error": "Parámetros faltantes"}, status=400)
+
+        def get_eval_data(sem_id):
+            # Obtener promedios por curso
+            pc = EvaluacionCurso.objects.filter(
+                curso_dado__docente=docente, curso_dado__semestre_id=sem_id
+            ).values('criterio__nombre').annotate(v=Avg('puntaje_curso'))
+            
+            # Obtener consolidados globales
+            ec = EvaluacionConsolidada.objects.filter(
+                docente=docente, semestre_id=sem_id, criterio__isnull=False
+            ).values('criterio__nombre').annotate(v=Avg('puntaje_final'))
+
+            mapping = {
+                'Evaluaciones Estudiantes': 'puntaje_evaluacion_estudiantes',
+                'Autoevaluaciones':          'puntaje_autoevaluacion',
+                'Control Docente':           'puntaje_coordinador',
+                'Criterios de Coordinador':  'puntaje_coordinador',
+                'Capacitaciones CEAT':       'puntaje_ceat',
+                'Apoyo y Colaboración':      'puntaje_apoyo_universitario',
+                'Checklist':                 'puntaje_checklist'
+            }
+
+            res = { k: 0.0 for k in mapping.values() }
+            found_any = False
+
+            for item in list(pc) + list(ec):
+                key = mapping.get(item['criterio__nombre'])
+                if key:
+                    val = item['v'] or 0
+                    if val > 10.1: val = val / 10
+                    res[key] = round(val, 1)
+                    found_any = True
+            
+            if not found_any: return None
+
+            # Calcular puntaje_final como promedio de los criterios que no son 0
+            vals = [v for v in res.values() if v > 0]
+            res['puntaje_final'] = round(sum(vals)/len(vals), 1) if vals else 0.0
+            return res
+
+        return Response({
+            "semestre_a": get_eval_data(sem_a_id),
+            "semestre_b": get_eval_data(sem_b_id)
+        })
+
     @action(detail=True, methods=['get'], url_path='perfil')
     def perfil(self, request, pk=None):
         docente = self.get_object()

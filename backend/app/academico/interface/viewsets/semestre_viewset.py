@@ -26,10 +26,11 @@ class SemestreViewSet(viewsets.ModelViewSet):
         queryset = Semestre.objects.all().order_by('-anio', '-ciclo')
         
         # Si es una acción de detalle (retrieve, update, partial_update, destroy)
-        # o si se pide ver todo (all=true), no filtramos por fecha.
+        # o si se pide ver todo (all=true), no filtramos por visibilidad.
         if self.action == 'list' and not show_all:
-            # En el resto del sistema, solo mostrar si ya llegó la fecha
-            queryset = queryset.filter(fecha__lte=ahora)
+            # MOSTRAR SOLO SI: Está marcado como visible
+            # Esto permite que el Admin controle qué semestres históricos se ven.
+            queryset = queryset.filter(visible=True)
             
         return queryset
 
