@@ -24,14 +24,15 @@ function ScoreBar({ punteo, color }) {
 }
 
 function ChecklistCard({ checklist, onEditar, onEjecutar, onEliminar, onToggleActivo }) {
-  const activo   = checklist.activo !== false;
-  const color    = activo ? (checklist.color || colorDePunteo(checklist.punteo)) : '#9ca3af';
+  const activo      = checklist.activo !== false;
+  const colorCard   = activo ? (checklist.color || '#1a2744') : '#9ca3af';
+  const colorPunteo = activo ? colorDePunteo(checklist.punteo) : '#9ca3af';
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
       className={`bg-white rounded-xl p-5 shadow-sm transition flex flex-col gap-3 border border-gray-200 border-t-4 relative ${activo ? 'hover:shadow-md cursor-pointer' : 'opacity-60 cursor-default'}`}
-      style={{ borderTopColor: color }}
+      style={{ borderTopColor: colorCard }}
       onClick={() => { if (activo) onEjecutar(checklist); }}
     >
       {/* Badge inactivo */}
@@ -44,7 +45,7 @@ function ChecklistCard({ checklist, onEditar, onEjecutar, onEliminar, onToggleAc
       <div className="flex items-start gap-3">
         <span
           className="w-4 h-4 rounded-full inline-block border-2 border-white shadow-sm shrink-0 mt-1"
-          style={{ background: color }}
+          style={{ background: colorCard }}
         />
         <div className="flex-1 min-w-0">
           <h3 className={`font-bold text-base ${activo ? 'text-url-blue' : 'text-gray-400'}`}>{checklist.titulo}</h3>
@@ -133,7 +134,7 @@ function normalizeChecklist(raw) {
     id:           raw.id,
     titulo:       raw.titulo,
     nombre:       raw.titulo,
-    color:        raw.color || '#1a2744',
+    color:        datos.color || '#1a2744',
     punteo,
     activo:       raw.activo,
     criterios:    (datos.criteriosList ?? []).length,
@@ -204,8 +205,7 @@ export default function Checklist() {
     try {
       const full = await loadFull(checklist.id);
       setEditingChecklist(full);
-      setModoEdicion(true);
-      setEjecutandoChecklist(full);
+      setShowForm(true);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -247,9 +247,9 @@ export default function Checklist() {
   const handleGuardarChecklist = async (data) => {
     const payload = {
       titulo:  data.titulo,
-      color:   data.color,
       activo:  true,
       datos: {
+        color:         data.color,
         criteriosList: data.criteriosList,
       },
     };
