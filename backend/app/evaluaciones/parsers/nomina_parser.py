@@ -29,9 +29,12 @@ class NominaParser:
         # Cache de cursos normalizado
         cursos_cache = {normalizar_texto(c.nombre_curso): c for c in Curso.objects.all()}
         
+        # Para evitar duplicados: usamos una clave que no dependa de IDs de base de datos internos si es posible,
+        # o aseguramos que el docente_id esté disponible.
+        # Mejor: usaremos (curso_id, codigo_docente, semestre_id, seccion)
         cursos_dados_existentes = {
-            f"{cd.curso_id}-{cd.docente_id}-{cd.semestre_id}-{cd.seccion}": cd 
-            for cd in CursoDado.objects.filter(semestre=semestre)
+            f"{cd.curso_id}-{cd.docente.codigo_docente}-{cd.semestre_id}-{cd.seccion}": True 
+            for cd in CursoDado.objects.filter(semestre=semestre).select_related('docente')
         }
 
         docente_actual = None
@@ -94,7 +97,9 @@ class NominaParser:
             seccion = str(fila.get('Sección', 'A')).strip().split('.')[0]
             jornada = str(fila.get('Jornada', 'N/A')).strip()
             
-            key = f"{curso_obj.id}-{doc_obj.id}-{semestre.id}-{seccion}"
+            # CLAVE DE UNICIDAD: curso + codigo_docente + semestre + seccion
+            key = f"{curso_obj.id}-{codigo_actual}-{semestre.id}-{seccion}"
+            
             if key not in cursos_dados_existentes:
                 objetos_a_crear.append(CursoDado(
                     curso=curso_obj,
