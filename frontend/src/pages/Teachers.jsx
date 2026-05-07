@@ -7,7 +7,7 @@ import Button from '../components/common/Button';
 import { EyeIcon, TrashIcon, UserPlusIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { API_URL } from '../services/global_URL';
 import { getDocentes, updateDocente } from '../services/docente_service';
-import { getFacultades, getSemestres } from '../services/academico_service';
+import { getFacultades } from '../services/academico_service';
 
 const Teachers = () => {
   const navigate = useNavigate();
@@ -36,7 +36,10 @@ const Teachers = () => {
   const [formFacultad, setFormFacultad] = useState('');
   
   const [cursosForm, setCursosForm] = useState([]);
-  const [nuevoCursoInput, setNuevoCursoInput] = useState('');
+  
+  // --- ESTADOS PARA EL COMBO BOX DE CURSOS ---
+  const [cursosDisponibles, setCursosDisponibles] = useState([]);
+  const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState('');
 
   useEffect(() => {
     fetchInitialData();
@@ -52,15 +55,25 @@ const Teachers = () => {
         search: filtroTexto
       };
 
-      const [docentesData, facsData] = await Promise.all([
+      // Se agregó la petición de los cursos aquí
+      const [docentesData, facsData, cursosRes] = await Promise.all([
         getDocentes(params),
-        getFacultades()
+        getFacultades(),
+        fetch(`${API_URL}academico/cursos/`, {
+          headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+        }).catch(() => ({ ok: false }))
       ]);
 
       const lista = docentesData.results ?? [];
       setDocentes(lista);
       setTotalDocentes(docentesData.count ?? lista.length);
       setFacultades(Array.isArray(facsData) ? facsData : facsData.results ?? []);
+
+      // Llenamos el estado de los cursos disponibles para el combo box
+      if (cursosRes && cursosRes.ok) {
+        const cData = await cursosRes.json();
+        setCursosDisponibles(Array.isArray(cData) ? cData : cData.results ?? []);
+      }
 
       const promedios = {};
       const conteos = {};
@@ -153,17 +166,20 @@ const Teachers = () => {
     setFormTipoPlan(doc?.tipo_plan     ?? '');
     setFormFacultad(String(doc?.facultad ?? ''));
     
-    // Al editar desde el grid principal, como no listamos los cursos directamente en esta vista
-    // lo mantenemos vacío o lo ignoramos. Si es nuevo, vacío.
     setCursosForm([]);
-    setNuevoCursoInput('');
+    setCursoSeleccionadoId(''); // Reiniciamos el combo box
     setIsFormModalOpen(true);
   };
 
+  // --- LÓGICA DE AGREGAR DESDE COMBO BOX ---
   const agregarCursoAlFormulario = () => {
-    if (nuevoCursoInput.trim() !== '') { 
-      setCursosForm([...cursosForm, nuevoCursoInput.trim()]); 
-      setNuevoCursoInput(''); 
+    if (cursoSeleccionadoId !== '') { 
+      // Buscamos el nombre del curso por su ID para guardarlo en la lista visual
+      const cursoObj = cursosDisponibles.find(c => String(c.id) === String(cursoSeleccionadoId));
+      if (cursoObj && !cursosForm.includes(cursoObj.nombre)) {
+        setCursosForm([...cursosForm, cursoObj.nombre]); 
+      }
+      setCursoSeleccionadoId(''); 
     }
   };
 
@@ -212,7 +228,7 @@ const Teachers = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue mb-2">Docentes</h1>
-          <p className="text-gray-500">Mostrando {docentesFiltrados.length} docentes en total</p>
+          <p className="text-gray-500 font-medium">Mostrando {docentesFiltrados.length} docentes en total</p>
         </div>
         <Button variant="primary" className="flex items-center gap-2 shadow-md" onClick={() => abrirFormulario(null)}>
           <UserPlusIcon className="w-5 h-5" /> Agregar Docente
@@ -336,7 +352,19 @@ const Teachers = () => {
           <div className="flex flex-col gap-3">
              <label className="text-sm font-bold text-[#112240]">Cursos Asignados al Docente</label>
              <div className="flex gap-2">
-                <input type="text" placeholder="Escriba el nombre del curso" className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" value={nuevoCursoInput} onChange={(e) => setNuevoCursoInput(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); agregarCursoAlFormulario(); } }} />
+                
+                {/* COMBO BOX DE CURSOS EN LUGAR DE INPUT DE TEXTO */}
+                <select 
+                  className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                  value={cursoSeleccionadoId}
+                  onChange={(e) => setCursoSeleccionadoId(e.target.value)}
+                >
+                  <option value="">Seleccione un curso...</option>
+                  {cursosDisponibles.map(curso => (
+                    <option key={curso.id} value={curso.id}>{curso.nombre}</option>
+                  ))}
+                </select>
+
                 <button type="button" onClick={agregarCursoAlFormulario} className="bg-[#112240] text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-900 transition shadow-sm flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4"/> Agregar</button>
              </div>
              
