@@ -1,11 +1,19 @@
 import pandas as pd
 import re
+import unicodedata
 from usuarios.models import Docente
 from evaluaciones.models import (
     CursoDado, CriterioEvaluacion, 
     EvaluacionConsolidada, EvaluacionCurso
 )
 from academico.models import Facultad, Carrera, Pensum, Curso
+
+def normalizar_texto(texto):
+    if not texto or pd.isna(texto):
+        return ""
+    texto = str(texto).strip()
+    texto = unicodedata.normalize('NFD', texto)
+    return "".join([c for c in texto if not unicodedata.combining(c)]).upper()
 
 class BaseParser:
     @staticmethod
@@ -18,7 +26,16 @@ class BaseParser:
 
     @staticmethod
     def guardar_nota_en_bd(codigo_docente, nombre_criterio, nota, semestre, nombre_curso=None, seccion=None, docente_obj=None):
-        # 1. IDENTIFICAR DOCENTE (Solo búsqueda)
+        # 0. ASEGURAR FACULTAD (Sin duplicar)
+        facultad_default = Facultad.objects.filter(nombre__icontains="Ingenier").first()
+        
+        if not facultad_default:
+            facultad_default = Facultad.objects.first()
+            
+        if not facultad_default:
+            facultad_default = Facultad.objects.create(nombre="Ingeniería")
+
+        # 1. IDENTIFICAR O CREAR DOCENTE
         docente = None
         if isinstance(docente_obj, Docente):
             docente = docente_obj
@@ -40,48 +57,68 @@ class BaseParser:
                 docente = Docente.objects.filter(nombre_completo__icontains=nombre_docente_str).first()
             
             if not docente:
-                print(f"  [!] Docente no encontrado: {nombre_docente_str} ({final_codigo}). Nota de '{nombre_criterio}' omitida.")
-                return
+                docente = Docente.objects.create(
+                    codigo_docente=final_codigo if final_codigo else f"TEMP-{nombre_docente_str[:10]}",
+                    nombre_completo=nombre_docente_str,
+                    facultad=facultad_default
+                )
+                print(f"  [+] Docente creado (no encontrado): {nombre_docente_str}")
 
         if not docente: return 
 
-        # 2. IDENTIFICAR CURSO Y ASIGNACIÓN (Solo búsqueda)
+        # 2. IDENTIFICAR O BUSCAR CURSO
         curso_dado = None
         if nombre_curso:
             nombre_curso_limpio = str(nombre_curso).strip()
+            nombre_norm = normalizar_texto(nombre_curso_limpio)
             
-            # Intentamos buscar el curso en el catálogo (ya cargado por PensumParser)
-            curso_obj = Curso.objects.filter(nombre_curso__icontains=nombre_curso_limpio).first()
+            # Intentamos buscar el curso en el catálogo con normalización
+            # Primero buscamos coincidencias que contengan el nombre o viceversa
+            cursos = Curso.objects.all()
+            curso_obj = None
+            for c in cursos:
+                if normalizar_texto(c.nombre_curso) == nombre_norm:
+                    curso_obj = c
+                    break
             
             if not curso_obj:
-                print(f"  [!] Curso no encontrado: {nombre_curso_limpio}. Nota de '{nombre_criterio}' omitida.")
-                return
+                for c in cursos:
+                    if nombre_norm in normalizar_texto(c.nombre_curso) or normalizar_texto(c.nombre_curso) in nombre_norm:
+                        curso_obj = c
+                        break
             
-            # Buscamos la asignación (ya cargada por NominaParser)
+            # Si el curso no existe, lo creamos usando estructuras EXISTENTES
+            if not curso_obj:
+                pensum = Pensum.objects.first()
+                if not pensum:
+                    carrera, _ = Carrera.objects.get_or_create(
+                        nombre="Carrera Ingeniería", 
+                        defaults={'facultad': facultad_default}
+                    )
+                    pensum, _ = Pensum.objects.get_or_create(
+                        nombre="Pensum General", 
+                        carrera=carrera
+                    )
+                
+                curso_obj, _ = Curso.objects.get_or_create(
+                    nombre_curso=nombre_curso_limpio,
+                    pensum=pensum,
+                    defaults={'creditos': 0}
+                )
+            
+            # Buscamos o creamos el CursoDado
             sec_str = str(seccion).split('.')[0].strip() if seccion and not pd.isna(seccion) else "A"
-            curso_dado = CursoDado.objects.filter(
+            curso_dado, created = CursoDado.objects.get_or_create(
                 docente=docente,
                 curso=curso_obj,
                 semestre=semestre,
                 seccion=sec_str
-            ).first()
-            
-            if not curso_dado:
-                # Si no hay asignación específica, buscamos cualquier sección de ese curso para ese docente y semestre
-                curso_dado = CursoDado.objects.filter(
-                    docente=docente,
-                    curso=curso_obj,
-                    semestre=semestre
-                ).first()
-                
-            if not curso_dado:
-                print(f"  [!] Asignación no encontrada: {docente.nombre_completo} - {curso_obj.nombre_curso}. Nota omitida.")
-                return
+            )
+            if created: print(f"  [+] Curso registrado: {nombre_curso_limpio} ({sec_str})")
 
         # 3. GUARDAR NOTA DIRECTA
         if nota is None or pd.isna(nota): return
 
-        # Aseguramos que el criterio exista (Auto-creación si falta, ya que es configuración)
         criterio = CriterioEvaluacion.objects.filter(nombre__icontains=nombre_criterio).first()
 
         if not criterio:
@@ -90,6 +127,7 @@ class BaseParser:
                 nombre=nombre_criterio,
                 alcance=alcance_nuevo
             )
+            print(f"  [+] Criterio creado automáticamente: {nombre_criterio} ({alcance_nuevo})")
 
         if criterio.alcance == 'GLOBAL':
             eval_consolidada, _ = EvaluacionConsolidada.objects.get_or_create(
