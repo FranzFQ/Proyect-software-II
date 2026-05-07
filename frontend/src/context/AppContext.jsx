@@ -2,11 +2,12 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { listaDocentesGlobal, listaCoordinadores, listaSemestres } from '../utils/mockData';
 import { getSemestres, getSemestreActivo } from '../services/academico_service';
+import { getSavedUser } from '../services/auth_service';
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => getSavedUser());
   const [docentes, setDocentes] = useState(listaDocentesGlobal);
   const [coordinadores, setCoordinadores] = useState(listaCoordinadores);
   const [semestres, setSemestres] = useState([]);

@@ -1,4 +1,4 @@
-import { getToken } from "./auth_service";
+import { getToken, fetchWithAuth } from "./auth_service";
 import { API_URL } from "./global_URL";
 
 const BASE_URL = API_URL;
@@ -28,7 +28,7 @@ async function handleResponse(response) {
 export async function getDocentes(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}usuarios/docentes/${queryString ? `?${queryString}` : ""}`;
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
   return handleResponse(response);
 }
 
@@ -37,14 +37,14 @@ export async function getDocentes(params = {}) {
  * Útil para la página de TeacherProfile.
  */
 export async function getDocenteById(id) {
-  const response = await fetch(`${BASE_URL}usuarios/docentes/${id}/`, {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/${id}/`, {
     headers: authHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function getTopDocentes() {
-    const response = await fetch(`${BASE_URL}usuarios/docentes/top_docentes/`, {
+    const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/top_docentes/`, {
       headers: authHeaders(),
     });
     return handleResponse(response);
@@ -54,7 +54,7 @@ export async function getTopDocentes() {
  * Permite actualizar datos del docente (si es necesario).
  */
 export async function updateDocente(id, data) {
-  const response = await fetch(`${BASE_URL}usuarios/docentes/${id}/`, {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/${id}/`, {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(data),

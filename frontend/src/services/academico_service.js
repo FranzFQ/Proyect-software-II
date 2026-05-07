@@ -1,4 +1,4 @@
-import { getToken } from "./auth_service";
+import { getToken, fetchWithAuth } from "./auth_service";
 import { API_URL } from "./global_URL";
 
 const BASE_URL = API_URL;
@@ -29,9 +29,7 @@ async function handleResponse(response) {
 
 // --- FACULTADES ---
 export async function getFacultades() {
-  const response = await fetch(`${BASE_URL}academico/facultades/`, {
-    headers: authHeaders(),
-  });
+  const response = await fetchWithAuth(`${BASE_URL}academico/facultades/`);
   return handleResponse(response);
 }
 
@@ -39,7 +37,7 @@ export async function getFacultades() {
 export async function getCarreras(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}academico/carreras/${queryString ? `?${queryString}` : ""}`;
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
   return handleResponse(response);
 }
 
@@ -47,7 +45,7 @@ export async function getCarreras(params = {}) {
 export async function getSemestres(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}academico/semestres/${queryString ? `?${queryString}` : ""}`;
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
   return handleResponse(response);
 }
 
@@ -78,7 +76,7 @@ export async function deleteSemestre(id) {
 }
 
 export async function getSemestreActivo() {
-    const response = await fetch(`${BASE_URL}academico/semestres/activo/`, {
+    const response = await fetchWithAuth(`${BASE_URL}academico/semestres/activo/`, {
       headers: authHeaders(),
     });
     return handleResponse(response);
@@ -88,13 +86,13 @@ export async function getSemestreActivo() {
 export async function getCursos(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}academico/cursos/${queryString ? `?${queryString}` : ""}`;
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
   return handleResponse(response);
 }
 
 // --- PENSUMS ---
 export async function getPensums() {
-  const response = await fetch(`${BASE_URL}academico/pensums/`, {
+  const response = await fetchWithAuth(`${BASE_URL}academico/pensums/`, {
     headers: authHeaders(),
   });
   return handleResponse(response);
