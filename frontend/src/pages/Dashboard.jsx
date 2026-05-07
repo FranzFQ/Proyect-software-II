@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext'; 
 import Card from '../components/common/Card';
@@ -31,6 +31,8 @@ const Dashboard = () => {
   const [dataPonderaciones, setDataPonderaciones] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const COLORS_PALETTE = ['#112240', '#1a365d', '#3182ce', '#63b3ed'];
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -44,8 +46,39 @@ const Dashboard = () => {
         ]);
 
         setStats(s);
-        setDataPromedios(p);
         setDistributionData(d);
+
+        // MAPEO SEGURO: Ignoramos "Autoevaluaciones" y "Apoyo y Colaboración"
+        const mappingPond = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':      'CEAT',
+            'Criterios de Coordinador': 'Coordinador',
+            'Control Docente':          'Coordinador',
+            'Checklist':                'Checklists'
+        };
+
+        // Filtrar y formatear la gráfica de barras de promedios
+        const promediosFiltrados = [];
+        if (Array.isArray(p)) {
+          p.forEach(item => {
+            // El backend podría mandar 'name' o 'CriterioNombre'
+            const nombreOriginal = item.name || item.CriterioNombre || '';
+            const nombreValido = mappingPond[nombreOriginal] || (mappingPond[nombreOriginal + 's']); 
+            
+            if (nombreValido || mappingPond[nombreOriginal]) {
+               promediosFiltrados.push({
+                 name: mappingPond[nombreOriginal] || nombreOriginal,
+                 valor: Number(item.valor || item.promedio || 0)
+               });
+            } else if (['Estudiantil', 'CEAT', 'Coordinador', 'Checklists'].includes(nombreOriginal)) {
+               promediosFiltrados.push({ name: nombreOriginal, valor: Number(item.valor || 0) });
+            }
+          });
+        }
+        setDataPromedios(promediosFiltrados.length > 0 ? promediosFiltrados : [
+          { name: 'Estudiantil', valor: 0 }, { name: 'CEAT', valor: 0 },
+          { name: 'Coordinador', valor: 0 }, { name: 'Checklists', valor: 0 },
+        ]);
 
         // Formatear top docentes
         setTopDocentes(t.map(doc => {
@@ -60,23 +93,23 @@ const Dashboard = () => {
             };
         }));
 
-        // Formatear ponderaciones para el gráfico de pie con mapeo y filtrado
-        const mappingPond = {
-            'Evaluaciones Estudiantes': 'Estudiantil',
-            'Capacitaciones CEAT':       'CEAT',
-            'Autoevaluaciones':          'Autoevaluación',
-            'Criterios de Coordinador':  'Coordinador',
-            'Checklist':                 'Visitas',
-            'Apoyo y Colaboración':      'Apoyo'
-        };
-
-        setDataPonderaciones(pond
-            .filter(item => mappingPond[item.CriterioNombre])
-            .map(item => ({
-                name: mappingPond[item.CriterioNombre],
-                value: item.porcentaje_asignado
-            }))
-        );
+        // Formatear gráfica de dona de Ponderaciones (solo 4 válidas)
+        const ponderacionesFiltradas = [];
+        const agrupado = {};
+        
+        if (Array.isArray(pond)) {
+          pond.forEach(item => {
+            const mappedName = mappingPond[item.CriterioNombre];
+            if (mappedName && !agrupado[mappedName]) {
+              agrupado[mappedName] = true;
+              ponderacionesFiltradas.push({
+                  name: mappedName,
+                  value: item.porcentaje_asignado
+              });
+            }
+          });
+        }
+        setDataPonderaciones(ponderacionesFiltradas);
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -87,12 +120,10 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const COLORS_PALETTE = ['#112240', '#1a365d', '#2c5282', '#3182ce', '#4299e1', '#63b3ed'];
-
   if (loading) {
     return (
-        <div className="flex items-center justify-center h-screen">
-            <p className="text-xl font-bold text-url-blue animate-pulse">Cargando métricas...</p>
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+            <p className="text-xl font-bold text-[#112240] animate-pulse">Cargando métricas...</p>
         </div>
     );
   }
@@ -103,7 +134,7 @@ const Dashboard = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-url-blue">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Dashboard</h1>
           <p className="text-gray-500 font-medium">Visualización de métricas para: {semestreActivo}</p>
         </div>
       </div>
@@ -130,8 +161,7 @@ const Dashboard = () => {
 
       {/* 2. GRÁFICAS DE ANÁLISIS CENTRAL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Gráfica de Barras */}
+        
         <div className="lg:col-span-2">
           <Card title="Puntuación Promedio por Evaluación">
             <div className="h-80 w-full mt-4">
@@ -148,7 +178,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Gráfica Circular con Labels visibles */}
         <div className="lg:col-span-1">
           <Card title="Distribución de Rendimiento">
             <div className="h-80 w-full mt-4">
@@ -161,7 +190,7 @@ const Dashboard = () => {
                     outerRadius={75}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`} // <- Dato siempre a la vista
+                    label={({ name, value }) => `${name}: ${value}`}
                   >
                     {distributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -178,37 +207,32 @@ const Dashboard = () => {
 
       {/* 3. SECCIÓN INFERIOR */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Rendimiento por Docente (Ahora con Etiqueta de Estado recuperada) */}
+        
         <div className="lg:col-span-2">
           <Card title="Rendimiento de Docentes (Top 4)">
             <div className="flex flex-col gap-6 mt-6">
-              {topDocentes.map((doc) => (
+              {topDocentes.length > 0 ? topDocentes.map((doc) => (
                 <div key={doc.id} className="group">
                   <div className="flex justify-between items-end mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-url-blue border border-slate-200">
-                        {doc.iniciales}
+                        {doc.iniciales || '?'}
                       </div>
                       <div>
                         <h4 className="font-bold text-gray-800 leading-none">{doc.nombre}</h4>
-                        <span className="text-[11px] text-gray-400 font-semibold uppercase">{doc.facultad}</span>
+                        <span className="text-[11px] text-gray-400 font-semibold uppercase">{doc.facultad || 'Facultad'}</span>
                       </div>
                     </div>
-
-                    {/* Etiqueta de estado y punteo normalizado */}
                     <div className="flex flex-col items-end gap-1">
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${doc.bgBadge}`}>
                         {doc.estado}
                       </span>
                       <div>
-                        <span className="text-lg font-black text-url-blue">{doc.scoreVisual}</span>
+                        <span className="text-lg font-black text-url-blue">{doc.scoreVisual ? doc.scoreVisual.toFixed(1) : '0.0'}</span>
                         <span className="text-xs text-gray-400 ml-1">/ 100</span>
                       </div>
                     </div>
-
                   </div>
-                  {/* Barra horizontal con color dinámico y ancho ajustado */}
                   <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -216,7 +240,9 @@ const Dashboard = () => {
                     ></div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center text-gray-400 py-8">No hay docentes suficientes registrados.</div>
+              )}
             </div>
             <button onClick={() => navigate('/teachers')} className="w-full text-center mt-8 py-2 border-t border-gray-50 text-sm font-bold text-url-blue hover:text-url-yellow transition-colors">
               Ver listado completo de docentes &rarr;
@@ -224,7 +250,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* % Ponderación (Pie Chart estético) */}
         <div className="lg:col-span-1">
           <Card className="h-full">
             <div className="flex justify-between items-start mb-2">
@@ -233,7 +258,7 @@ const Dashboard = () => {
                 <ArrowRightIcon className="w-5 h-5" />
               </button>
             </div>
-
+            
             <div className="h-64 w-full">
               {dataPonderaciones.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -273,7 +298,6 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
-
       </div>
     </div>
   );
