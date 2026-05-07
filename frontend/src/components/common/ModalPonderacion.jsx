@@ -1,4 +1,4 @@
-// frontend/src/components/common/ModalPonderacion.jsx
+// src/components/common/ModalPonderacion.jsx
 import React, { useContext, useEffect, useState } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { getPonderaciones, updatePonderacion } from '../../services/evaluaciones_service';
@@ -8,15 +8,15 @@ const ModalPonderacion = ({ onClose }) => {
   const { showToast } = useContext(AppContext);
   const [ponderacionesList, setPonderacionesList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cargando, setCargando] = useState(false);
 
-  // Mapeo: SOLO incluimos las 4 categorías activas (Excluimos Autoevaluación y Apoyo)
   const mapping = {
-    'Evaluaciones Estudiantes': 'Eval. Estudiantil',
-    'Capacitaciones CEAT':      'Evaluación CEAT',
-    'Control Docente':          'Eval. Coordinador',
-    'Criterios de Coordinador': 'Eval. Coordinador',
-    'Checklist':                'Visitas (Checklists)'
+    'Evaluaciones Estudiantes': 'Estudiantil',
+    'Capacitaciones CEAT':       'CEAT',
+    'Autoevaluaciones':          'Autoevaluación',
+    'Control Docente':           'Coordinador',
+    'Criterios de Coordinador':  'Coordinador',
+    'Checklist':                 'visitas',
+    'Apoyo y Colaboración':      'Apoyo'
   };
 
   useEffect(() => {
@@ -24,16 +24,15 @@ const ModalPonderacion = ({ onClose }) => {
       try {
         const data = await getPonderaciones();
         
-        // Agrupar y filtrar datos reales de la BD
+        // Agrupar por el nombre mapeado para evitar duplicados si existen en la BD
         const groupedData = {};
         data.forEach(item => {
           const shortName = mapping[item.CriterioNombre];
-          // Solo lo guardamos si existe en nuestro mapping (así ignoramos las obsoletas)
-          if (shortName && !groupedData[shortName]) {
-            groupedData[shortName] = {
-              ...item,
-              labelVisual: shortName
-            };
+          if (shortName) {
+            // Aquí tomamos el primero que aparezca.
+            if (!groupedData[shortName]) {
+              groupedData[shortName] = item;
+            }
           }
         });
 
@@ -49,21 +48,20 @@ const ModalPonderacion = ({ onClose }) => {
 
   const handleChange = (id, valor) => {
     setPonderacionesList(prev => prev.map(p => 
-        p.id === id ? { ...p, porcentaje_asignado: parseInt(valor) || 0 } : p
+        p.id === id ? { ...p, porcentaje_asignado: Number(valor) } : p
     ));
   };
 
-  const sumaTotal = ponderacionesList.reduce((acc, curr) => acc + (curr.porcentaje_asignado || 0), 0);
+  const total = ponderacionesList.reduce((acc, curr) => acc + curr.porcentaje_asignado, 0);
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (sumaTotal !== 100) {
-      return showToast(`Error: Las ponderaciones suman ${sumaTotal}%. Deben sumar exactamente 100%.`, 'error');
+  const handleGuardar = async () => {
+    if (total !== 100) {
+      showToast(`Error: Las ponderaciones suman ${total}%. Deben sumar exactamente 100%.`, 'error');
+      return;
     }
 
-    setCargando(true);
     try {
-        // Guardamos directamente en la BD
+        // Actualizar cada ponderación individualmente (o podrías crear un endpoint batch)
         await Promise.all(ponderacionesList.map(p => 
             updatePonderacion(p.id, { porcentaje_asignado: p.porcentaje_asignado })
         ));
@@ -71,50 +69,49 @@ const ModalPonderacion = ({ onClose }) => {
         onClose();
     } catch (error) {
         showToast("Error al guardar ponderaciones", "error");
-    } finally {
-        setCargando(false);
     }
   };
 
-  if (loading) return <p className="text-center p-8 text-[#112240] font-bold animate-pulse">Cargando ponderaciones...</p>;
+  if (loading) return <p className="text-center p-4">Cargando ponderaciones...</p>;
 
   return (
-    <form onSubmit={handleSave} className="flex flex-col gap-4">
-      <p className="text-sm text-gray-500 mb-2">
-        Ajuste los porcentajes de cada categoría activa. La suma debe ser exactamente 100%.
+    <div className="flex flex-col gap-4">
+      <p className="text-gray-500 text-sm mb-2">
+        Ajuste los porcentajes para cada criterio de evaluación del semestre activo. La suma total debe ser obligatoriamente 100%.
       </p>
-      
-      {/* GRID ESTANDARIZADO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <div className="space-y-3">
         {ponderacionesList.map((item) => (
-          <div key={item.id} className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-500 uppercase">{item.labelVisual}</label>
-            <div className="relative">
+          <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+            <label className="font-semibold text-gray-700 text-sm">
+              {mapping[item.CriterioNombre] || item.CriterioNombre}
+            </label>
+            <div className="flex items-center gap-2">
               <input 
                 type="number" 
                 min="0" 
                 max="100"
                 value={item.porcentaje_asignado} 
                 onChange={(e) => handleChange(item.id, e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-url-blue pr-8"
+                className="w-20 px-3 py-1 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-url-blue"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+              <span className="text-gray-500 font-bold">%</span>
             </div>
           </div>
         ))}
       </div>
 
-      <div className={`mt-2 p-3 rounded-md text-center font-bold shadow-sm border ${sumaTotal === 100 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-        Suma Total: {sumaTotal}% {sumaTotal !== 100 && '(Debe ser 100%)'}
+      <div className={`flex justify-between items-center p-4 rounded-lg mt-2 font-bold text-lg transition-colors ${total === 100 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <span>Total Ponderación:</span>
+        <span>{total}%</span>
       </div>
 
-      <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
-        <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-        <Button type="submit" variant="primary" disabled={sumaTotal !== 100 || cargando} className="bg-[#112240] text-white hover:bg-blue-900 border-none font-bold disabled:opacity-50">
-          {cargando ? 'Guardando...' : 'Guardar Cambios'}
+      <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-gray-100">
+        <Button variant="primary" onClick={handleGuardar}>
+          Actualizar Ponderaciones
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

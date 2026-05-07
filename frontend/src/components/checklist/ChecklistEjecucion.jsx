@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../../services/global_URL';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'; // <-- Importamos el ícono estandarizado
 
 // ─── Helpers de color ──────────────────────────────────────────────────────────
 function getColorBarra(score) {
