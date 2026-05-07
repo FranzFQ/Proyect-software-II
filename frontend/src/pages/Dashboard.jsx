@@ -134,7 +134,7 @@ const Dashboard = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-[#112240] mb-2">Dashboard</h1>
           <p className="text-gray-500 font-medium">Visualización de métricas para: {semestreActivo}</p>
         </div>
       </div>

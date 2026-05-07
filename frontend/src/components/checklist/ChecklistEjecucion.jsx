@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Button from '../common/Button';
 import { API_URL } from '../../services/global_URL';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'; // <-- Importamos el ícono estandarizado
 
 function ScoreButton({ value, score, onChange }) {
   const isSelected = score === value;
@@ -263,64 +264,67 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-sm text-gray-500">
-        <span className="text-url-blue font-semibold cursor-pointer hover:underline" onClick={onCancelar}>
-          Checklists
-        </span>{' '}
-        /{' '}
-        <span className="text-url-blue font-semibold cursor-pointer hover:underline" onClick={onCancelar}>
-          {checklistNombre}
-        </span>{' '}
-        / <span>{breadcrumb}</span>
+    <div className="flex flex-col gap-6 pb-10 min-h-[calc(100vh-4rem)]">
+      
+      {/* BOTÓN VOLVER ESTANDARIZADO REEMPLAZANDO EL VIEJO TEXTO */}
+      <div className="mb-2">
+        <button onClick={onCancelar} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
+          <ArrowLeftIcon className="w-4 h-4"/> Volver a Checklists
+        </button>
       </div>
 
-      <div className="bg-url-blue rounded-xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* ENCABEZADO ACTUALIZADO */}
+      <div className="bg-url-blue rounded-xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-sm">
         <div>
-          <h2 className="text-white font-bold text-xl md:text-2xl tracking-wide">
+          <h2 className="text-white font-bold text-xl md:text-2xl tracking-wide flex flex-wrap items-center gap-3">
             {checklistNombre}
+            <span className="bg-url-yellow text-[#112240] text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-md align-middle shadow-sm">
+              {breadcrumb}
+            </span>
           </h2>
           {docenteActivo && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-url-yellow" />
               <span className="text-url-yellow font-semibold text-sm">
                 {docenteActivo.docente}
               </span>
               <span className="text-white/60 text-xs">·</span>
-              <span className="text-white/70 text-xs">{docenteActivo.nombreCurso} — Sec. {docenteActivo.seccion}</span>
+              <span className="text-white/70 text-xs font-medium">{docenteActivo.nombreCurso} — Sec. {docenteActivo.seccion}</span>
             </div>
           )}
           {!docenteActivo && !modoEdicion && (
-            <p className="text-white/60 text-xs mt-2">Selecciona un docente para comenzar a calificar</p>
+            <p className="text-white/60 text-xs mt-3 font-medium bg-white/10 w-fit px-3 py-1 rounded-full">
+              Selecciona un docente para comenzar a calificar
+            </p>
           )}
           {modoEdicion && (
             <button
               onClick={() => setMostrarNuevo(true)}
-              className="mt-3 bg-url-yellow text-url-blue text-xs font-bold px-4 py-1.5 rounded hover:opacity-90 transition"
+              className="mt-4 bg-url-yellow text-[#112240] text-xs font-bold px-4 py-1.5 rounded hover:bg-yellow-500 transition shadow-sm"
             >
-              + Agregar más parámetros
+              + Agregar parámetros
             </button>
           )}
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col justify-center items-end bg-black/20 px-6 py-3 rounded-lg">
           <div className="text-url-yellow font-bold text-4xl leading-none">{completados}/{total}</div>
-          <div className="text-white text-xs mt-1">Criterios</div>
+          <div className="text-white/80 text-[10px] mt-1.5 uppercase tracking-widest font-bold">Criterios Evaluados</div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         {/* Criterios */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 className="font-bold text-url-blue">Criterios de Evaluación</h3>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gray-50/50">
+            <h3 className="font-bold text-[#112240] text-lg">Criterios de Evaluación</h3>
             {completados > 0 && (
-              <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
+              <span className="bg-green-50 text-green-700 text-xs font-bold px-4 py-1.5 border border-green-200 rounded-md shadow-sm">
                 {completados} completados
               </span>
             )}
           </div>
 
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 flex-1">
             {criterios.map((criterio, i) => {
               const e          = evaluaciones[i] ?? { completado: false, score: null };
               const estaEditando = modoEdicion && editandoIdx === i;
@@ -336,13 +340,13 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
                         onClick={() => { if (docenteActivo) toggle(i); }}
                         disabled={!docenteActivo}
                         title={!docenteActivo ? 'Selecciona un docente primero' : ''}
-                        className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                          !docenteActivo ? 'border-gray-200 opacity-30 cursor-not-allowed' :
-                          e.completado ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400'
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          !docenteActivo ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                          e.completado ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400 bg-white shadow-sm'
                         }`}
                       >
                         {e.completado && (
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
@@ -356,13 +360,13 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
                           value={editandoTexto}
                           onChange={e => setEditandoTexto(e.target.value)}
                           onKeyDown={handleEditKeyDown}
-                          className="border-2 border-url-blue rounded-md px-3 py-1.5 text-sm focus:outline-none flex-1"
+                          className="border border-url-blue rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-url-blue flex-1"
                         />
-                        <button onClick={confirmarEdicion} className="bg-url-yellow text-url-blue px-2.5 py-1.5 rounded-md text-sm font-bold hover:opacity-90 transition">✓</button>
-                        <button onClick={cancelarEdicion}  className="text-gray-400 hover:text-gray-600 px-1.5 py-1.5 text-base leading-none transition">×</button>
+                        <button onClick={confirmarEdicion} className="bg-url-yellow text-url-blue px-3 py-1.5 rounded-md text-sm font-bold hover:opacity-90 transition">✓</button>
+                        <button onClick={cancelarEdicion}  className="text-gray-400 hover:text-red-500 px-2 py-1.5 text-base leading-none transition">×</button>
                       </div>
                     ) : (
-                      <span className={`text-sm truncate ${e.completado ? 'text-gray-800 font-medium' : 'text-gray-400'} ${modoEdicion ? 'text-gray-700' : ''}`}>
+                      <span className={`text-sm truncate ${e.completado ? 'text-[#112240] font-bold' : 'text-gray-500 font-medium'} ${modoEdicion ? 'text-gray-700' : ''}`}>
                         {criterio}
                       </span>
                     )}
@@ -384,12 +388,12 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
                               <ScoreButton key={v} value={v} score={e.score} onChange={val => setScore(i, val)} />
                             ))}
                           </div>
-                          <div className={`min-w-[60px] text-center text-sm font-bold px-3 py-1 rounded ${getScoreBadgeStyle(e.score)}`}>
+                          <div className={`min-w-[65px] text-center text-xs font-bold px-3 py-1.5 rounded border shadow-sm ${getScoreBadgeStyle(e.score)}`}>
                             {e.score !== null ? `${e.score} / 10` : '— / 10'}
                           </div>
                         </>
                       ) : (
-                        <div className="text-sm text-gray-300 ml-auto">— / 10</div>
+                        <div className="text-xs text-gray-300 ml-auto font-bold uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded border border-gray-100 shadow-inner">— / 10</div>
                       )}
                     </div>
                   )}
@@ -399,19 +403,19 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
 
             {modoEdicion && mostrarNuevo && (
               <>
-                <div className="flex items-center gap-2 px-6 py-4 bg-yellow-50">
+                <div className="flex items-center gap-2 px-6 py-4 bg-yellow-50/50 border-t border-yellow-100">
                   <input
                     ref={nuevoCriterioRef}
                     value={nuevoCriterio}
                     onChange={e => setNuevoCriterio(e.target.value)}
                     onKeyDown={handleNuevoKeyDown}
-                    placeholder="Nombre del nuevo criterio..."
-                    className="border-2 border-url-blue rounded-md px-3 py-1.5 text-sm focus:outline-none flex-1"
+                    placeholder="Escribe el nombre del nuevo criterio..."
+                    className="border border-yellow-300 bg-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-1 shadow-sm"
                   />
-                  <button onClick={agregarCriterio} className="bg-url-yellow text-url-blue px-3 py-1.5 rounded-md text-sm font-bold hover:opacity-90 transition">✓ Agregar</button>
-                  <button onClick={cancelarNuevo}   className="text-gray-400 hover:text-gray-600 px-2 py-1.5 text-base leading-none transition">×</button>
+                  <button onClick={agregarCriterio} className="bg-url-yellow text-[#112240] px-4 py-1.5 rounded-md text-sm font-bold hover:bg-yellow-500 transition shadow-sm">Agregar</button>
+                  <button onClick={cancelarNuevo}   className="text-gray-400 hover:text-red-500 px-2 py-1.5 text-xl leading-none transition">×</button>
                 </div>
-                <p className="px-6 pb-3 text-xs text-gray-400">Presiona Enter para agregar · Esc para cancelar</p>
+                <p className="px-6 pb-3 pt-1 text-[10px] uppercase font-bold tracking-widest text-gray-400 bg-yellow-50/50">Enter para agregar · Esc para cancelar</p>
               </>
             )}
           </div>
@@ -419,53 +423,54 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
 
         {/* Panel derecho */}
         <div className="flex flex-col gap-4">
+          
           {/* Tabla de docentes observados */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-[#112240]">
                 Docentes Observados
               </p>
               <button
                 onClick={() => setShowModalDocente(true)}
-                className="bg-url-blue text-white text-xs font-bold px-3 py-1.5 rounded-md hover:opacity-90 transition"
+                className="bg-[#112240] text-white text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-md hover:bg-blue-900 transition shadow-sm"
               >
                 + Observar Docente
               </button>
             </div>
 
             {docentesObservados.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">
+              <div className="bg-gray-50 border border-dashed border-gray-200 rounded-lg p-6 text-center text-gray-400 text-sm font-semibold">
                 Ningún docente observado aún.
-              </p>
+              </div>
             ) : (
               <>
-                <div className="overflow-x-auto rounded-md border border-gray-200">
-                  <table className="text-xs" style={{minWidth: '380px', width: '100%'}}>
+                <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                  <table className="text-xs" style={{minWidth: '340px', width: '100%'}}>
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="text-left px-3 py-2 text-gray-500 font-semibold whitespace-nowrap">Docente</th>
-                        <th className="text-left px-3 py-2 text-gray-500 font-semibold whitespace-nowrap">Curso</th>
-                        <th className="text-center px-3 py-2 text-gray-500 font-semibold whitespace-nowrap">Punteo</th>
+                        <th className="text-left px-4 py-2.5 text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">Docente</th>
+                        <th className="text-left px-4 py-2.5 text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">Curso</th>
+                        <th className="text-center px-4 py-2.5 text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">Punteo</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {docsPagina.map((d, i) => {
                         const p = punteosPorDocente[d.docenteId] ?? null;
                         const badge = p === null
-                          ? 'bg-gray-100 text-gray-400'
-                          : p >= 9 ? 'bg-green-100 text-green-700'
-                          : p >= 7 ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-600';
+                          ? 'bg-gray-100 text-gray-400 border border-gray-200'
+                          : p >= 9 ? 'bg-green-50 text-green-700 border border-green-200'
+                          : p >= 7 ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                          : 'bg-red-50 text-red-600 border border-red-200';
                         return (
                           <tr key={i} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-3 py-2 font-semibold text-url-blue whitespace-nowrap">
+                            <td className="px-4 py-3 font-bold text-[#112240] whitespace-nowrap">
                               {d.docente}
                             </td>
-                            <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                            <td className="px-4 py-3 text-gray-500 font-medium whitespace-nowrap">
                               {d.nombreCurso}
                             </td>
-                            <td className="px-3 py-2 text-center whitespace-nowrap">
-                              <span className={`inline-block px-2 py-0.5 rounded font-bold`}>
+                            <td className="px-4 py-3 text-center whitespace-nowrap">
+                              <span className={`inline-block px-3 py-1 rounded text-[10px] tracking-widest font-black shadow-sm ${badge}`}>
                                 {p !== null ? `${p}` : '—'}
                               </span>
                             </td>
@@ -477,21 +482,21 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
                 </div>
 
                 {totalPaginasDoc > 1 && (
-                  <div className="flex justify-between items-center mt-2 text-xs text-url-blue font-bold">
+                  <div className="flex justify-between items-center mt-3 text-xs text-[#112240] font-bold">
                     <button
                       onClick={() => setPaginaDocentes(p => Math.max(1, p - 1))}
                       disabled={paginaDocentes === 1}
-                      className="px-2 py-1 bg-gray-100 rounded disabled:opacity-40"
+                      className="px-3 py-1.5 border border-gray-200 bg-white rounded-md disabled:opacity-40 shadow-sm hover:bg-gray-50"
                     >
-                      ←
+                      &larr;
                     </button>
-                    <span>{paginaDocentes}/{totalPaginasDoc}</span>
+                    <span className="text-gray-400">Pág {paginaDocentes} de {totalPaginasDoc}</span>
                     <button
                       onClick={() => setPaginaDocentes(p => Math.min(totalPaginasDoc, p + 1))}
                       disabled={paginaDocentes === totalPaginasDoc}
-                      className="px-2 py-1 bg-gray-100 rounded disabled:opacity-40"
+                      className="px-3 py-1.5 border border-gray-200 bg-white rounded-md disabled:opacity-40 shadow-sm hover:bg-gray-50"
                     >
-                      →
+                      &rarr;
                     </button>
                   </div>
                 )}
@@ -500,14 +505,14 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
           </div>
 
           {/* Observaciones */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <p className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
-              Observaciones generales:
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <p className="text-sm font-bold text-[#112240] mb-3">
+              Observaciones generales
             </p>
             <textarea
-              className="w-full border border-gray-300 rounded-md p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-url-blue focus:border-transparent transition-all"
+              className="w-full bg-[#FFFAF0] border border-yellow-200 rounded-lg p-4 text-sm text-gray-700 italic resize-none shadow-inner focus:outline-none focus:ring-2 focus:ring-url-blue focus:border-transparent transition-all"
               rows={4}
-              placeholder="Observaciones sobre la visita..."
+              placeholder="Escriba aquí sus observaciones sobre la visita..."
               value={observaciones}
               onChange={e => setObservaciones(e.target.value)}
             />
@@ -516,12 +521,12 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
           <Button
             variant="primary"
             onClick={handleGuardar}
-            className={`w-full justify-center py-3 ${!modoEdicion && !docenteActivo ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+            className={`w-full justify-center py-3 bg-[#112240] text-white border-none shadow-sm hover:bg-blue-900 ${!modoEdicion && !docenteActivo ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
           >
-            {modoEdicion ? 'Guardar cambios' : 'Guardar'}
+            {modoEdicion ? 'Guardar cambios' : 'Guardar y Finalizar'}
           </Button>
 
-          <Button variant="secondary" onClick={onCancelar} className="w-full justify-center py-3">
+          <Button variant="secondary" onClick={onCancelar} className="w-full justify-center py-3 bg-white border border-gray-200 shadow-sm">
             Cancelar
           </Button>
         </div>

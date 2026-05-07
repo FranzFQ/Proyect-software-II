@@ -174,7 +174,7 @@ const Files = () => {
   return (
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-[#112240] mb-2 font-serif">Carga de Archivos e Información</h1>
+        <h1 className="text-3xl font-bold text-[#112240] mb-2">Carga de Archivos e Información</h1>
         <p className="text-gray-500 font-medium">{semestreActivo || 'Cargando semestre...'} · {completadasPrincipales} de 3 archivos cargados</p>
       </div>
 
@@ -263,7 +263,7 @@ const Files = () => {
 
            <Button 
              variant="primary" 
-             className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] text-white hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+             className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
              onClick={handleProcesarTotales}
              disabled={cargando || completadasPrincipales === 0}
            >
