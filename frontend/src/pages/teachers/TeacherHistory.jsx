@@ -140,12 +140,11 @@ const TeacherHistory = () => {
 
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)] pb-12">
-
       <div className="mb-2">
         <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
           <ArrowLeftIcon className="w-4 h-4"/> Volver al Perfil de {docente?.nombre_completo}
         </button>
-        <h1 className="text-3xl font-black text-[#112240] mb-1">Histórico de Semestres</h1>
+        <h1 className="text-3xl font-black text-[#112240] mb-1  ">Histórico de Semestres</h1>
         <p className="text-gray-500 font-medium">{docente?.nombre_completo}</p>
       </div>
 
