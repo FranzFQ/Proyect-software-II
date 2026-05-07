@@ -83,6 +83,7 @@ class ChecklistObservation(models.Model):
     usuario = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True)
     fecha_observacion = models.DateTimeField(auto_now_add=True)
     punteo = models.FloatField(default=0.0)
+    datos = models.JSONField(default=dict)
 
     def __str__(self):
         nombre_checklist = self.checklist.titulo if self.checklist else "Sin Checklist"
