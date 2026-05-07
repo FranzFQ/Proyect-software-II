@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_URL } from '../../services/global_URL';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const TeacherHistory = () => {
   const navigate = useNavigate();
@@ -15,7 +14,7 @@ const TeacherHistory = () => {
   const [filtroTexto,      setFiltroTexto]      = useState('');
   const [filtroEstado,     setFiltroEstado]     = useState('');
   const [currentPage,      setCurrentPage]      = useState(1);
-  const itemsPerPage = 3; 
+  const itemsPerPage = 3; // Modificado a 3 para cuadrar con el grid
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,12 +22,8 @@ const TeacherHistory = () => {
       setError(null);
       try {
         const [docenteRes, evaluacionesRes] = await Promise.all([
-          fetch(`${API_URL}usuarios/docentes/${id}/`, {
-            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-          }),
-          fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}`, {
-            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-          }),
+          fetch(`${API_URL}usuarios/docentes/${id}/`),
+          fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}`),
         ]);
 
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
@@ -40,18 +35,13 @@ const TeacherHistory = () => {
         setDocente(docenteData);
 
         const items = (Array.isArray(evaluaciones) ? evaluaciones : evaluaciones.results ?? [])
-          .map(ev => {
-            const score = parseFloat(ev.puntaje_final || ev.promedio_final || ev.promedio || 0);
-            const nombreSem = ev.SemestreStr || ev.semestre_nombre || `Semestre ${ev.semestre || 'Histórico'}`;
-
-            return {
-              id:       ev.id,
-              semestreId: ev.semestre,
-              nombre:   nombreSem,
-              score:    score,
-              estado:   clasificarEstado(score),
-            };
-          });
+          .map(ev => ({
+            id:       ev.id,
+            semestreId: ev.semestre,
+            nombre:   ev.SemestreStr || 'Semestre Histórico',
+            score:    parseFloat(ev.puntaje_final ?? 0),
+            estado:   clasificarEstado(parseFloat(ev.puntaje_final ?? 0)),
+          }));
         
         setSemestresHistoricos(items);
       } catch (e) {
@@ -84,7 +74,7 @@ const TeacherHistory = () => {
   };
 
   const getProgressWidth = (score) => {
-    if (score === null || isNaN(score)) return 0;
+    if (score === null) return 0;
     return score > 10 ? Math.min(score, 100) : Math.min(score * 10, 100);
   };
 
@@ -102,12 +92,10 @@ const TeacherHistory = () => {
   const currentItems    = filtrados.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   const chartData = useMemo(() => {
-    return semestresHistoricos
-      .filter(sem => sem.nombre && !isNaN(sem.score))
-      .map(sem => ({
-        name: sem.nombre,
-        Punteo: Number(sem.score)
-      })).reverse(); 
+    return semestresHistoricos.map(sem => ({
+      name: sem.nombre,
+      Punteo: Number(sem.score)
+    })).reverse(); 
   }, [semestresHistoricos]);
 
   const yAxisConfig = useMemo(() => {
@@ -140,19 +128,19 @@ const TeacherHistory = () => {
 
   return (
     <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)] pb-12">
+
       <div className="mb-2">
         <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
-          <ArrowLeftIcon className="w-4 h-4"/> Volver al Perfil de {docente?.nombre_completo}
+          &larr; Volver al Perfil de {docente?.nombre_completo}
         </button>
-        <h1 className="text-3xl font-black text-[#112240] mb-1  ">Histórico de Semestres</h1>
+        <h1 className="text-3xl font-black text-[#112240] mb-1">Histórico de Semestres</h1>
         <p className="text-gray-500 font-medium">{docente?.nombre_completo}</p>
       </div>
 
-      {chartData.length > 0 ? (
+      {chartData.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="font-bold text-[#112240] mb-6">Tendencia de Rendimiento Anual</h3>
-          {/* AQUÍ ESTABA EL ERROR 1: Altura ajustada a 400px para que ocupe buen espacio */}
-          <div className="h-[400px] w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -164,10 +152,6 @@ const TeacherHistory = () => {
             </ResponsiveContainer>
           </div>
         </div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-xl p-10 shadow-sm text-center text-gray-400 font-bold">
-          No hay suficientes datos válidos para generar la gráfica.
-        </div>
       )}
 
       <div className="flex flex-col md:flex-row gap-4 items-center mt-4">
@@ -175,7 +159,7 @@ const TeacherHistory = () => {
           <input
             type="text"
             placeholder="Búsqueda por año o semestre..."
-            className="w-full px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#112240]"
+            className="w-full px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
             value={filtroTexto}
             onChange={handleSearch}
           />
@@ -206,6 +190,7 @@ const TeacherHistory = () => {
           <p className="text-sm">No hay datos que coincidan con tu búsqueda.</p>
         </div>
       ) : (
+        // Modificado a grid-cols-3 y alineados al inicio para que no se estiren
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 items-start content-start">
           {currentItems.map(sem => (
             <div key={sem.id} className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col relative pt-1 overflow-hidden hover:shadow-md transition-shadow">
@@ -244,9 +229,8 @@ const TeacherHistory = () => {
         </div>
       )}
 
-      {/* AQUÍ ESTABA EL ERROR 2: Se quitó mt-auto y se cambió por mt-8 para que no se separe feo hacia abajo */}
       {totalPages > 1 && (
-        <div className="mt-8 flex justify-end items-center pt-4 pb-2 text-sm text-[#112240] font-bold gap-4">
+        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
           <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50 transition-colors">&larr; Anterior</button>
           <span className="text-gray-500">Página {safeCurrentPage} de {totalPages}</span>
           <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50 transition-colors">Siguiente &rarr;</button>
