@@ -52,6 +52,9 @@ INSTALLED_APPS = [
     'evaluaciones',
     'usuarios',
     'academico',
+    'ai',
+
+    'background_task',
 
 ]
 

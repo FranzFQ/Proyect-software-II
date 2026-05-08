@@ -1,9 +1,12 @@
 import pandas as pd
 import re
 from evaluaciones.parsers.base_parser import BaseParser
-from evaluaciones.models import AnalisisTexto, Tipo, CursoDado
+from evaluaciones.models import AnalisisTexto, Tipo, CursoDado, EvaluacionConsolidada
 from usuarios.models import Docente
 from academico.models import Curso
+
+from ai.models import SummaryState
+from ai.tasks import generar_resumen
 
 class ComentariosParser(BaseParser):
     @classmethod
@@ -129,8 +132,22 @@ class ComentariosParser(BaseParser):
             if nuevos:
                 analisis.contenido.extend(nuevos)
                 analisis.save()
+
                 print(f"  [+] {len(nuevos)} comentarios guardados exitosamente en la BD.")
             else:
                 print(f"  [~] Comentarios ya existentes en la BD.")
+            
+            status = SummaryState.objects.filter(
+                evaluacion = EvaluacionConsolidada.objects.filter(docente=curso_obj.docente, semestre=semestre).first(),
+                analisis = analisis
+            ).first()
+            if not status:
+                SummaryState.objects.create(
+                    evaluacion = EvaluacionConsolidada.objects.filter(docente=curso_obj.docente, semestre=semestre).first(),
+                    analisis = analisis,
+                    status = SummaryState.Status.PENDING
+                )
+                generar_resumen(analisis.id)
+
         
         print("="*60)
