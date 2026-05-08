@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SparklesIcon, ChatBubbleBottomCenterTextIcon, ClipboardDocumentListIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { getCursoDadoById, getEvaluacionesCurso, getAnalisisTexto } from '../services/evaluaciones_service';
+import { getCursoDadoById, getEvaluacionesCurso, getAnalisisTexto, getEvaluaciones } from '../services/evaluaciones_service';
 import Button from '../components/common/Button';
 
 const CourseDetail = () => {
@@ -28,6 +28,10 @@ const CourseDetail = () => {
         const evalsData = await getEvaluacionesCurso({ curso_dado: cursoDado.id });
         setEvaluaciones(evalsData);
 
+        let evaluacion = await getEvaluaciones({ docente: cursoDado.docente });
+        evaluacion = evaluacion[0]
+        console.log("Evaluación general del docente:", evaluacion);
+
         // Calculamos el promedio de los criterios para el punteo final
         const punteoFinal = evalsData.length > 0 
           ? (evalsData.reduce((acc, curr) => acc + curr.puntaje_curso, 0) / evalsData.length).toFixed(1)
@@ -46,7 +50,7 @@ const CourseDetail = () => {
           creditos: cursoDado.CreditosCurso || 0,
           punteoFinal: punteoFinal,
           comentarios: comentarios.length > 0 ? comentarios : ["No hay comentarios registrados para este curso aún."],
-          sugerencia: cursoDado.resumen_ia || "El sistema aún no ha generado una sugerencia automatizada para este docente en este curso."
+          sugerencia: evaluacion.resumen_ia || "El sistema aún no ha generado una sugerencia automatizada para este docente en este curso."
         });
 
       } catch (err) {
