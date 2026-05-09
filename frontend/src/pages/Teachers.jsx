@@ -34,14 +34,41 @@ const Teachers = () => {
   const [formCodigo,   setFormCodigo]   = useState('');
   const [formTipoPlan, setFormTipoPlan] = useState('');
   const [formFacultad, setFormFacultad] = useState('');
+  const [formCarrera,  setFormCarrera]  = useState('');
   
   const [cursosForm, setCursosForm] = useState([]);
-  const [nuevoCursoInput, setNuevoCursoInput] = useState('');
+  
+  // --- ESTADOS PARA LOS COMBO BOX EN SEGUNDO PLANO ---
+  const [cursosDisponibles, setCursosDisponibles] = useState([]);
+  const [carreras, setCarreras] = useState([]);
+  const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState('');
+
+  // Efecto en segundo plano para no afectar el tiempo de carga de la tabla principal
+  useEffect(() => {
+    const token = sessionStorage.getItem('auth_token');
+    
+    // Cargar Cursos
+    fetch(`${API_URL}academico/cursos/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setCursosDisponibles(Array.isArray(data) ? data : data.results ?? []))
+    .catch(err => console.error("Error al cargar combo de cursos:", err));
+
+    // Cargar Carreras
+    fetch(`${API_URL}academico/carreras/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.ok ? res.json() : [])
+    .then(data => setCarreras(Array.isArray(data) ? data : data.results ?? []))
+    .catch(err => console.error("Error al cargar combo de carreras:", err));
+  }, []);
 
   useEffect(() => {
     fetchInitialData();
   }, [currentPage, filtroTexto]); 
 
+  // LÓGICA DE DEVELOP INTACTA (Rápida y Optimizada)
   const fetchInitialData = async () => {
     setLoading(true);
     try {
@@ -152,18 +179,22 @@ const Teachers = () => {
     setFormCodigo(doc?.codigo_docente  ?? '');
     setFormTipoPlan(doc?.tipo_plan     ?? '');
     setFormFacultad(String(doc?.facultad ?? ''));
+    setFormCarrera(String(doc?.carrera ?? ''));
     
-    // Al editar desde el grid principal, como no listamos los cursos directamente en esta vista
-    // lo mantenemos vacío o lo ignoramos. Si es nuevo, vacío.
     setCursosForm([]);
-    setNuevoCursoInput('');
+    setCursoSeleccionadoId(''); 
     setIsFormModalOpen(true);
   };
 
+  const carrerasFiltradas = carreras.filter(c => String(c.facultad) === String(formFacultad));
+
   const agregarCursoAlFormulario = () => {
-    if (nuevoCursoInput.trim() !== '') { 
-      setCursosForm([...cursosForm, nuevoCursoInput.trim()]); 
-      setNuevoCursoInput(''); 
+    if (cursoSeleccionadoId !== '') { 
+      const cursoObj = cursosDisponibles.find(c => String(c.id) === String(cursoSeleccionadoId));
+      if (cursoObj && !cursosForm.includes(cursoObj.nombre)) {
+        setCursosForm([...cursosForm, cursoObj.nombre]); 
+      }
+      setCursoSeleccionadoId(''); 
     }
   };
 
@@ -177,6 +208,7 @@ const Teachers = () => {
       codigo_docente:  formCodigo,
       tipo_plan:       formTipoPlan,
       facultad:        formFacultad ? parseInt(formFacultad) : null,
+      carrera:         formCarrera  ? parseInt(formCarrera)  : null,
     };
     try {
       if (docenteActual) {
@@ -212,7 +244,7 @@ const Teachers = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-url-blue mb-2">Docentes</h1>
-          <p className="text-gray-500">Mostrando {docentesFiltrados.length} docentes en total</p>
+          <p className="text-gray-500 font-medium">Mostrando {docentesFiltrados.length} docentes en total</p>
         </div>
         <Button variant="primary" className="flex items-center gap-2 shadow-md" onClick={() => abrirFormulario(null)}>
           <UserPlusIcon className="w-5 h-5" /> Agregar Docente
@@ -324,9 +356,32 @@ const Teachers = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Facultad</label>
-              <select value={formFacultad} onChange={e => setFormFacultad(e.target.value)} className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required>
+              <select 
+                value={formFacultad} 
+                onChange={e => {
+                  setFormFacultad(e.target.value);
+                  setFormCarrera('');
+                }} 
+                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" 
+                required
+              >
                 <option value="">Seleccionar facultad...</option>
                 {facultades.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+              </select>
+            </div>
+            
+            {/* NUEVO CAMPO: CARRERA */}
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Carrera</label>
+              <select 
+                value={formCarrera} 
+                onChange={e => setFormCarrera(e.target.value)} 
+                disabled={!formFacultad}
+                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" 
+                required
+              >
+                <option value="">{formFacultad ? 'Seleccionar carrera...' : 'Primero selecciona una facultad'}</option>
+                {carrerasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
           </div>
@@ -336,7 +391,16 @@ const Teachers = () => {
           <div className="flex flex-col gap-3">
              <label className="text-sm font-bold text-[#112240]">Cursos Asignados al Docente</label>
              <div className="flex gap-2">
-                <input type="text" placeholder="Escriba el nombre del curso" className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" value={nuevoCursoInput} onChange={(e) => setNuevoCursoInput(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); agregarCursoAlFormulario(); } }} />
+                <select 
+                  className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                  value={cursoSeleccionadoId}
+                  onChange={(e) => setCursoSeleccionadoId(e.target.value)}
+                >
+                  <option value="">Seleccione un curso...</option>
+                  {cursosDisponibles.map(curso => (
+                    <option key={curso.id} value={curso.id}>{curso.nombre}</option>
+                  ))}
+                </select>
                 <button type="button" onClick={agregarCursoAlFormulario} className="bg-[#112240] text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-900 transition shadow-sm flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4"/> Agregar</button>
              </div>
              
