@@ -36,7 +36,6 @@ const TeacherProfile = () => {
 
         const res = await fetch(url);
         if (!res.ok) throw new Error('No se pudo cargar la información del perfil');
-        
         const data = await res.json();
         
         setDocente(data.docente);
@@ -45,7 +44,6 @@ const TeacherProfile = () => {
         setEvaluacion(data.evaluacion);
         setEvaluacionesDesglose(data.evaluaciones_desglose || []);
         setPuntajesCurso(data.puntajes_map);
-
       } catch (e) {
         setError(e.message);
       } finally {
@@ -55,9 +53,9 @@ const TeacherProfile = () => {
     fetchData();
   }, [id, semesterId]);
 
+  // Lógica del backend para gráfica dinámica
   const chartData = useMemo(() => {
     if (!evaluacionesDesglose || evaluacionesDesglose.length === 0) return [];
-    
     return evaluacionesDesglose.map(ev => ({
         name: ev.CriterioNombre,
         value: Number(ev.puntaje_final || 0)
@@ -87,6 +85,7 @@ const TeacherProfile = () => {
 
   const semNombre = semestre ? `${semestre.anio} - Semestre ${semestre.ciclo || 'I'}` : '—';
 
+  // Lógica del backend para el promedio
   const promedioGeneral = useMemo(() => {
     if (chartData.length === 0) return null;
     const suma = chartData.reduce((acc, item) => acc + item.value, 0);
@@ -101,13 +100,12 @@ const TeacherProfile = () => {
     ? docente.nombre_completo.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
     : '?';
 
-  // Componente de Métrica con efecto Hover Magnético
   const MetricBox = ({ label, value }) => (
-    <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-3 flex flex-col items-center justify-center flex-1 min-w-[70px] sm:min-w-[80px] transition-all duration-300 transform hover:scale-110 hover:shadow-lg hover:z-10 hover:bg-white cursor-default group">
-      <span className="text-2xl xl:text-3xl font-black text-[#112240] leading-none mb-1 group-hover:text-url-blue transition-colors">
+    <div className="bg-gray-50 border border-gray-100 rounded-xl px-2.5 py-2 flex flex-col items-center justify-center flex-1 min-w-[65px] transition-all duration-300 transform hover:scale-110 hover:shadow-lg hover:z-10 hover:bg-white cursor-default group shadow-sm">
+      <span className="text-xl xl:text-2xl font-black text-[#112240] leading-none mb-1 group-hover:text-url-blue transition-colors">
         {value ? parseFloat(value).toFixed(1) : '0.0'}
       </span>
-      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center line-clamp-1">
+      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest text-center line-clamp-1">
         {label}
       </span>
     </div>
@@ -129,95 +127,75 @@ const TeacherProfile = () => {
         )}
       </div>
 
-      {/* ENCABEZADO REESTRUCTURADO */}
-      <div className="bg-white border border-gray-200 rounded-xl p-8 flex flex-col shadow-sm relative overflow-visible">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 xl:p-8 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-6 shadow-sm relative overflow-visible">
         {isHistorical && <div className="absolute top-0 left-0 right-0 h-1.5 bg-orange-500" />}
 
-        {/* Fila Única: Info Docente (Izquierda) | Métricas y Botones (Derecha) */}
-        <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
-          
-          {/* Lado Izquierdo: Información del Docente */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1 w-full lg:w-auto">
-            <div className="w-24 h-24 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-4xl font-serif font-black text-[#112240] shadow-sm shrink-0">
-              {iniciales}
-            </div>
-            <div className="flex-1 truncate">
-              <p className="text-gray-500 text-xs mb-1 font-bold uppercase tracking-wider">
-                {semNombre} {isHistorical && <span className="text-orange-500 ml-1">(Histórico)</span>}
-              </p>
-              <h1 className="text-3xl font-black text-[#112240] mb-1 truncate">{docente?.nombre_completo ?? '—'}</h1>
-              <p className="text-gray-500 font-medium text-sm">
-                {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
-              </p>
-              
-              <div className="flex flex-wrap gap-3 mt-4">
-                <span className="bg-blue-50 text-url-blue border border-blue-100 px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5">
-                  <UsersIcon className="w-4 h-4"/> {cursos.length} cursos impartidos
+        <div className="flex items-start gap-5 flex-1 min-w-0">
+          <div className="w-20 h-20 xl:w-24 xl:h-24 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-3xl xl:text-4xl font-serif font-black text-[#112240] shadow-sm shrink-0">
+            {iniciales}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center h-full"> 
+            <p className="text-gray-500 text-[10px] xl:text-xs mb-1 font-bold uppercase tracking-wider">
+              {semNombre} {isHistorical && <span className="text-orange-500 ml-1">(Histórico)</span>}
+            </p>
+            <h1 className="text-2xl xl:text-3xl font-black text-[#112240] mb-1 leading-tight pr-4">
+              {docente?.nombre_completo ?? '—'}
+            </h1>
+            <p className="text-gray-500 font-medium text-xs xl:text-sm truncate">
+              {docente?.codigo_docente} · {docente?.FacultadNombre ?? docente?.tipo_plan ?? ''}
+            </p>
+            
+            <div className="flex flex-wrap gap-2 mt-2 xl:mt-3">
+              <span className="bg-blue-50 text-url-blue border border-blue-100 px-3 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5">
+                <UsersIcon className="w-3 h-3"/> {cursos.length} cursos
+              </span>
+              {evaluacion && (
+                <span className="bg-green-50 text-green-700 border border-green-200 px-3 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5">
+                  <CheckCircleIcon className="w-3 h-3"/> Final: {parseFloat(evaluacion.puntaje_final || 0).toFixed(1)}
                 </span>
-                {evaluacion && (
-                  <span className="bg-green-50 text-green-700 border border-green-200 px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5">
-                    <CheckCircleIcon className="w-4 h-4"/> Punteo final: {parseFloat(evaluacion.puntaje_final || 0).toFixed(1)}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Lado Derecho: Puntuaciones Alineadas y Botones */}
-          <div className="flex flex-col items-end gap-4 shrink-0 w-full lg:w-auto mt-4 lg:mt-0">
+        <div className="flex flex-col items-end gap-4 shrink-0 mt-4 xl:mt-0">
+          
+          <div className="flex items-stretch justify-end gap-2 xl:gap-3 w-full">
+            <MetricBox label="Eval."  value={evaluacion?.puntaje_estudiantil || evaluacion?.estudiantil || evaluacion?.evaluacion_docente} />
+            <MetricBox label="Check." value={evaluacion?.puntaje_visitas || evaluacion?.visitas} />
+            <MetricBox label="Coord." value={evaluacion?.puntaje_coordinador || evaluacion?.coordinador || evaluacion?.control_docente} />
+            <MetricBox label="CEAT"   value={evaluacion?.puntaje_ceat || evaluacion?.ceat} />
             
-            {/* Fila de Métricas (Las 4 + El Promedio General) */}
-            <div className="flex flex-wrap sm:flex-nowrap items-stretch justify-end gap-3 w-full">
-              <MetricBox label="Eval."  value={evaluacion?.puntaje_estudiantil || evaluacion?.estudiantil || evaluacion?.evaluacion_docente} />
-              <MetricBox label="Check." value={evaluacion?.puntaje_visitas || evaluacion?.visitas} />
-              <MetricBox label="Coord." value={evaluacion?.puntaje_coordinador || evaluacion?.coordinador || evaluacion?.control_docente} />
-              <MetricBox label="CEAT"   value={evaluacion?.puntaje_ceat || evaluacion?.ceat} />
-              
-              {/* Promedio General (A la par de los otros cuadros) */}
-              {promedioGeneral !== null && (
-                <div className="flex flex-col items-center justify-center bg-gray-50 px-6 py-2 rounded-xl border border-gray-200 relative overflow-hidden shadow-sm shrink-0 sm:ml-2">
-                  <span className="text-4xl xl:text-5xl font-black text-[#112240] leading-none">
-                    {promedioGeneral.toFixed(1)}
-                  </span>
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">Promedio Cursos</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Botones de Acción */}
-            <div className="flex flex-wrap gap-3 w-full justify-end mt-1">
-              <button onClick={() => navigate(`/teachers/${id}/checklists`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">
-                Checklists
-              </button>
-              {!isHistorical && (
-                <>
-                  <button onClick={() => navigate(`/teachers/${id}/history`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">
-                    Histórico
-                  </button>
-                  <button onClick={() => navigate(`/teachers/${id}/comparison`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">
-                    Comparación
-                  </button>
-                </>
-              )}
-            </div>
-
+            {promedioGeneral !== null && (
+              <div className="flex flex-col items-center justify-center bg-gray-50 px-4 xl:px-5 py-2 rounded-xl border border-gray-200 relative overflow-hidden shadow-sm shrink-0 sm:ml-2">
+                <span className="text-3xl xl:text-4xl font-black text-[#112240] leading-none">
+                  {promedioGeneral.toFixed(1)}
+                </span>
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1 text-center">Punteo Promedio</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap gap-2 w-full justify-end mt-1">
+            <button onClick={() => navigate(`/teachers/${id}/checklists`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">Checklists</button>
+            {!isHistorical && (
+              <>
+                <button onClick={() => navigate(`/teachers/${id}/history`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">Histórico</button>
+                <button onClick={() => navigate(`/teachers/${id}/comparison`)} className="px-5 py-2 rounded-md font-bold text-xs border border-[#112240] text-[#112240] hover:bg-[#112240] hover:text-white transition-colors shadow-sm">Comparación</button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6 flex-1">
-        
-        {/* Cursos */}
         <div className="flex flex-col h-full">
           <h3 className="font-bold text-lg text-[#112240] mb-4">Cursos impartidos <span className="text-gray-400 text-sm font-semibold">({cursos.length})</span></h3>
-
-          {cursos.length === 0 ? (
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 font-bold">
-              No hay cursos registrados.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4 flex-1">
-              {currentCourses.map(curso => {
+          <div className="flex flex-col gap-4 flex-1">
+            {currentCourses.length === 0 ? (
+              <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 font-bold">No hay cursos registrados.</div>
+            ) : (
+              currentCourses.map(curso => {
                 const score = puntajesCurso[curso.id] ?? null;
                 return (
                   <div key={curso.id} className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col relative pt-1 overflow-hidden hover:shadow-md transition-shadow">
@@ -225,7 +203,6 @@ const TeacherProfile = () => {
                     <div className="p-4 flex flex-col h-full gap-3"> 
                       <h4 className="text-[#112240] font-bold text-lg leading-tight line-clamp-1">{curso.CursosNombre}</h4>
                       <p className="text-gray-500 text-sm -mt-2 mb-1">Sección: {curso.seccion || 'A'} · <span className="text-xs text-gray-400 font-medium">({curso.SemestreStr || semNombre})</span></p> 
-                      
                       <div className="flex justify-between items-end gap-3 mt-auto">
                         <div className="flex-1 flex flex-col gap-1.5"> 
                           <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Progreso</span>
@@ -234,21 +211,17 @@ const TeacherProfile = () => {
                           </div>
                           <span className="bg-[#112240] text-white text-[10px] font-bold px-2 py-0.5 rounded-md inline-block w-fit mt-1">ID: {curso.id}</span>
                         </div>
-                        
                         <div className="flex flex-col items-end gap-1.5 shrink-0"> 
                           <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Punteo <span className={`text-base ml-1 ${score !== null ? getScoreColor(score) : ''}`}>{score !== null ? score.toFixed(1) : '—'}</span></span>
-                          <button onClick={() => navigate(`/teachers/${id}/course/${curso.id}`)} className="border border-[#112240] text-[#112240] text-sm font-bold px-4 py-1 rounded-md hover:bg-[#112240] hover:text-white transition-colors">
-                            Ver Detalles
-                          </button>
+                          <button onClick={() => navigate(`/teachers/${id}/course/${curso.id}`)} className="border border-[#112240] text-[#112240] text-sm font-bold px-4 py-1 rounded-md hover:bg-[#112240] hover:text-white transition-colors">Ver Detalles</button>
                         </div>
                       </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
-
+              })
+            )}
+          </div>
           {totalPages > 1 && (
             <div className="mt-6 flex justify-between items-center pt-2 text-sm text-[#112240] font-bold">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50 transition-colors">&larr; Anterior</button>
@@ -265,15 +238,7 @@ const TeacherProfile = () => {
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%" cy="50%"
-                    innerRadius={70} 
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS_PALETTE[index % COLORS_PALETTE.length]} />
                     ))}
@@ -285,12 +250,11 @@ const TeacherProfile = () => {
             ) : (
               <div className="text-center flex flex-col items-center gap-3 text-gray-400">
                 <ChartPieIcon className="w-14 h-14 opacity-30" />
-                <p className="font-bold text-sm">No hay datos de evaluación<br/>disponibles para graficar.</p>
+                <p className="font-bold text-sm">No hay datos de evaluación disponibles.</p>
               </div>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
