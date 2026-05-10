@@ -58,31 +58,20 @@ const DocenteComparacion = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!semActualId && !semAnterId) return;
+    if (!semActualId || !semAnterId) return;
     const fetchEvals = async () => {
       setLoadingComp(true);
       try {
-        const fetches = [];
-        if (semActualId) fetches.push(fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semActualId}`));
-        if (semAnterId)  fetches.push(fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}&semestre=${semAnterId}`));
-
-        const results = await Promise.all(fetches);
-        const [resActual, resAnter] = results;
-
-        if (resActual?.ok) {
-          const d = await resActual.json();
-          const list = Array.isArray(d) ? d : d.results ?? [];
-          setEvalActual(list[0] ?? null);
-        } else {
-          setEvalActual(null);
-        }
-        if (resAnter?.ok) {
-          const d = await resAnter.json();
-          const list = Array.isArray(d) ? d : d.results ?? [];
-          setEvalAnterior(list[0] ?? null);
-        } else {
-          setEvalAnterior(null);
-        }
+        const res = await fetch(`${API_URL}usuarios/docentes/${id}/comparacion/?semestre_a=${semActualId}&semestre_b=${semAnterId}`);
+        if (!res.ok) throw new Error('Error al obtener la comparativa');
+        
+        const data = await res.json();
+        setEvalActual(data.semestre_a);
+        setEvalAnterior(data.semestre_b);
+      } catch (e) {
+        console.error(e);
+        setEvalActual(null);
+        setEvalAnterior(null);
       } finally {
         setLoadingComp(false);
       }

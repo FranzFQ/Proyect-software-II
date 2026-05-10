@@ -11,7 +11,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'first_name', 'last_name', 'password',
             'carrera', 'CarreraNombre', 'facultad', 'FacultadNombre',
             'is_active', 'is_staff', 'date_joined'
         ]
@@ -24,26 +24,37 @@ class UsuarioSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = super().create(validated_data)
+
         if password:
             user.set_password(password)
-            user.save()
+
+        else:
+            user.set_unusable_password()  # Si no se proporciona contraseña, el usuario no podrá iniciar sesión
+
+        user.save()
         return user
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
-        user = super().update(instance, validated_data)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
         if password:
-            user.set_password(password)
-            user.save()
-        return user
+            instance.set_password(password)
+
+        instance.save()
+        return instance
 
 
 class DocenteSerializer(serializers.ModelSerializer):
     FacultadNombre = serializers.CharField(source='facultad.nombre', read_only=True)
+    promedio_punteo = serializers.FloatField(read_only=True)
+    conteo_cursos = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Docente
-        fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan']
+        fields = ['id', 'codigo_docente', 'nombre_completo', 'facultad', 'FacultadNombre', 'tipo_plan', 'promedio_punteo', 'conteo_cursos']
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -79,3 +90,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         })
 
         return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        token['username'] = user.username
+        token['email'] = user.email
+        token['first_name'] = user.first_name
+        token['last_name'] = user.last_name
+        token['is_staff'] = user.is_staff
+        token['is_active'] = user.is_active
+
+        return token

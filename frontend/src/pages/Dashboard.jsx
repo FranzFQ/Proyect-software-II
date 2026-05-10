@@ -1,139 +1,303 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext'; 
 import Card from '../components/common/Card';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
+import { 
+  getDashboardEstadisticas, 
+  getDashboardPromediosCriterios, 
+  getDashboardDistribucionRendimiento,
+  getPonderaciones 
+} from '../services/evaluaciones_service';
+import { getTopDocentes } from '../services/docente_service';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  // Asumimos que tienes una variable 'semestreActivo' en tu AppContext. 
-  // Si no la tienes, aquí la simulamos. En el futuro vendrá del backend.
-  const { ponderaciones, docentes, evaluacionesCompletadas, semestreActivo = "Semestre I - año 2025" } = useContext(AppContext);
+  const { semestreActivo = "Semestre I — 2025" } = useContext(AppContext);
 
-  // --- CÁLCULOS DINÁMICOS PARA LAS TARJETAS ---
-  const totalDocentes = docentes.length;
-  const sumaPonderaciones = docentes.reduce((acc, doc) => acc + doc.ponderacion, 0);
-  const promedioGeneral = totalDocentes > 0 ? (sumaPonderaciones / totalDocentes).toFixed(1) : 0;
-  const docentesRiesgo = docentes.filter(d => d.estado === 'Deficiente').length;
+  const [stats, setStats] = useState({
+    total_docentes: 0,
+    promedio_general: 0,
+    docentes_riesgo: 0,
+    progreso_evaluacion: "0%"
+  });
+  const [dataPromedios, setDataPromedios] = useState([]);
+  const [distributionData, setDistributionData] = useState([]);
+  const [topDocentes, setTopDocentes] = useState([]);
+  const [dataPonderaciones, setDataPonderaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const renderEstado = (estado) => {
-    const colores = {
-      'Excelente': 'bg-green-100 text-green-700 border-green-200',
-      'Buena': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      'Deficiente': 'bg-red-100 text-red-700 border-red-200'
+  const COLORS_PALETTE = ['#112240', '#1a365d', '#3182ce', '#63b3ed'];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [s, p, d, t, pond] = await Promise.all([
+          getDashboardEstadisticas(),
+          getDashboardPromediosCriterios(),
+          getDashboardDistribucionRendimiento(),
+          getTopDocentes(),
+          getPonderaciones()
+        ]);
+
+        setStats(s);
+        setDistributionData(d);
+
+        // MAPEO SEGURO: Ignoramos "Autoevaluaciones" y "Apoyo y Colaboración"
+        const mappingPond = {
+            'Evaluaciones Estudiantes': 'Estudiantil',
+            'Capacitaciones CEAT':      'CEAT',
+            'Criterios de Coordinador': 'Coordinador',
+            'Control Docente':          'Coordinador',
+            'Checklist':                'Checklists'
+        };
+
+        // Filtrar y formatear la gráfica de barras de promedios
+        const promediosFiltrados = [];
+        if (Array.isArray(p)) {
+          p.forEach(item => {
+            // El backend podría mandar 'name' o 'CriterioNombre'
+            const nombreOriginal = item.name || item.CriterioNombre || '';
+            const nombreValido = mappingPond[nombreOriginal] || (mappingPond[nombreOriginal + 's']); 
+            
+            if (nombreValido || mappingPond[nombreOriginal]) {
+               promediosFiltrados.push({
+                 name: mappingPond[nombreOriginal] || nombreOriginal,
+                 valor: Number(item.valor || item.promedio || 0)
+               });
+            } else if (['Estudiantil', 'CEAT', 'Coordinador', 'Checklists'].includes(nombreOriginal)) {
+               promediosFiltrados.push({ name: nombreOriginal, valor: Number(item.valor || 0) });
+            }
+          });
+        }
+        setDataPromedios(promediosFiltrados.length > 0 ? promediosFiltrados : [
+          { name: 'Estudiantil', valor: 0 }, { name: 'CEAT', valor: 0 },
+          { name: 'Coordinador', valor: 0 }, { name: 'Checklists', valor: 0 },
+        ]);
+
+        // Formatear top docentes
+        setTopDocentes(t.map(doc => {
+            const normalizedScore = doc.ponderacion <= 10 ? doc.ponderacion * 10 : doc.ponderacion;
+            return {
+              ...doc,
+              scoreVisual: normalizedScore,
+              color: doc.estado === 'Excelente' ? '#10B981' : doc.estado === 'Buena' ? '#F59E0B' : '#EF4444',
+              bgBadge: doc.estado === 'Excelente' ? 'bg-green-100 text-green-700 border-green-200' : 
+                       doc.estado === 'Buena' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 
+                       'bg-red-100 text-red-700 border-red-200'
+            };
+        }));
+
+        // Formatear gráfica de dona de Ponderaciones (solo 4 válidas)
+        const ponderacionesFiltradas = [];
+        const agrupado = {};
+        
+        if (Array.isArray(pond)) {
+          pond.forEach(item => {
+            const mappedName = mappingPond[item.CriterioNombre];
+            if (mappedName && !agrupado[mappedName]) {
+              agrupado[mappedName] = true;
+              ponderacionesFiltradas.push({
+                  name: mappedName,
+                  value: item.porcentaje_asignado
+              });
+            }
+          });
+        }
+        setDataPonderaciones(ponderacionesFiltradas);
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchData();
+  }, []);
+
+  if (loading) {
     return (
-      <span className={`px-4 py-1.5 rounded-md text-sm font-bold border ${colores[estado] || 'bg-gray-100'}`}>
-        {estado}
-      </span>
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+            <p className="text-xl font-bold text-[#112240] animate-pulse">Cargando métricas...</p>
+        </div>
     );
-  };
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      
-      {/* ENCABEZADO ACTUALIZADO */}
-      <div className="flex justify-between items-center relative">
+    <div className="flex flex-col gap-6 pb-10">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
         <div>
-          {/* Título y subtítulo actualizados según tu solicitud */}
-          <h1 className="text-3xl font-bold text-url-blue">Dashboard</h1>
-          <p className="text-gray-500 font-semibold mt-1">Semestre actual: {semestreActivo}</p>
+          <h1 className="text-3xl font-bold text-[#112240] mb-2">Dashboard</h1>
+          <p className="text-gray-500 font-medium">Visualización de métricas para: {semestreActivo}</p>
         </div>
       </div>
 
-      {/* Tarjetas de Métricas DINÁMICAS */}
+      {/* 1. TARJETAS DE MÉTRICAS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="text-center border-l-4 border-l-url-blue">
-          <p className="text-sm text-gray-500 font-semibold uppercase">Total Docentes</p>
-          <p className="text-3xl font-bold text-url-blue">{totalDocentes}</p>
+        <Card className="text-center border-l-4 border-l-url-blue shadow-sm">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Docentes</p>
+          <p className="text-4xl font-black text-url-blue">{stats.total_docentes}</p>
         </Card>
-        <Card className="text-center border-l-4 border-l-status-success">
-          <p className="text-sm text-gray-500 font-semibold uppercase">Promedio General</p>
-          <p className="text-3xl font-bold text-url-blue">{promedioGeneral}</p>
+        <Card className="text-center border-l-4 border-l-green-500 shadow-sm">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Promedio General</p>
+          <p className="text-4xl font-black text-url-blue">{stats.promedio_general}</p>
         </Card>
-        <Card className="text-center border-l-4 border-l-status-danger">
-          <p className="text-sm text-gray-500 font-semibold uppercase">En Riesgo</p>
-          <p className="text-3xl font-bold text-status-danger">{docentesRiesgo}</p>
+        <Card className="text-center border-l-4 border-l-red-500 shadow-sm">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Docentes en Riesgo</p>
+          <p className="text-4xl font-black text-red-600">{stats.docentes_riesgo}</p>
         </Card>
-        <Card className="text-center border-l-4 border-l-url-yellow">
-          <p className="text-sm text-gray-500 font-semibold uppercase">Eval. Completadas</p>
-          <p className="text-3xl font-bold text-url-blue">{evaluacionesCompletadas}</p>
+        <Card className="text-center border-l-4 border-l-url-yellow shadow-sm">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Progreso Evaluación</p>
+          <p className="text-4xl font-black text-url-blue">{stats.progreso_evaluacion}</p>
         </Card>
       </div>
 
+      {/* 2. GRÁFICAS DE ANÁLISIS CENTRAL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Rendimiento por Docente */}
         <div className="lg:col-span-2">
-          <Card title="Rendimiento por Docente">
-            <div className="flex flex-col gap-4">
-              {docentes.slice(0, 4).map((doc) => ( 
-                <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white ${doc.estado === 'Excelente' ? 'bg-url-yellow' : 'bg-url-blue'}`}>
-                      {doc.iniciales}
+          <Card title="Puntuación Promedio por Evaluación">
+            <div className="h-80 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dataPromedios} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} domain={[0, 10]} />
+                  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Bar dataKey="valor" fill="#112240" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1">
+          <Card title="Distribución de Rendimiento">
+            <div className="h-80 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={distributionData}
+                    cx="50%" cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {distributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* 3. SECCIÓN INFERIOR */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div className="lg:col-span-2">
+          <Card title="Rendimiento de Docentes (Top 4)">
+            <div className="flex flex-col gap-6 mt-6">
+              {topDocentes.length > 0 ? topDocentes.map((doc) => (
+                <div key={doc.id} className="group">
+                  <div className="flex justify-between items-end mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-url-blue border border-slate-200">
+                        {doc.iniciales || '?'}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-800 leading-none">{doc.nombre}</h4>
+                        <span className="text-[11px] text-gray-400 font-semibold uppercase">{doc.facultad || 'Facultad'}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-800">{doc.nombre}</h4>
-                      <p className="text-sm text-gray-500">{doc.facultad}</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${doc.bgBadge}`}>
+                        {doc.estado}
+                      </span>
+                      <div>
+                        <span className="text-lg font-black text-url-blue">{doc.scoreVisual ? doc.scoreVisual.toFixed(1) : '0.0'}</span>
+                        <span className="text-xs text-gray-400 ml-1">/ 100</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-url-blue">{doc.ponderacion}</p>
-                    </div>
-                    <div className="w-24 text-center">
-                      {renderEstado(doc.estado)}
-                    </div>
+                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${doc.scoreVisual}%`, backgroundColor: doc.color }}
+                    ></div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center text-gray-400 py-8">No hay docentes suficientes registrados.</div>
+              )}
             </div>
-            {/* Aquí también cambiamos la ruta a inglés de paso */}
-            <button onClick={() => navigate('/teachers')} className="w-full text-center mt-4 text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors">
-              Ver todos los docentes &rarr;
+            <button onClick={() => navigate('/teachers')} className="w-full text-center mt-8 py-2 border-t border-gray-50 text-sm font-bold text-url-blue hover:text-url-yellow transition-colors">
+              Ver listado completo de docentes &rarr;
             </button>
           </Card>
         </div>
 
-        {/* % Ponderación */}
         <div className="lg:col-span-1">
           <Card className="h-full">
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-2">
               <h3 className="text-xl font-bold text-url-blue">% Ponderación</h3>
-              {/* Cambiamos la ruta a inglés */}
-              <button onClick={() => navigate('/files')} className="text-sm font-semibold text-url-blue hover:text-url-yellow transition-colors flex items-center gap-1 mt-1">
-                Agregar archivos <ArrowRightIcon className="w-4 h-4" />
+              <button onClick={() => navigate('/files')} className="p-1.5 text-url-blue hover:bg-blue-50 rounded-full transition-colors">
+                <ArrowRightIcon className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="bg-[#F4F7FE] border border-blue-100 rounded-md p-3 mb-6 text-center shadow-inner">
-              <span className="font-bold text-url-blue">{semestreActivo}</span>
+            
+            <div className="h-64 w-full">
+              {dataPonderaciones.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                    <Pie
+                        data={dataPonderaciones}
+                        cx="50%" cy="50%"
+                        outerRadius={70}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    >
+                        {dataPonderaciones.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS_PALETTE[index % COLORS_PALETTE.length]} />
+                        ))}
+                    </Pie>
+                    <Tooltip />
+                    </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-400 text-sm">Sin ponderaciones configuradas</p>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col gap-5">
-              {[
-                { label: 'Evaluación Estudiante', percent: ponderaciones.estudiantil },
-                { label: 'Evaluación CEAT', percent: ponderaciones.ceat },
-                { label: 'Autoevaluación', percent: ponderaciones.autoevaluacion },
-                { label: 'Evaluación Coordinador', percent: ponderaciones.coordinador },
-                { label: 'Visitas docentes', percent: ponderaciones.visitas },
-                { label: 'Participación docente', percent: ponderaciones.apoyo }
-              ].map((item, index) => (
-                <div key={index}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-semibold text-gray-700">{item.label}</span>
-                    <span className="font-bold text-url-blue">{item.percent}%</span>
+            <div className="space-y-3 mt-4">
+              {dataPonderaciones.map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_PALETTE[index % COLORS_PALETTE.length] }}></div>
+                    <span className="text-xs font-semibold text-gray-600">{item.name}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-url-blue h-2.5 rounded-full transition-all duration-500" style={{ width: `${item.percent}%` }}></div>
-                  </div>
+                  <span className="text-xs font-bold text-url-blue">{item.value}%</span>
                 </div>
               ))}
             </div>
           </Card>
         </div>
-
       </div>
     </div>
   );

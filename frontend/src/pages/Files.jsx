@@ -1,46 +1,64 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import ModalPonderacion from '../components/common/ModalPonderacion';
-import { API_URL } from '../services/global_URL';
+
+import { subirExcels } from '../services/evaluaciones_service';
 
 import { 
   ArrowUpTrayIcon, TrashIcon, CheckCircleIcon, UserGroupIcon,
   DocumentTextIcon, ClipboardDocumentCheckIcon, AcademicCapIcon, 
-  HandRaisedIcon, CloudArrowUpIcon, ChevronDownIcon, FolderOpenIcon, 
-  Cog6ToothIcon, BookOpenIcon, IdentificationIcon 
+  CloudArrowUpIcon, ChevronDownIcon, FolderOpenIcon, 
+  Cog6ToothIcon, BookOpenIcon, IdentificationIcon, ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
 
 const Files = () => {
   const navigate = useNavigate();
-  const { documentos, setDocumentos, setEvaluacionesCompletadas } = useContext(AppContext);
+  const { 
+    documentos = [], 
+    setDocumentos, 
+    setEvaluacionesCompletadas, 
+    showToast = () => {},
+    semestreActivo
+  } = useContext(AppContext) || {};
   
-  // --- ESTADOS DE UI ---
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); 
-  const [alertMessage, setAlertMessage] = useState(''); 
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const dropdownContainerRef = useRef(null);
 
-  // --- ESTADOS DE CARGA Y BACKEND ---
   const [activeUploadId, setActiveUploadId] = useState(null); 
   const [archivoTemporal, setArchivoTemporal] = useState(null); 
   const [cargando, setCargando] = useState(false);
 
-  // Mapeo de IDs internos a nombres de origen esperados por el backend (IngestaViewSet)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const mapIdToOrigen = (id) => {
     switch(id) {
       case 'ceat': return 'ceat';
       case 'estudiantil': return 'evaluacion_docente';
-      case 'autoevaluacion': return 'control_docente'; 
       case 'coordinador': return 'control_docente';
       case 'nomina': return 'nomina';
       case 'pensum': return 'pensum';
+      case 'comentarios': return 'comentarios';
       default: return id;
     }
   };
+
+  // Solo 3 categorías principales requeridas para el 100% de la barra de progreso
+  const categoriasPrincipalesIds = ['estudiantil', 'coordinador', 'ceat'];
+  const completadasPrincipales = documentos.filter(d => d.estado === 'subido' && categoriasPrincipalesIds.includes(d.id)).length;
 
   const abrirModalCarga = (idCategoria) => { 
     setActiveUploadId(idCategoria); 
@@ -49,16 +67,13 @@ const Files = () => {
   };
   
   const procesarCargaArchivo = async () => {
-    if (!archivoTemporal) return setAlertMessage("Por favor selecciona un archivo.");
+    if (!archivoTemporal) return showToast("Por favor selecciona un archivo.", "error");
     
     const fileName = archivoTemporal.name.toLowerCase();
     const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv');
     
-    if (!isValidFormat) {
-      return setAlertMessage("Formato no válido. Por favor suba únicamente archivos .xlsx");
-    }
+    if (!isValidFormat) return showToast("Formato no válido. Por favor suba únicamente archivos .xlsx", "error");
 
-    // --- CARGA INMEDIATA PARA NÓMINA Y PENSUM ---
     if (activeUploadId === 'nomina' || activeUploadId === 'pensum') {
       setCargando(true);
       const formData = new FormData();
@@ -66,25 +81,17 @@ const Files = () => {
       formData.append('tipo', mapIdToOrigen(activeUploadId));
 
       try {
-        const response = await fetch(`${API_URL}evaluaciones/ingesta/subir-archivo/`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          setDocumentos(docs => docs.map(doc => 
-            doc.id === activeUploadId 
-              ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null } // file: null porque ya se subió
-              : doc
-          ));
-          setAlertMessage(`¡${activeUploadId.toUpperCase()} cargado con éxito!`);
-          setIsUploadModalOpen(false);
-        } else {
-          setAlertMessage(`Error al cargar ${activeUploadId}: ${data.error || "Error desconocido"}`);
-        }
+        await subirExcels(formData);
+        
+        setDocumentos(docs => docs.map(doc => 
+          doc.id === activeUploadId 
+            ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: null }
+            : doc
+        ));
+        showToast(`¡${activeUploadId.toUpperCase()} cargado con éxito!`, "success");
+        setIsUploadModalOpen(false);
       } catch (error) {
-        setAlertMessage(`Error de conexión al cargar ${activeUploadId}`);
+        showToast(`Error al cargar ${activeUploadId}: ${error.message || "Error desconocido"}`, "error");
       } finally {
         setCargando(false);
         setArchivoTemporal(null);
@@ -92,14 +99,10 @@ const Files = () => {
       return;
     }
 
-    // --- CARGA DIFERIDA PARA EL RESTO (EVALUACIONES) ---
-    setDocumentos(docs => docs.map(doc => 
-      doc.id === activeUploadId 
-        ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } 
-        : doc
-    ));
+    setDocumentos(docs => docs.map(doc => doc.id === activeUploadId ? { ...doc, estado: 'subido', nombreArchivo: archivoTemporal.name, file: archivoTemporal } : doc));
     setIsUploadModalOpen(false); 
     setArchivoTemporal(null);
+    showToast("Archivo cargado y listo para procesar.", "success");
   };
 
   const handleEliminar = (e, id) => { 
@@ -107,22 +110,15 @@ const Files = () => {
     setDocumentos(docs => docs.map(doc => doc.id === id ? { ...doc, estado: 'pendiente', nombreArchivo: '', file: null } : doc)); 
   };
   
-  const categoriasCompletadas = documentos.filter(d => d.estado === 'subido').length;
-  
-  // --- LÓGICA DE FETCH AL BACKEND ---
   const handleProcesarTotales = async () => {
     const archivosAProcesar = documentos.filter(doc => doc.estado === 'subido' && doc.file);
 
-    if (archivosAProcesar.length === 0) {
-      setAlertMessage("No hay archivos cargados para procesar.");
-      return;
-    }
+    if (archivosAProcesar.length === 0) return showToast("No hay archivos cargados para procesar.", "error");
     
     setCargando(true);
     let errores = [];
     let exitos = 0;
 
-    // Ordenamos para procesar PENSUM y NOMINA primero (importante para la BD)
     const ordenados = [...archivosAProcesar].sort((a, b) => {
       if (a.id === 'pensum') return -1;
       if (b.id === 'pensum') return 1;
@@ -134,38 +130,25 @@ const Files = () => {
     for (const doc of ordenados) {
       const formData = new FormData();
       formData.append('archivo', doc.file);
-      formData.append('tipo', mapIdToOrigen(doc.id)); // Usar 'tipo' en lugar de 'origen' para el backend
+      formData.append('tipo', mapIdToOrigen(doc.id));
 
       try {
-        const response = await fetch(`${API_URL}evaluaciones/ingesta/subir-archivo/`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          exitos++;
-        } else {
-          errores.push(`${doc.titulo}: ${data.error || data.message || "Error desconocido"}`);
-        }
+        await subirExcels(formData);
+        exitos++;
       } catch (error) {
-        errores.push(`${doc.titulo}: Error de conexión con el servidor`);
+        errores.push(`${doc.titulo}: ${error.message}`);
       }
     }
 
     setCargando(false);
 
     if (exitos > 0) {
-      const porcentaje = Math.round((categoriasCompletadas / documentos.length) * 100);
+      const porcentaje = Math.round((completadasPrincipales / 3) * 100);
       setEvaluacionesCompletadas(`${porcentaje}%`);
-      
-      let msg = `¡Proceso completado!\nArchivos procesados con éxito: ${exitos}`;
-      if (errores.length > 0) {
-        msg += `\n\nErrores encontrados:\n${errores.join('\n')}`;
-      }
-      setAlertMessage(msg);
+      showToast(`¡Proceso completado! Archivos procesados con éxito: ${exitos}`, "success");
+      if (errores.length > 0) showToast("Se guardaron algunos archivos pero otros tuvieron errores.", "error");
     } else if (errores.length > 0) {
-      setAlertMessage(`Error al procesar archivos:\n${errores.join('\n')}`);
+      showToast(`Error al procesar archivos. Revisa el formato.`, "error");
     }
   };
 
@@ -173,25 +156,26 @@ const Files = () => {
     switch(id) {
       case 'pensum': return <BookOpenIcon className="w-8 h-8" />;
       case 'nomina': return <IdentificationIcon className="w-8 h-8" />;
+      case 'comentarios': return <ChatBubbleLeftIcon className="w-8 h-8" />;
       case 'estudiantil': return <UserGroupIcon className="w-8 h-8" />;
-      case 'autoevaluacion': return <DocumentTextIcon className="w-8 h-8" />;
       case 'coordinador': return <ClipboardDocumentCheckIcon className="w-8 h-8" />;
       case 'ceat': return <AcademicCapIcon className="w-8 h-8" />;
-      case 'apoyo': return <HandRaisedIcon className="w-8 h-8" />;
       default: return <DocumentTextIcon className="w-8 h-8" />;
     }
   };
 
   const categoriaActivaObj = documentos.find(d => d.id === activeUploadId);
-
-  // Filtramos para NO mostrar Pensum y Nómina en el grid principal
-  const documentosGrid = documentos.filter(doc => doc.id !== 'pensum' && doc.id !== 'nomina');
+  
+  // Ignoramos completamente Autoevaluacion y Apoyo en el Grid visual
+  const documentosGrid = documentos.filter(doc => 
+    doc.id !== 'pensum' && doc.id !== 'nomina' && doc.id !== 'autoevaluacion' && doc.id !== 'apoyo'
+  );
 
   return (
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
         <h1 className="text-3xl font-bold text-[#112240] mb-2">Carga de Archivos e Información</h1>
-        <p className="text-gray-500 text-lg">Semestre I — 2025 · {categoriasCompletadas} de {documentos.length} archivos cargados</p>
+        <p className="text-gray-500 font-medium">{semestreActivo || 'Cargando semestre...'} · {completadasPrincipales} de 3 archivos cargados</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -218,6 +202,7 @@ const Files = () => {
           </div>
         ))}
 
+        {/* Tarjeta de Checklists */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col justify-between hover:shadow-lg transition-all min-h-[140px]">
            <div className="flex items-start gap-6">
               <div className="w-16 h-16 rounded-xl bg-blue-50 text-url-blue flex items-center justify-center shrink-0 shadow-sm">
@@ -233,71 +218,70 @@ const Files = () => {
               <button onClick={() => navigate('/checklist')} className="px-5 py-1.5 bg-url-yellow text-[#112240] border border-transparent rounded-md text-sm font-bold hover:bg-yellow-500 transition-colors shadow-sm">Ver detalles</button>
            </div>
         </div>
-      </div>
 
-      <div className="flex justify-end flex-wrap mt-4 gap-4">
-        
-        <Button variant="primary" className="px-6 py-3 text-lg font-bold flex items-center gap-2 shadow-md" onClick={() => setIsModalOpen(true)}>
-          <Cog6ToothIcon className="w-6 h-6" /> Editar Ponderación
-        </Button>
+        {/* LOS BOTONES DE ACCIÓN */}
+        <div className="flex flex-col lg:flex-row justify-end items-end gap-3 h-full pt-4 md:pt-0 w-full" ref={dropdownContainerRef}>
+           
+           <div className="relative w-full lg:w-auto">
+             <Button 
+               variant="primary" 
+               className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-url-yellow text-[#112240] hover:bg-yellow-500 border-none transition-colors" 
+               onClick={() => setActiveDropdown(prev => prev === 'config' ? null : 'config')}
+             >
+               <Cog6ToothIcon className="w-5 h-5" /> Configuración <ChevronDownIcon className={`w-4 h-4 transition-transform ${activeDropdown === 'config' ? 'rotate-180' : ''}`} />
+             </Button>
+             
+             {activeDropdown === 'config' && (
+                <div className="absolute bottom-full right-0 mb-2 w-full lg:w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1">
+                   <button onClick={() => { setActiveDropdown(null); setIsModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100">
+                     Editar ponderación
+                   </button>
+                </div>
+             )}
+           </div>
 
-        <div className="relative">
-          <Button variant="primary" className="px-6 py-3 text-lg font-bold flex items-center gap-2 shadow-md" onClick={() => setIsConfigOpen(!isConfigOpen)}>
-            <FolderOpenIcon className="w-6 h-6" /> Archivos Principales <ChevronDownIcon className={`w-4 h-4 transition-transform ${isConfigOpen ? 'rotate-180' : ''}`} />
-          </Button>
-          
-          {isConfigOpen && (
-             <div className="absolute bottom-full right-0 mb-3 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3 flex flex-col gap-2">
-                <button onClick={() => { setIsConfigOpen(false); abrirModalCarga('nomina'); }} className="w-full text-center px-4 py-3 text-sm font-bold bg-blue-50 text-url-blue rounded-lg border border-blue-100 hover:bg-url-blue hover:text-white transition-all shadow-sm">
-                  Agregar Docentes
-                </button>
-                <button onClick={() => { setIsConfigOpen(false); abrirModalCarga('pensum'); }} className="w-full text-center px-4 py-3 text-sm font-bold bg-blue-50 text-url-blue rounded-lg border border-blue-100 hover:bg-url-blue hover:text-white transition-all shadow-sm">
-                  Agregar Pensum
-                </button>
-             </div>
-          )}
+           <div className="relative w-full lg:w-auto">
+             <Button 
+               variant="primary" 
+               className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-url-yellow text-[#112240] hover:bg-yellow-500 border-none transition-colors" 
+               onClick={() => setActiveDropdown(prev => prev === 'archivos' ? null : 'archivos')}
+             >
+               <FolderOpenIcon className="w-5 h-5" /> Archivos Principales <ChevronDownIcon className={`w-4 h-4 transition-transform ${activeDropdown === 'archivos' ? 'rotate-180' : ''}`} />
+             </Button>
+             
+             {activeDropdown === 'archivos' && (
+                <div className="absolute bottom-full right-0 mb-2 w-full lg:w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1">
+                   <button onClick={() => { setActiveDropdown(null); abrirModalCarga('nomina'); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-url-blue hover:bg-blue-50 rounded-lg transition-colors border-b border-gray-100">
+                     Agregar Docentes
+                   </button>
+                   <button onClick={() => { setActiveDropdown(null); abrirModalCarga('pensum'); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-url-blue hover:bg-blue-50 rounded-lg transition-colors">
+                     Agregar Pensum
+                   </button>
+                </div>
+             )}
+           </div>
+
+           <Button 
+             variant="primary" 
+             className="w-full lg:w-auto px-6 py-0 h-[44px] text-sm font-bold flex justify-center items-center gap-2 shadow-sm bg-[#112240] hover:bg-blue-900 border-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+             onClick={handleProcesarTotales}
+             disabled={cargando || completadasPrincipales === 0}
+           >
+             {cargando ? 'Procesando...' : 'Procesar Archivos'}
+           </Button>
         </div>
 
-        <Button 
-          variant="primary" 
-          className="px-6 py-3 text-lg font-bold flex items-center gap-2 shadow-md" 
-          onClick={handleProcesarTotales}
-          disabled={cargando || categoriasCompletadas === 0}
-        >
-          {cargando ? 'Procesando...' : 'Procesar Archivos'}
-        </Button>
       </div>
 
-      <Modal isOpen={!!alertMessage} onClose={() => setAlertMessage('')} title="Aviso del Sistema" zIndex="z-[60]">
-         <div className="flex flex-col items-center justify-center py-4 px-2">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${alertMessage.includes('No hay') || alertMessage.includes('válido') || alertMessage.includes('selecciona') || alertMessage.includes('Error') ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>
-               {alertMessage.includes('No hay') || alertMessage.includes('válido') || alertMessage.includes('selecciona') || alertMessage.includes('Error') ? <TrashIcon className="w-8 h-8" /> : <CheckCircleIcon className="w-8 h-8" />}
-            </div>
-            <p className="text-lg text-[#112240] text-center font-bold whitespace-pre-line">{alertMessage}</p>
-            <Button variant="primary" className="mt-8 w-full py-3" onClick={() => setAlertMessage('')}>Aceptar y Continuar</Button>
-         </div>
-      </Modal>
-
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Modificación de Ponderaciones">
-        <ModalPonderacion 
-        onClose={(msg) => {
-          setIsModalOpen(false);
-          if (msg) setAlertMessage(msg); 
-          }} 
-          onError={(msg) => setAlertMessage(msg)} 
-        />
+        <ModalPonderacion onClose={() => setIsModalOpen(false)} />
       </Modal>
 
-      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={`Cargar: ${categoriaActivaObj?.titulo}`}>
+      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title={categoriaActivaObj ? `Cargar: ${categoriaActivaObj.titulo}` : 'Cargar Archivo'}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-500">Sube el archivo (.xlsx) con los resultados correspondientes a esta categoría.</p>
           <label className="border-2 border-dashed border-url-blue bg-blue-50/50 hover:bg-blue-50 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-colors group">
-            <input 
-              type="file" 
-              className="hidden" 
-              accept=".xlsx, .xls, .csv" 
-              onChange={(e) => setArchivoTemporal(e.target.files[0])}
-            />
+            <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={(e) => setArchivoTemporal(e.target.files[0])} />
             {archivoTemporal ? (
               <div className="text-center"><DocumentTextIcon className="w-16 h-16 text-url-blue mx-auto" /><p className="font-bold text-url-blue mt-2">{archivoTemporal.name}</p><p className="text-xs text-gray-500 mt-1">Clic para cambiar archivo</p></div>
             ) : (
@@ -306,7 +290,7 @@ const Files = () => {
           </label>
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => { setIsUploadModalOpen(false); setArchivoTemporal(null); }}>Cancelar</Button>
-            <Button variant="primary" onClick={procesarCargaArchivo}>Cargar Archivo</Button>
+            <Button variant="primary" onClick={procesarCargaArchivo} className="bg-[#112240] text-white hover:bg-blue-900 border-none shadow-sm">Cargar Archivo</Button>
           </div>
         </div>
       </Modal>

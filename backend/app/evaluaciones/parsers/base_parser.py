@@ -1,11 +1,19 @@
 import pandas as pd
 import re
+import unicodedata
 from usuarios.models import Docente
 from evaluaciones.models import (
     CursoDado, CriterioEvaluacion, 
     EvaluacionConsolidada, EvaluacionCurso
 )
 from academico.models import Facultad, Carrera, Pensum, Curso
+
+def normalizar_texto(texto):
+    if not texto or pd.isna(texto):
+        return ""
+    texto = str(texto).strip()
+    texto = unicodedata.normalize('NFD', texto)
+    return "".join([c for c in texto if not unicodedata.combining(c)]).upper()
 
 class BaseParser:
     @staticmethod
@@ -19,14 +27,11 @@ class BaseParser:
     @staticmethod
     def guardar_nota_en_bd(codigo_docente, nombre_criterio, nota, semestre, nombre_curso=None, seccion=None, docente_obj=None):
         # 0. ASEGURAR FACULTAD (Sin duplicar)
-        # Buscamos por la raíz "Ingenier" para evitar líos con tildes (Ingeniería vs Ingenieria)
         facultad_default = Facultad.objects.filter(nombre__icontains="Ingenier").first()
         
-        # Si no hay ninguna que diga "Ingenier", tomamos la primera que exista en la BD
         if not facultad_default:
             facultad_default = Facultad.objects.first()
             
-        # Solo si la tabla Facultad está totalmente VACÍA, creamos una
         if not facultad_default:
             facultad_default = Facultad.objects.create(nombre="Ingeniería")
 
@@ -43,11 +48,11 @@ class BaseParser:
             if final_codigo:
                 docente = Docente.objects.filter(codigo_docente=final_codigo).first()
             
-            # Prioridad 2: Buscar por nombre exacto (por si el código cambió o es un TEMP)
+            # Prioridad 2: Buscar por nombre exacto
             if not docente and docente_obj:
                 docente = Docente.objects.filter(nombre_completo__iexact=nombre_docente_str).first()
             
-            # Prioridad 3: Buscar por nombre parcial (icontains)
+            # Prioridad 3: Buscar por nombre parcial
             if not docente and docente_obj:
                 docente = Docente.objects.filter(nombre_completo__icontains=nombre_docente_str).first()
             
@@ -61,19 +66,31 @@ class BaseParser:
 
         if not docente: return 
 
-        # 2. IDENTIFICAR O BUSCAR CURSO (Sin duplicar Pensum/Carrera)
+        # 2. IDENTIFICAR O BUSCAR CURSO
         curso_dado = None
         if nombre_curso:
             nombre_curso_limpio = str(nombre_curso).strip()
+            nombre_norm = normalizar_texto(nombre_curso_limpio)
             
-            # Intentamos buscar el curso en el catálogo (ya cargado por PensumParser)
-            curso_obj = Curso.objects.filter(nombre_curso__icontains=nombre_curso_limpio).first()
+            # Intentamos buscar el curso en el catálogo con normalización
+            # Primero buscamos coincidencias que contengan el nombre o viceversa
+            cursos = Curso.objects.all()
+            curso_obj = None
+            for c in cursos:
+                if normalizar_texto(c.nombre_curso) == nombre_norm:
+                    curso_obj = c
+                    break
             
-            # Si el curso no existe, lo creamos pero usando estructuras EXISTENTES
             if not curso_obj:
-                pensum = Pensum.objects.first() # Usamos el primer pensum que encontremos (ej: "24001")
+                for c in cursos:
+                    if nombre_norm in normalizar_texto(c.nombre_curso) or normalizar_texto(c.nombre_curso) in nombre_norm:
+                        curso_obj = c
+                        break
+            
+            # Si el curso no existe, lo creamos usando estructuras EXISTENTES
+            if not curso_obj:
+                pensum = Pensum.objects.first()
                 if not pensum:
-                    # Solo si la base de datos está VACÍA creamos la estructura base
                     carrera, _ = Carrera.objects.get_or_create(
                         nombre="Carrera Ingeniería", 
                         defaults={'facultad': facultad_default}
@@ -89,7 +106,7 @@ class BaseParser:
                     defaults={'creditos': 0}
                 )
             
-            # Buscamos o creamos el CursoDado (instancia docente-semestre-seccion)
+            # Buscamos o creamos el CursoDado
             sec_str = str(seccion).split('.')[0].strip() if seccion and not pd.isna(seccion) else "A"
             curso_dado, created = CursoDado.objects.get_or_create(
                 docente=docente,
@@ -99,14 +116,12 @@ class BaseParser:
             )
             if created: print(f"  [+] Curso registrado: {nombre_curso_limpio} ({sec_str})")
 
-        # 3. GUARDAR NOTA DIRECTA (YAGNI: Sin detalles, solo promedios)
+        # 3. GUARDAR NOTA DIRECTA
         if nota is None or pd.isna(nota): return
 
-        # Aseguramos que el criterio exista (Auto-creación si falta)
         criterio = CriterioEvaluacion.objects.filter(nombre__icontains=nombre_criterio).first()
 
         if not criterio:
-            # Lógica para decidir el alcance automáticamente
             alcance_nuevo = 'GLOBAL' if 'CEAT' in nombre_criterio.upper() else 'CURSO'
             criterio = CriterioEvaluacion.objects.create(
                 nombre=nombre_criterio,

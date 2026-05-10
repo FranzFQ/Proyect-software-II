@@ -52,6 +52,9 @@ INSTALLED_APPS = [
     'evaluaciones',
     'usuarios',
     'academico',
+    'ai',
+
+    'background_task',
 
 ]
 
@@ -135,6 +138,10 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'API Evaluaciones Docentes',
     'DESCRIPTION': 'Documentación de endpoints del sistema académico',
     'VERSION': '1.0.0',
+}
+
+SIMPLE_JWT = {
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 # Internationalization

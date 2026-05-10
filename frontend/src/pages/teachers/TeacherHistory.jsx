@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_URL } from '../../services/global_URL';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const TeacherHistory = () => {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ const TeacherHistory = () => {
   const [filtroTexto,      setFiltroTexto]      = useState('');
   const [filtroEstado,     setFiltroEstado]     = useState('');
   const [currentPage,      setCurrentPage]      = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 3; // Modificado a 3 para cuadrar con el grid
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,10 +38,11 @@ const TeacherHistory = () => {
           .map(ev => ({
             id:       ev.id,
             semestreId: ev.semestre,
-            nombre:   ev.SemestreStr,
-            score:    parseFloat(ev.puntaje_final ?? 0).toFixed(1),
-            estado:   clasificarEstado(ev.puntaje_final),
+            nombre:   ev.SemestreStr || 'Semestre Histórico',
+            score:    parseFloat(ev.puntaje_final ?? 0),
+            estado:   clasificarEstado(parseFloat(ev.puntaje_final ?? 0)),
           }));
+        
         setSemestresHistoricos(items);
       } catch (e) {
         setError(e.message);
@@ -52,21 +54,28 @@ const TeacherHistory = () => {
   }, [id]);
 
   const clasificarEstado = (score) => {
-    if (score >= 8) return 'Excelente';
-    if (score >= 6) return 'Buena';
+    const umbralExcelente = score > 10 ? 80 : 8;
+    const umbralBueno = score > 10 ? 60 : 6;
+    if (score >= umbralExcelente) return 'Excelente';
+    if (score >= umbralBueno) return 'Buena';
     return 'Deficiente';
   };
 
-  const getColorEstado = (estado) => {
+  const getColorBarra = (estado) => {
     if (estado === 'Excelente') return 'bg-green-500';
-    if (estado === 'Buena')     return 'bg-orange-500';
+    if (estado === 'Buena')     return 'bg-yellow-500';
     return 'bg-red-500';
   };
 
-  const getTextColorEstado = (estado) => {
-    if (estado === 'Excelente') return 'text-green-400';
-    if (estado === 'Buena')     return 'text-orange-400';
-    return 'text-red-400';
+  const getScoreColor = (estado) => {
+    if (estado === 'Excelente') return 'text-green-600';
+    if (estado === 'Buena')     return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getProgressWidth = (score) => {
+    if (score === null) return 0;
+    return score > 10 ? Math.min(score, 100) : Math.min(score * 10, 100);
   };
 
   const handleSearch = (e) => { setFiltroTexto(e.target.value); setCurrentPage(1); };
@@ -82,56 +91,79 @@ const TeacherHistory = () => {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const currentItems    = filtrados.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
-  const nombreDocente = docente?.nombre_completo ?? '...';
+  const chartData = useMemo(() => {
+    return semestresHistoricos.map(sem => ({
+      name: sem.nombre,
+      Punteo: Number(sem.score)
+    })).reverse(); 
+  }, [semestresHistoricos]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="h-8 bg-gray-200 rounded w-64 animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1,2,3,4,5,6].map(i => (
-            <div key={i} className="bg-gray-200 rounded-xl h-48 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const yAxisConfig = useMemo(() => {
+    if (chartData.length === 0) return { ticks: [0, 20, 40, 60, 80, 100], max: 100 };
+    const maxScore = Math.max(...chartData.map(d => d.Punteo));
+    const isBase100 = maxScore > 10;
+    const interval = isBase100 ? 20 : 2;
+    const maxTick = Math.max(isBase100 ? 100 : 10, Math.ceil((maxScore + 1) / interval) * interval);
+    
+    const ticks = [];
+    for (let i = 0; i <= maxTick; i += interval) ticks.push(i);
+    return { ticks, max: maxTick };
+  }, [chartData]);
 
-  if (error) {
-    return (
-      <div className="flex flex-col gap-6">
-        <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition">
-          &larr; Volver al Perfil
-        </button>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center text-red-600">
-          <p className="font-bold mb-1">Error al cargar el historial</p>
-          <p className="text-sm">{error}</p>
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-[#112240] text-white p-3 rounded-lg shadow-lg border border-blue-800">
+          <p className="text-xs text-gray-300 font-bold mb-1">{label}</p>
+          <p className="text-xl font-black text-url-yellow">
+            {payload[0].value.toFixed(1)} <span className="text-sm font-normal text-gray-300">pts</span>
+          </p>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+    return null;
+  };
+
+  if (loading) return <div className="p-12 animate-pulse text-[#112240] font-bold text-center">Cargando historial...</div>;
 
   return (
-    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-4rem)] pb-12">
 
       <div className="mb-2">
         <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
-          &larr; Volver al Perfil de {nombreDocente}
+          &larr; Volver al Perfil de {docente?.nombre_completo}
         </button>
-        <h1 className="text-3xl font-bold text-url-blue mb-1">Histórico de Semestres</h1>
-        <p className="text-gray-500">{nombreDocente}</p>
+        <h1 className="text-3xl font-black text-[#112240] mb-1">Histórico de Semestres</h1>
+        <p className="text-gray-500 font-medium">{docente?.nombre_completo}</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex w-full md:w-1/2">
+      {chartData.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="font-bold text-[#112240] mb-6">Tendencia de Rendimiento Anual</h3>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} padding={{ left: 40, right: 40 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} ticks={yAxisConfig.ticks} domain={[0, yAxisConfig.max]} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="Punteo" stroke="#112240" strokeWidth={4} dot={{ r: 6, fill: '#112240', strokeWidth: 3, stroke: '#fff' }} activeDot={{ r: 8, fill: '#112240', stroke: '#fff', strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row gap-4 items-center mt-4">
+        <div className="flex w-full md:w-1/2 shadow-sm rounded-lg overflow-hidden border border-gray-200">
           <input
             type="text"
             placeholder="Búsqueda por año o semestre..."
-            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-url-blue"
+            className="w-full px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
             value={filtroTexto}
             onChange={handleSearch}
           />
-          <button className="bg-gray-200 text-url-blue font-bold px-6 py-2 rounded-r-lg border border-l-0 border-gray-200 hover:bg-gray-300">
+          <button className="bg-[#112240] text-white font-bold px-6 py-2 hover:bg-blue-900 transition-colors">
             Buscar
           </button>
         </div>
@@ -139,16 +171,12 @@ const TeacherHistory = () => {
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
           {['Deficiente', 'Buena', 'Excelente'].map(estado => {
             const colors = {
-              Deficiente: { active: 'bg-red-200 text-red-900 border-red-300 border shadow-inner',    idle: 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200' },
-              Buena:      { active: 'bg-yellow-200 text-yellow-900 border-yellow-300 border shadow-inner', idle: 'bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-200' },
-              Excelente:  { active: 'bg-green-200 text-green-900 border-green-300 border shadow-inner', idle: 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' },
+              Deficiente: { active: 'bg-red-600 text-white shadow-md',    idle: 'bg-red-50 text-red-700 border border-red-100 hover:bg-red-100' },
+              Buena:      { active: 'bg-yellow-500 text-white shadow-md', idle: 'bg-yellow-50 text-yellow-700 border border-yellow-100 hover:bg-yellow-100' },
+              Excelente:  { active: 'bg-green-600 text-white shadow-md',  idle: 'bg-green-50 text-green-700 border border-green-100 hover:bg-green-100' },
             };
             return (
-              <button
-                key={estado}
-                onClick={() => handleFilter(estado)}
-                className={`px-6 py-2 rounded-lg font-bold transition-all ${filtroEstado === estado ? colors[estado].active : colors[estado].idle}`}
-              >
+              <button key={estado} onClick={() => handleFilter(estado)} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all border ${filtroEstado === estado ? colors[estado].active : colors[estado].idle}`}>
                 {estado}
               </button>
             );
@@ -157,53 +185,57 @@ const TeacherHistory = () => {
       </div>
 
       {filtrados.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex items-center justify-center">
-          <p>No se encontraron semestres con los filtros aplicados.</p>
+        <div className="bg-white rounded-xl p-12 text-center text-gray-400 border border-gray-200 shadow-sm flex-1 flex flex-col items-center justify-center">
+          <p className="font-bold text-lg">Sin resultados</p>
+          <p className="text-sm">No hay datos que coincidan con tu búsqueda.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+        // Modificado a grid-cols-3 y alineados al inicio para que no se estiren
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2 items-start content-start">
           {currentItems.map(sem => (
-            <div key={sem.id} className="bg-url-blue rounded-xl overflow-hidden shadow-md flex flex-col h-48">
-              <div className={`h-3 w-full ${getColorEstado(sem.estado)}`} />
-              <div className="p-6 flex-1 flex flex-col justify-between">
+            <div key={sem.id} className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col relative pt-1 overflow-hidden hover:shadow-md transition-shadow">
+              <div className={`absolute top-0 left-0 right-0 h-1.5 ${getColorBarra(sem.estado)}`} />
+              <div className="p-5 flex flex-col h-full gap-3">
+                
                 <div>
-                  <h4 className="text-white font-bold text-lg mb-1">{sem.nombre}</h4>
-                  <p className={`text-xs font-bold uppercase ${getTextColorEstado(sem.estado)}`}>
-                    Estado General: {sem.estado}
-                  </p>
+                  <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">Registro Semestral</p>
+                  <h4 className="text-[#112240] font-black text-xl leading-tight line-clamp-1 mb-8">
+                    {sem.nombre}
+                  </h4>
                 </div>
-                <div className="flex justify-between items-end mt-2">
-                  <span className="text-url-yellow text-5xl font-bold leading-none">{sem.score}</span>
-                  <button
-                    onClick={() => navigate(`/teachers/${id}/semester/${sem.semestreId}`)}
-                    className="text-url-yellow text-sm font-semibold hover:text-white transition-colors flex items-center gap-1"
-                  >
-                    Ver Detalles &rarr;
-                  </button>
+                
+                <div className="mt-auto">
+                  <div className="flex justify-between items-end text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">
+                    <span>Estado: {sem.estado}</span>
+                    <span className={`text-xl font-black leading-none ml-1 ${getScoreColor(sem.estado)}`}>{sem.score.toFixed(1)}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-5">
+                    <div className={`h-1.5 rounded-full ${getColorBarra(sem.estado)}`} style={{ width: `${getProgressWidth(sem.score)}%` }}></div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <button
+                      onClick={() => navigate(`/teachers/${id}/semester/${sem.semestreId}`)}
+                      className="border border-[#112240] text-[#112240] text-sm w-full font-bold px-5 py-2 rounded-md hover:bg-[#112240] hover:text-white transition-colors"
+                    >
+                      Ver Semestre
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-url-blue font-bold gap-4">
-        <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={safeCurrentPage === 1}
-          className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-        >
-          &larr; Anterior
-        </button>
-        <span>Página {safeCurrentPage} de {totalPages}</span>
-        <button
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={safeCurrentPage === totalPages}
-          className="px-4 py-2 bg-gray-100 rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-        >
-          Siguiente &rarr;
-        </button>
-      </div>
+      {totalPages > 1 && (
+        <div className="mt-auto flex justify-end items-center pt-8 pb-2 text-sm text-[#112240] font-bold gap-4">
+          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1} className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50 transition-colors">&larr; Anterior</button>
+          <span className="text-gray-500">Página {safeCurrentPage} de {totalPages}</span>
+          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages} className="px-4 py-2 bg-white border border-gray-200 rounded-md disabled:opacity-40 hover:bg-gray-50 transition-colors">Siguiente &rarr;</button>
+        </div>
+      )}
 
     </div>
   );

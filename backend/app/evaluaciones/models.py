@@ -69,12 +69,22 @@ class AnalisisTexto(models.Model):
     def __str__(self):
         return f"Análisis {self.tipo.nombre} - {self.curso_dado}"
 
-class ChecklistObservation(models.Model):
-    curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE, related_name='checklists_realizadas')
+class Checklist(models.Model):
     titulo = models.CharField(max_length=255)
-    usuario = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True)
-    fecha_observacion = models.DateTimeField(auto_now_add=True)
-    datos = models.JSONField(default=dict) 
+    datos = models.JSONField(default=dict) # Aquí se guarda la estructura (criterios)
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.titulo} - {self.curso_dado.docente.nombre_completo}"
+        return self.titulo
+
+class ChecklistObservation(models.Model):
+    curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE, related_name='checklists_realizadas')
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='observaciones', null=True)
+    usuario = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True)
+    fecha_observacion = models.DateTimeField(auto_now_add=True)
+    punteo = models.FloatField(default=0.0)
+    datos = models.JSONField(default=dict)
+
+    def __str__(self):
+        nombre_checklist = self.checklist.titulo if self.checklist else "Sin Checklist"
+        return f"{nombre_checklist} - {self.curso_dado.docente.nombre_completo}"
