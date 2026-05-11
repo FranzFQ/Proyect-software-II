@@ -8,7 +8,7 @@ import {
   deleteUsuario,
   normalizeCoordinador,
 } from '../services/user_service'; 
-import { API_URL } from '../services/global_URL';
+import { getFacultades, getCarreras } from '../services/academico_service';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import {
@@ -47,23 +47,12 @@ const Coordinators = () => {
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
-        const [facRes, carRes] = await Promise.all([
-          fetch(`${API_URL}academico/facultades/`, {
-            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-          }).catch(() => ({ ok: false })),
-          fetch(`${API_URL}academico/carreras/`, {
-            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-          }).catch(() => ({ ok: false }))
+        const [dataF, dataC] = await Promise.all([
+          getFacultades(),
+          getCarreras(),
         ]);
-        
-        if (facRes && facRes.ok) {
-          const dataF = await facRes.json();
-          setFacultades(Array.isArray(dataF) ? dataF : dataF.results ?? []);
-        }
-        if (carRes && carRes.ok) {
-          const dataC = await carRes.json();
-          setCarreras(Array.isArray(dataC) ? dataC : dataC.results ?? []);
-        }
+        setFacultades(Array.isArray(dataF) ? dataF : dataF.results ?? []);
+        setCarreras(Array.isArray(dataC) ? dataC : dataC.results ?? []);
       } catch (e) {
         console.error("Error al cargar catálogos:", e);
       }
@@ -78,9 +67,8 @@ const Coordinators = () => {
         const lista = Array.isArray(data) ? data : data.results || [];
 
         const filtrados = lista.filter((u) =>
-          u.is_active === true &&     
-          u.is_staff === false &&     
-          u.id !== currentUser?.id    
+          u.is_active === true &&
+          u.id !== currentUser?.id
         );
 
         setCoordinadores(filtrados.map(normalizeCoordinador));
@@ -97,11 +85,17 @@ const Coordinators = () => {
     cargarCoordinadores();
   }, [currentUser, setCoordinadores]);
 
-  const coordinadoresFiltrados = coordinadores.filter((coord) =>
-    coord.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-    coord.carrera.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-    coord.correo.toLowerCase().includes(filtroTexto.toLowerCase())
-  );
+  const coordinadoresFiltrados = coordinadores.filter((coord) => {
+    const texto = filtroTexto.toLowerCase();
+    return (
+      coord.nombre_completo?.toLowerCase().includes(texto) ||
+      coord.nombre?.toLowerCase().includes(texto) ||
+      coord.apellido?.toLowerCase().includes(texto) ||
+      coord.carrera?.toLowerCase().includes(texto) ||
+      coord.correo?.toLowerCase().includes(texto) ||
+      coord.username?.toLowerCase().includes(texto)
+    );
+  });
 
   const confirmarEliminacion = (coord) => {
     setCoordinadorActual(coord);
@@ -150,6 +144,11 @@ const Coordinators = () => {
   const guardarCoordinador = async (e) => {
     e.preventDefault();
     setFormError("");
+
+    if (passwordValue && passwordValue.length < 8) {
+      setFormError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
 
     if (passwordValue && passwordValue !== confirmPasswordValue) {
       setFormError("Las contraseñas no coinciden. Por favor verifícalas.");
@@ -324,7 +323,7 @@ const Coordinators = () => {
 
       {/* MODAL: FORMULARIO */}
       <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={coordinadorActual ? "Editar Perfil" : "Agregar Nuevo Perfil"}>
-        <form onSubmit={guardarCoordinador} className="flex flex-col gap-5">
+        <form onSubmit={guardarCoordinador} className="flex flex-col gap-5" autoComplete="off">
           {formError && (
             <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm font-semibold text-center">
               {formError}
@@ -351,7 +350,7 @@ const Coordinators = () => {
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Nombre de Usuario</label>
-              <input name="username" type="text" placeholder="Ej. melizabet" defaultValue={coordinadorActual?.username} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+              <input name="username" type="text" placeholder="Ej. melizabet" defaultValue={coordinadorActual?.username} autoComplete="off" className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -393,10 +392,12 @@ const Coordinators = () => {
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Contraseña</label>
               <div className="relative">
                 <input
+                  autoComplete="new-password"
                   type={showPassword ? "text" : "password"}
-                  placeholder={coordinadorActual ? "Dejar blanco si no se cambia" : "Ej. clave123"}
+                  placeholder={coordinadorActual ? "Dejar blanco si no se cambia" : "Limite mínimo 8 caracteres"}
                   required={!coordinadorActual}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue pr-10"
+                  minLength={8}
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue pr-10 transition-colors ${passwordValue && passwordValue.length < 8 ? "border-red-300 bg-red-50" : "border-gray-200"}`}
                   value={passwordValue}
                   onChange={(e) => setPasswordValue(e.target.value)}
                 />
@@ -404,13 +405,17 @@ const Coordinators = () => {
                   {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordValue && passwordValue.length < 8 && (
+                <p className="text-xs text-red-500 font-medium">Mínimo 8 caracteres ({passwordValue.length}/8)</p>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Confirmar Contraseña</label>
               <div className="relative">
                 <input
+                  autoComplete="new-password"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder={coordinadorActual ? "Dejar blanco si no se cambia" : "Ej. clave123"}
+                  placeholder={coordinadorActual ? "Dejar blanco si no se cambia" : "Reingrese la contraseña"}
                   required={!coordinadorActual || passwordValue.length > 0}
                   className={`w-full px-3 py-2 border rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue pr-10 transition-colors ${passwordValue && confirmPasswordValue && passwordValue !== confirmPasswordValue ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50"}`}
                   value={confirmPasswordValue}

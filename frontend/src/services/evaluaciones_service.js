@@ -81,7 +81,7 @@ export async function getDashboardDistribucionRendimiento() {
 
 //INGESTA DE DATOS (EXCEL)
 export async function subirExcels(formData) {
-  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/ingesta/subir-archivo/`, {
+  const response = await fetch(`${BASE_URL}evaluaciones/ingesta/subir-archivo/`, {
     method: "POST",
     body: formData,
   });
