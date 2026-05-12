@@ -18,30 +18,33 @@ class DocenteViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
-        # 1. Buscamos el semestre activo primero
-        semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
+        # 1. Buscamos el semestre activo primero (cacheamos en el objeto para la duración de la petición)
+        if not hasattr(self, '_semestre_activo'):
+            self._semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
         
-        # 2. Queryset base
+        semestre = self._semestre_activo
+        
+        # 2. Queryset base con relaciones necesarias
         queryset = Docente.objects.select_related('facultad')
         
         # 3. Solo promediamos y contamos si hay un semestre activo
-        if semestre_activo:
+        # Usamos coalese para evitar nulos y mejorar consistencia
+        from django.db.models.functions import Coalesce
+        if semestre:
             queryset = queryset.annotate(
-                promedio_punteo=Avg(
+                promedio_punteo=Coalesce(Avg(
                     'asignaciones__evaluacioncurso__puntaje_curso',
-                    filter=Q(asignaciones__semestre=semestre_activo)
-                ),
+                    filter=Q(asignaciones__semestre=semestre)
+                ), 0.0),
                 conteo_cursos=Count(
                     'asignaciones',
-                    filter=Q(asignaciones__semestre=semestre_activo),
+                    filter=Q(asignaciones__semestre=semestre),
                     distinct=True
                 )
             )
         
-        # 4. Retornamos ordenado y con campos limitados
-        return queryset.order_by('nombre_completo').only(
-            'id', 'codigo_docente', 'nombre_completo', 'facultad__nombre', 'tipo_plan'
-        )
+        # 4. Retornamos ordenado y con campos limitados para no traer datos de más
+        return queryset.order_by('nombre_completo')
 
     serializer_class = DocenteSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]

@@ -7,7 +7,7 @@ import Button from '../components/common/Button';
 import { EyeIcon, TrashIcon, UserPlusIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { API_URL } from '../services/global_URL';
 import { getDocentes, updateDocente } from '../services/docente_service';
-import { getFacultades, getSemestres } from '../services/academico_service';
+import { getFacultades } from '../services/academico_service';
 
 const Teachers = () => {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ const Teachers = () => {
   const [carreras, setCarreras] = useState([]);
   const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState('');
 
-  // Efecto en segundo plano para no afectar el tiempo de carga de la tabla principal
+  // 1. Carga de datos base (SOLO UNA VEZ AL MONTAR)
   useEffect(() => {
     const token = sessionStorage.getItem('auth_token');
     
@@ -62,13 +62,19 @@ const Teachers = () => {
     .then(res => res.ok ? res.json() : [])
     .then(data => setCarreras(Array.isArray(data) ? data : data.results ?? []))
     .catch(err => console.error("Error al cargar combo de carreras:", err));
+
+    // Cargar Facultades (Ahora se cargan aquí una sola vez)
+    getFacultades()
+    .then(data => setFacultades(Array.isArray(data) ? data : data.results ?? []))
+    .catch(err => console.error("Error al cargar facultades:", err));
+
   }, []);
 
+  // 2. Carga de tabla (Solo cuando cambia página o búsqueda)
   useEffect(() => {
     fetchInitialData();
   }, [currentPage, filtroTexto]); 
 
-  // LÓGICA DE DEVELOP INTACTA (Rápida y Optimizada)
   const fetchInitialData = async () => {
     setLoading(true);
     try {
@@ -79,15 +85,12 @@ const Teachers = () => {
         search: filtroTexto
       };
 
-      const [docentesData, facsData] = await Promise.all([
-        getDocentes(params),
-        getFacultades()
-      ]);
+      // Solo pedimos los docentes, las facultades ya están cargadas
+      const docentesData = await getDocentes(params);
 
       const lista = docentesData.results ?? [];
       setDocentes(lista);
       setTotalDocentes(docentesData.count ?? lista.length);
-      setFacultades(Array.isArray(facsData) ? facsData : facsData.results ?? []);
 
       const promedios = {};
       const conteos = {};
@@ -398,7 +401,7 @@ const Teachers = () => {
                 >
                   <option value="">Seleccione un curso...</option>
                   {cursosDisponibles.map(curso => (
-                    <option key={curso.id} value={curso.id}>{curso.nombre}</option>
+                    <option key={curso.id} value={curso.id}>{curso.nombre_curso || curso.nombre}</option>
                   ))}
                 </select>
                 <button type="button" onClick={agregarCursoAlFormulario} className="bg-[#112240] text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-900 transition shadow-sm flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4"/> Agregar</button>
