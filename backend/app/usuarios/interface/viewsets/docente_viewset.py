@@ -82,6 +82,42 @@ class DocenteViewSet(viewsets.ModelViewSet):
 
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='historial')
+    def historial(self, request, pk=None):
+        docente = self.get_object()
+        
+        # 1. Obtener todos los semestres donde el docente tiene actividad
+        semestres_ids = CursoDado.objects.filter(docente=docente).values_list('semestre_id', flat=True).distinct()
+        semestres = Semestre.objects.filter(id__in=semestres_ids).order_by('-anio', '-ciclo')
+
+        history_data = []
+
+        for sem in semestres:
+            # Prioridad 1: EvaluacionConsolidada Total (criterio=None)
+            cons = EvaluacionConsolidada.objects.filter(docente=docente, semestre=sem, criterio__isnull=True).first()
+            
+            punteo = 0.0
+            if cons:
+                punteo = cons.puntaje_final
+            else:
+                # Prioridad 2: Promedio de EvaluacionCurso
+                avg_res = EvaluacionCurso.objects.filter(curso_dado__docente=docente, curso_dado__semestre=sem).aggregate(avg=Avg('puntaje_curso'))
+                punteo = avg_res['avg'] or 0.0
+
+            # Normalizar escala 100 a 10 si es necesario para consistencia visual
+            score_final = punteo
+            if score_final > 10.1:
+                score_final = score_final / 10
+
+            history_data.append({
+                "id": f"{docente.id}-{sem.id}",
+                "semestre_id": sem.id,
+                "SemestreStr": f"{sem.anio} - Ciclo {sem.ciclo}",
+                "puntaje_final": round(score_final, 1),
+            })
+
+        return Response(history_data)
+
     @action(detail=True, methods=['get'], url_path='comparacion')
     def comparacion(self, request, pk=None):
         docente = self.get_object()
