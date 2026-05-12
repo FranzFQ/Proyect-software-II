@@ -1,4 +1,4 @@
-from django.db.models import Avg, Q, Prefetch, Count
+from django.db.models import Avg, Q, Prefetch, Count, Sum
 from rest_framework import viewsets, filters, pagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -138,19 +138,45 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 docente=docente, semestre_id=sem_id, criterio__isnull=False
             ).values('criterio__nombre').annotate(v=Avg('puntaje_final'))
 
+            # Obtener créditos totales del semestre
+            creditos_totales = CursoDado.objects.filter(
+                docente=docente, semestre_id=sem_id
+            ).aggregate(total=Sum('curso__creditos'))['total'] or 0
+
+            # Obtener promedios de Checklists manuales (ChecklistObservation)
+            from evaluaciones.models import ChecklistObservation
+            from django.db.models import OuterRef, Subquery
+
+            ultima_obs_ids = ChecklistObservation.objects.filter(
+                curso_dado=OuterRef('curso_dado')
+            ).order_by('-fecha_observacion').values('id')[:1]
+
+            ultimas_observaciones = ChecklistObservation.objects.filter(
+                id__in=Subquery(
+                    ChecklistObservation.objects.filter(
+                        curso_dado__docente=docente,
+                        curso_dado__semestre_id=sem_id
+                    ).values('curso_dado').distinct().annotate(
+                        last_id=Subquery(ultima_obs_ids)
+                    ).values('last_id')
+                )
+            )
+            promedio_manual_ch = ultimas_observaciones.aggregate(v=Avg('punteo'))['v']
+
             mapping = {
                 'Evaluaciones Estudiantes': 'puntaje_evaluacion_estudiantes',
-                'Autoevaluaciones':          'puntaje_autoevaluacion',
                 'Control Docente':           'puntaje_coordinador',
                 'Criterios de Coordinador':  'puntaje_coordinador',
-                'Capacitaciones CEAT':       'puntaje_ceat',
-                'Apoyo y Colaboración':      'puntaje_apoyo_universitario',
-                'Checklist':                 'puntaje_checklist'
+                'Capacitaciones CEAT':       'ceat',
+                'Checklist':                 'puntaje_checklist',
+                'visitas':                   'puntaje_checklist'
             }
 
             res = { k: 0.0 for k in mapping.values() }
+            res['total_creditos'] = creditos_totales
             found_any = False
 
+            # Procesar evaluaciones de curso y consolidados
             for item in list(pc) + list(ec):
                 key = mapping.get(item['criterio__nombre'])
                 if key:
@@ -159,10 +185,20 @@ class DocenteViewSet(viewsets.ModelViewSet):
                     res[key] = round(val, 1)
                     found_any = True
             
-            if not found_any: return None
+            # Si hay promedios de checklist manual y no se obtuvo por EvaluacionCurso
+            if promedio_manual_ch and res.get('puntaje_checklist', 0) == 0:
+                val = float(promedio_manual_ch)
+                if val > 10.1: val /= 10
+                res['puntaje_checklist'] = round(val, 1)
+                found_any = True
 
-            # Calcular puntaje_final como promedio de los criterios que no son 0
-            vals = [v for v in res.values() if v > 0]
+            # Solo retornamos None si no hay ni evaluaciones ni créditos
+            if not found_any and creditos_totales == 0:
+                return None
+
+            # Calcular puntaje_final como promedio de los criterios que no son 0 (Excluyendo total_creditos)
+            score_keys = set(mapping.values())
+            vals = [res[k] for k in score_keys if res[k] > 0]
             res['puntaje_final'] = round(sum(vals)/len(vals), 1) if vals else 0.0
             return res
 
