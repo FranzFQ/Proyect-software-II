@@ -283,6 +283,7 @@ export default function Checklist() {
     return (
       <ChecklistEjecucion
         checklist={ejecutandoChecklist}
+        semestre={semestre}
         modoEdicion={modoEdicion}
         onGuardar={handleGuardarEjecucion}
         onCancelar={() => { setEjecutandoChecklist(null); setModoEdicion(false); }}

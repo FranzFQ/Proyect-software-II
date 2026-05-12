@@ -42,7 +42,7 @@ function ScoreButton({ value, score, onChange }) {
 }
 
 // ─── Modal agregar docente ────────────────────────────────────────────────────
-function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
+function ModalAgregarDocente({ checklistId, semestre, onAgregar, onCerrar }) {
   const [docentes,    setDocentes]    = useState([]);
   const [cursosDados, setCursosDados] = useState([]);
   const [docenteId,   setDocenteId]   = useState('');
@@ -69,7 +69,11 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
     if (!docenteId) { setCursosDados([]); setCursoDadoId(''); return; }
     const fetchCursos = async () => {
       try {
-        const res = await fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`, {
+        let url = `${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`;
+        if (semestre?.id) {
+          url += `&semestre=${semestre.id}`;
+        }
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` },
         });
         if (res.ok) {
@@ -79,7 +83,7 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
       } catch { setCursosDados([]); }
     };
     fetchCursos();
-  }, [docenteId]);
+  }, [docenteId, semestre]);
 
   const cursoDadoSeleccionado = cursosDados.find(c => String(c.id) === String(cursoDadoId));
   const docenteSeleccionado   = docentes.find(d => String(d.id) === String(docenteId));
@@ -117,12 +121,12 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Curso</label>
             <select className={sel} value={cursoDadoId} onChange={e => setCursoDadoId(e.target.value)} disabled={!docenteId}>
               <option value="">{docenteId ? 'Seleccionar curso...' : 'Primero selecciona docente'}</option>
-              {cursosDados.map(c => <option key={c.id} value={c.id}>{c.CursosNombre}</option>)}
+              {cursosDados.map(c => <option key={c.id} value={c.id}>{c.CursosNombre} (Sección: {c.seccion})</option>)}
             </select>
           </div>
           {cursoDadoSeleccionado && (
             <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-600">
-              Sección: <strong>{cursoDadoSeleccionado.seccion}</strong>
+              Sección seleccionada: <strong>{cursoDadoSeleccionado.seccion}</strong>
             </div>
           )}
         </div>
@@ -147,7 +151,7 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, onCancelar }) {
+export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, onGuardar, onCancelar }) {
   const [criterios, setCriterios] = useState(checklist.criteriosList ?? []);
 
   const buildInitialEval = () => {
@@ -663,6 +667,7 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
       {showModalDocente && (
         <ModalAgregarDocente
           checklistId={checklist.id}
+          semestre={semestre}
           onAgregar={handleAgregarDocente}
           onCerrar={() => setShowModalDocente(false)}
         />
