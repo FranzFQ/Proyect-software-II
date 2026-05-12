@@ -74,6 +74,7 @@ class Checklist(models.Model):
     titulo = models.CharField(max_length=255)
     datos = models.JSONField(default=dict)
     activo = models.BooleanField(default=True)
+    punteo = models.FloatField(default=0.0)
 
     usuario_creador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
