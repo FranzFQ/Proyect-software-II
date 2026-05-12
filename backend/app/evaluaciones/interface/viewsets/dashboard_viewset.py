@@ -116,6 +116,34 @@ class DashboardViewSet(viewsets.ViewSet):
                 # Aquí simplemente nos aseguramos de que ambos se sumen al mapa
                 data_map[mapping[nombre_bd]] = round(val, 1)
 
+        # 3. Obtener promedios de Checklists (desde ChecklistObservation)
+        # Lógica: Tomar la ÚLTIMA observación de cada curso_dado y promediar esas últimas notas
+        from evaluaciones.models import ChecklistObservation
+        from django.db.models import OuterRef, Subquery
+
+        # Subquery para obtener el ID de la última observación por curso dado
+        ultima_obs_ids = ChecklistObservation.objects.filter(
+            curso_dado=OuterRef('curso_dado')
+        ).order_by('-fecha_observacion').values('id')[:1]
+
+        # Obtener todas las observaciones que son las últimas de sus respectivos cursos
+        ultimas_observaciones_global = ChecklistObservation.objects.filter(
+            id__in=Subquery(
+                ChecklistObservation.objects.filter(
+                    curso_dado__semestre=semestre_activo
+                ).values('curso_dado').distinct().annotate(
+                    last_id=Subquery(ultima_obs_ids)
+                ).values('last_id')
+            )
+        )
+
+        promedio_checklist = ultimas_observaciones_global.aggregate(valor=Avg('punteo'))['valor']
+        
+        if promedio_checklist is not None:
+            val = float(promedio_checklist)
+            if val > 10.1: val = val / 10
+            data_map['Checklists'] = round(val, 1)
+
         # Convertir el mapa a la lista final
         final_data = [{"name": name, "valor": val} for name, val in data_map.items()]
             

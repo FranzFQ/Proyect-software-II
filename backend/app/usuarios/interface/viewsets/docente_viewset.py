@@ -156,63 +156,108 @@ class DocenteViewSet(viewsets.ModelViewSet):
             )
         )
 
-        # 1. Obtener criterios globales ya consolidados (ej: CEAT)
+        # 1. Obtener criterios globales (ej: CEAT) y el total (criterio=None)
         evaluaciones_consolidadas = EvaluacionConsolidada.objects.filter(
             docente=docente,
             semestre=semestre
         ).select_related('criterio')
 
-        # Buscar el consolidado total (donde criterio es None) para los KPI rápidos
-        evaluacion_total = evaluaciones_consolidadas.filter(criterio__isnull=True).first()
-
+        # Buscar el consolidado total para los KPI rápidos (promedio ponderado final)
+        evaluacion_total_obj = evaluaciones_consolidadas.filter(criterio__isnull=True).first()
+        
         # 2. Obtener promedios de evaluaciones por curso para este docente
-        # (ej: Estudiantil, Coordinador)
         promedios_cursos = EvaluacionCurso.objects.filter(
             curso_dado__docente=docente,
             curso_dado__semestre=semestre
         ).values('criterio__nombre').annotate(valor=Avg('puntaje_curso'))
 
-        # Mapeo para normalizar nombres
+        # Mapeo para normalizar nombres y enviarlos al MetricBox del frontend
         mapping = {
-            'Evaluaciones Estudiantes': 'Estudiantil',
-            'Capacitaciones CEAT':       'CEAT',
-            'Autoevaluaciones':          'Autoevaluación',
-            'Control Docente':           'Coordinador',
-            'Criterios de Coordinador':  'Coordinador',
+            'Evaluaciones Estudiantes': 'estudiantil',
+            'Capacitaciones CEAT':       'ceat',
+            'Autoevaluaciones':          'autoevaluacion',
+            'Control Docente':           'coordinador',
+            'Criterios de Coordinador':  'coordinador',
             'Checklist':                 'visitas',
-            'Apoyo y Colaboración':      'Apoyo'
+            'Apoyo y Colaboración':      'apoyo'
         }
 
-        # Construir desglose combinado
+        # Construir objeto de evaluación para los KPIs del frontend
+        evaluacion_kpi = {
+            "puntaje_final": evaluacion_total_obj.puntaje_final if evaluacion_total_obj else 0.0
+        }
+
+        # Construir desglose para la gráfica
         desglose_final = []
         criterios_procesados = set()
 
-        # Agregar consolidados globales
+        # Agregar consolidados globales (CEAT, etc)
         for ec in evaluaciones_consolidadas.filter(criterio__isnull=False):
             nombre_bd = ec.criterio.nombre
             if nombre_bd in mapping:
-                nombre_corto = mapping[nombre_bd]
+                key_kpi = mapping[nombre_bd]
                 val = ec.puntaje_final or 0
                 if val > 10.1: val = val / 10
+                
+                evaluacion_kpi[key_kpi] = round(val, 1)
                 desglose_final.append({
-                    "CriterioNombre": nombre_corto,
+                    "CriterioNombre": key_kpi.capitalize(),
                     "puntaje_final": round(val, 1)
                 })
-                criterios_procesados.add(nombre_corto)
+                criterios_procesados.add(key_kpi)
 
-        # Agregar promedios por curso (solo si no están ya en el desglose)
+        # Agregar promedios por curso (Estudiantil, Coordinador, etc)
         for pc in promedios_cursos:
             nombre_bd = pc['criterio__nombre']
             if nombre_bd in mapping:
-                nombre_corto = mapping[nombre_bd]
-                if nombre_corto not in criterios_procesados:
+                key_kpi = mapping[nombre_bd]
+                if key_kpi not in criterios_procesados:
                     val = pc['valor'] or 0
                     if val > 10.1: val = val / 10
+                    
+                    evaluacion_kpi[key_kpi] = round(val, 1)
                     desglose_final.append({
-                        "CriterioNombre": nombre_corto,
+                        "CriterioNombre": key_kpi.capitalize(),
                         "puntaje_final": round(val, 1)
                     })
-                    criterios_procesados.add(nombre_corto)
+                    criterios_procesados.add(key_kpi)
+
+        # 3. Obtener promedios de Checklists manuales (ChecklistObservation)
+        # Lógica: Tomar solo la ÚLTIMA observación de cada curso del docente y promediarlas
+        from evaluaciones.models import ChecklistObservation
+        from django.db.models import OuterRef, Subquery
+
+        # Subquery para obtener el ID de la última observación por curso dado
+        ultima_obs_ids = ChecklistObservation.objects.filter(
+            curso_dado=OuterRef('curso_dado')
+        ).order_by('-fecha_observacion').values('id')[:1]
+
+        # Filtrar observaciones del docente que sean las últimas de su respectivo curso_dado
+        ultimas_observaciones = ChecklistObservation.objects.filter(
+            id__in=Subquery(
+                ChecklistObservation.objects.filter(
+                    curso_dado__docente=docente,
+                    curso_dado__semestre=semestre
+                ).values('curso_dado').distinct().annotate(
+                    last_id=Subquery(ultima_obs_ids)
+                ).values('last_id')
+            )
+        )
+
+        promedio_ch = ultimas_observaciones.aggregate(valor=Avg('punteo'))['valor']
+
+        if promedio_ch is not None:
+            val = float(promedio_ch)
+            if val > 10.1: val = val / 10
+            
+            # Si no se ha procesado ya por EvaluacionConsolidada/Curso
+            if 'visitas' not in criterios_procesados:
+                evaluacion_kpi['visitas'] = round(val, 1)
+                desglose_final.append({
+                    "CriterioNombre": "Visitas",
+                    "puntaje_final": round(val, 1)
+                })
+                criterios_procesados.add('visitas')
 
         cursos_data = []
         puntajes_map = {}
@@ -241,7 +286,7 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 "estado": semestre.estado
             },
             "cursos": cursos_data,
-            "evaluacion": EvaluacionConsolidadaSerializer(evaluacion_total).data if evaluacion_total else None,
+            "evaluacion": evaluacion_kpi,
             "evaluaciones_desglose": desglose_final,
             "puntajes_map": puntajes_map
         }

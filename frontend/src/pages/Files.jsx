@@ -6,6 +6,7 @@ import Modal from '../components/common/Modal';
 import ModalPonderacion from '../components/common/ModalPonderacion';
 
 import { subirExcels } from '../services/evaluaciones_service';
+import { getChecklistCount } from '../services/checklist_service';
 
 import { 
   ArrowUpTrayIcon, TrashIcon, CheckCircleIcon, UserGroupIcon,
@@ -33,6 +34,19 @@ const Files = () => {
   const [activeUploadId, setActiveUploadId] = useState(null); 
   const [archivoTemporal, setArchivoTemporal] = useState(null); 
   const [cargando, setCargando] = useState(false);
+  const [checklistCount, setChecklistCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const data = await getChecklistCount();
+        setChecklistCount(data.count || 0);
+      } catch (e) {
+        console.error("Error fetching checklist count:", e);
+      }
+    };
+    fetchCount();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -214,7 +228,7 @@ const Files = () => {
               </div>
            </div>
            <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-              <span className="text-sm font-bold text-[#112240] bg-gray-100 px-3 py-1 rounded-md">Creadas: 3</span>
+              <span className="text-sm font-bold text-[#112240] bg-gray-100 px-3 py-1 rounded-md">Creadas: {checklistCount}</span>
               <button onClick={() => navigate('/checklist')} className="px-5 py-1.5 bg-url-yellow text-[#112240] border border-transparent rounded-md text-sm font-bold hover:bg-yellow-500 transition-colors shadow-sm">Ver detalles</button>
            </div>
         </div>
