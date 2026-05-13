@@ -11,7 +11,7 @@ import { getDashboardResumen } from '../services/evaluaciones_service';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { semestreActivo = "Semestre I — 2025" } = useContext(AppContext);
+  const { semestreActivo = "1 - 2026" } = useContext(AppContext);
 
   const [stats, setStats] = useState({
     total_docentes: 0,
@@ -125,7 +125,7 @@ const Dashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-[#112240] mb-2">Dashboard</h1>
-          <p className="text-gray-500 font-medium">Visualización de métricas para: {semestreActivo}</p>
+          <p className="text-gray-500 font-medium">Visualización de métricas para semestre: {semestreActivo}</p>
         </div>
       </div>
 

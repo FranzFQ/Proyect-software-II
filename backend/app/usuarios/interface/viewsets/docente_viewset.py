@@ -7,7 +7,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from usuarios.models import Docente
 from usuarios.serializers import DocenteSerializer
 from academico.models import Semestre
-from evaluaciones.models import CursoDado, EvaluacionConsolidada, EvaluacionCurso
+from evaluaciones.models import CursoDado, EvaluacionConsolidada, EvaluacionCurso, ConfiguracionPonderacion
 from evaluaciones.serializers import CursoDadoSerializer, EvaluacionConsolidadaSerializer
 
 class StandardResultsSetPagination(pagination.LimitOffsetPagination):
@@ -334,6 +334,37 @@ class DocenteViewSet(viewsets.ModelViewSet):
                 })
                 criterios_procesados.add('visitas')
 
+        # 4. Cálculo de Punteo Promedio Ponderado
+        ponderaciones = ConfiguracionPonderacion.objects.filter(semestre=semestre).select_related('criterio')
+        
+        weighted_score = 0
+        total_weight_found = 0
+        
+        # Mapeo inverso para aplicar ponderaciones sobre evaluacion_kpi
+        pond_map_inv = {
+            'Evaluaciones Estudiantes': 'estudiantil',
+            'Capacitaciones CEAT':       'ceat',
+            'Autoevaluaciones':          'autoevaluacion',
+            'Control Docente':           'coordinador',
+            'Criterios de Coordinador':  'coordinador',
+            'Checklist':                 'visitas',
+            'Apoyo y Colaboración':      'apoyo'
+        }
+
+        for p in ponderaciones:
+            key = pond_map_inv.get(p.criterio.nombre)
+            if key and key in evaluacion_kpi:
+                score = evaluacion_kpi[key]
+                weight = p.porcentaje_asignado / 100
+                weighted_score += (score * weight)
+                total_weight_found += p.porcentaje_asignado
+
+        # Si no encontramos ponderaciones o el puntaje es 0, mantenemos el original si existía
+        if total_weight_found > 0:
+            # Si el docente solo tiene algunos criterios pero no todos, 
+            # podemos normalizar o mostrar el avance. Aquí mostramos el valor ponderado real.
+            evaluacion_kpi["puntaje_final"] = round(weighted_score, 1)
+        
         cursos_data = []
         puntajes_map = {}
         for c in cursos:
