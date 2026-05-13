@@ -1,4 +1,4 @@
-from rest_framework import viewsets, filters, pagination
+from rest_framework import viewsets, filters, pagination, decorators, response
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 
@@ -38,6 +38,11 @@ class ChecklistViewSet(viewsets.ModelViewSet):
         # Si el usuario pide un semestre específico, el FilterSet ya lo maneja.
         # Quitamos la lógica de filtrado automático que podía estar ocultando registros.
         return qs
+
+    @decorators.action(detail=False, methods=['get'])
+    def count(self, request):
+        count = self.get_queryset().count()
+        return response.Response({'count': count})
 
     def perform_create(self, serializer):
         semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
