@@ -99,18 +99,30 @@ class AnalisisTextoSerializer(serializers.ModelSerializer):
             'tipo', 'TipoNombre'
         ]
 
-
 class ChecklistSerializer(serializers.ModelSerializer):
+    SemestreStr = serializers.StringRelatedField(source='semestre', read_only=True)
+    UsuarioCreadorNombre = serializers.StringRelatedField(source='usuario_creador', read_only=True)
+
     class Meta:
         model = Checklist
-        fields = ['id', 'titulo', 'datos', 'activo']
+        fields = [
+            'id',
+            'titulo',
+            'datos',
+            'activo',
+            'punteo',
+            'semestre', 'SemestreStr',
+            'usuario_creador', 'UsuarioCreadorNombre',
+        ]
+        read_only_fields = ['usuario_creador']
 
 
 class ChecklistObservationSerializer(serializers.ModelSerializer):
-    CursoDadoStr = serializers.CharField(source='curso_dado.__str__', read_only=True)
+    CursoDadoStr  = serializers.CharField(source='curso_dado.__str__', read_only=True)
     UsuarioNombre = serializers.CharField(source='usuario.username', read_only=True)
     DocenteNombre = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
-    NombreCurso = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
+    DocenteId     = serializers.IntegerField(source='curso_dado.docente.id', read_only=True)
+    NombreCurso   = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
     ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
 
     class Meta:
@@ -118,7 +130,7 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'curso_dado', 'CursoDadoStr',
-            'DocenteNombre', 'NombreCurso',
+            'DocenteId', 'DocenteNombre', 'NombreCurso',
             'checklist', 'ChecklistTitulo',
             'usuario', 'UsuarioNombre',
             'fecha_observacion',
@@ -127,18 +139,19 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['fecha_observacion']
 
+
 class ChecklistObservationListSerializer(serializers.ModelSerializer):
-    """Serializador ligero para la lista, sin el JSON 'respuestas'"""
-    DocenteNombre = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
-    NombreCurso = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
-    CodigoDocente = serializers.CharField(source='curso_dado.docente.codigo_docente', read_only=True)
+    DocenteNombre   = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
+    DocenteId       = serializers.IntegerField(source='curso_dado.docente.id', read_only=True)
+    NombreCurso     = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
+    CodigoDocente   = serializers.CharField(source='curso_dado.docente.codigo_docente', read_only=True)
     ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
 
     class Meta:
         model = ChecklistObservation
         fields = [
             'id',
-            'DocenteNombre', 'NombreCurso', 'CodigoDocente',
+            'DocenteId', 'DocenteNombre', 'NombreCurso', 'CodigoDocente',
             'checklist', 'ChecklistTitulo',
             'fecha_observacion',
             'punteo',

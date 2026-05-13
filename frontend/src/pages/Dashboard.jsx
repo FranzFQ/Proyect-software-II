@@ -7,13 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { 
-  getDashboardEstadisticas, 
-  getDashboardPromediosCriterios, 
-  getDashboardDistribucionRendimiento,
-  getPonderaciones 
-} from '../services/evaluaciones_service';
-import { getTopDocentes } from '../services/docente_service';
+import { getDashboardResumen } from '../services/evaluaciones_service';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -37,41 +31,37 @@ const Dashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [s, p, d, t, pond] = await Promise.all([
-          getDashboardEstadisticas(),
-          getDashboardPromediosCriterios(),
-          getDashboardDistribucionRendimiento(),
-          getTopDocentes(),
-          getPonderaciones()
-        ]);
+        const data = await getDashboardResumen();
 
-        setStats(s);
-        setDistributionData(d);
+        setStats(data.stats);
+        setDistributionData(data.distribution_data);
 
-        // MAPEO SEGURO: Ignoramos "Autoevaluaciones" y "Apoyo y Colaboración"
+        // MAPEO SEGURO:
         const mappingPond = {
             'Evaluaciones Estudiantes': 'Estudiantil',
             'Capacitaciones CEAT':      'CEAT',
             'Criterios de Coordinador': 'Coordinador',
             'Control Docente':          'Coordinador',
-            'Checklist':                'Checklists'
+            'Checklist':                'Checklists',
+            'visitas':                  'Checklists'
         };
 
-        // Filtrar y formatear la gráfica de barras de promedios
+        // 1. Formatear la gráfica de barras de promedios
         const promediosFiltrados = [];
-        if (Array.isArray(p)) {
-          p.forEach(item => {
-            // El backend podría mandar 'name' o 'CriterioNombre'
-            const nombreOriginal = item.name || item.CriterioNombre || '';
-            const nombreValido = mappingPond[nombreOriginal] || (mappingPond[nombreOriginal + 's']); 
+        if (Array.isArray(data.data_promedios)) {
+          data.data_promedios.forEach(item => {
+            const nombreOriginal = item.name || '';
+            const nombreMapeado = mappingPond[nombreOriginal] || nombreOriginal;
             
-            if (nombreValido || mappingPond[nombreOriginal]) {
-               promediosFiltrados.push({
-                 name: mappingPond[nombreOriginal] || nombreOriginal,
-                 valor: Number(item.valor || item.promedio || 0)
-               });
-            } else if (['Estudiantil', 'CEAT', 'Coordinador', 'Checklists'].includes(nombreOriginal)) {
-               promediosFiltrados.push({ name: nombreOriginal, valor: Number(item.valor || 0) });
+            if (['Estudiantil', 'CEAT', 'Coordinador', 'Checklists'].includes(nombreMapeado)) {
+               // Evitar duplicados si vienen de distintos orígenes (consolidado vs curso)
+               const existing = promediosFiltrados.find(p => p.name === nombreMapeado);
+               if (!existing) {
+                 promediosFiltrados.push({
+                   name: nombreMapeado,
+                   valor: Number(item.valor || 0)
+                 });
+               }
             }
           });
         }
@@ -80,8 +70,8 @@ const Dashboard = () => {
           { name: 'Coordinador', valor: 0 }, { name: 'Checklists', valor: 0 },
         ]);
 
-        // Formatear top docentes
-        setTopDocentes(t.map(doc => {
+        // 2. Formatear top docentes
+        setTopDocentes(data.top_docentes.map(doc => {
             const normalizedScore = doc.ponderacion <= 10 ? doc.ponderacion * 10 : doc.ponderacion;
             return {
               ...doc,
@@ -93,14 +83,14 @@ const Dashboard = () => {
             };
         }));
 
-        // Formatear gráfica de dona de Ponderaciones (solo 4 válidas)
+        // 3. Formatear gráfica de dona de Ponderaciones
         const ponderacionesFiltradas = [];
         const agrupado = {};
         
-        if (Array.isArray(pond)) {
-          pond.forEach(item => {
-            const mappedName = mappingPond[item.CriterioNombre];
-            if (mappedName && !agrupado[mappedName]) {
+        if (Array.isArray(data.data_ponderaciones)) {
+          data.data_ponderaciones.forEach(item => {
+            const mappedName = mappingPond[item.CriterioNombre] || item.CriterioNombre;
+            if (['Estudiantil', 'CEAT', 'Coordinador', 'Checklists'].includes(mappedName) && !agrupado[mappedName]) {
               agrupado[mappedName] = true;
               ponderacionesFiltradas.push({
                   name: mappedName,

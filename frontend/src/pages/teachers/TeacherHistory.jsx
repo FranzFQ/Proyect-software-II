@@ -21,27 +21,26 @@ const TeacherHistory = () => {
       setLoading(true);
       setError(null);
       try {
-        const [docenteRes, evaluacionesRes] = await Promise.all([
+        const [docenteRes, historialRes] = await Promise.all([
           fetch(`${API_URL}usuarios/docentes/${id}/`),
-          fetch(`${API_URL}evaluaciones/evaluaciones/?docente=${id}`),
+          fetch(`${API_URL}usuarios/docentes/${id}/historial/`),
         ]);
 
         if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        if (!evaluacionesRes.ok) throw new Error('No se pudo cargar el historial');
+        if (!historialRes.ok) throw new Error('No se pudo cargar el historial');
 
         const docenteData    = await docenteRes.json();
-        const evaluaciones   = await evaluacionesRes.json();
+        const historial      = await historialRes.json();
 
         setDocente(docenteData);
 
-        const items = (Array.isArray(evaluaciones) ? evaluaciones : evaluaciones.results ?? [])
-          .map(ev => ({
-            id:       ev.id,
-            semestreId: ev.semestre,
-            nombre:   ev.SemestreStr || 'Semestre Histórico',
-            score:    parseFloat(ev.puntaje_final ?? 0),
-            estado:   clasificarEstado(parseFloat(ev.puntaje_final ?? 0)),
-          }));
+        const items = historial.map(ev => ({
+          id:       ev.id,
+          semestreId: ev.semestre_id,
+          nombre:   ev.SemestreStr,
+          score:    parseFloat(ev.puntaje_final ?? 0),
+          estado:   clasificarEstado(parseFloat(ev.puntaje_final ?? 0)),
+        }));
         
         setSemestresHistoricos(items);
       } catch (e) {
@@ -92,7 +91,9 @@ const TeacherHistory = () => {
   const currentItems    = filtrados.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   const chartData = useMemo(() => {
-    return semestresHistoricos.map(sem => ({
+    // Los datos vienen ordenados descendente por fecha desde el backend, 
+    // los invertimos para que la gráfica de línea crezca hacia la derecha (cronológico)
+    return [...semestresHistoricos].map(sem => ({
       name: sem.nombre,
       Punteo: Number(sem.score)
     })).reverse(); 

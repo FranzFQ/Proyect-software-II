@@ -22,6 +22,15 @@ async function handleResponse(response) {
 }
 
 /**
+ * Obtiene el conteo total de checklists creadas.
+ */
+export async function getChecklistCount() {
+  const url = `${BASE_URL}evaluaciones/checklists/count/`;
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+/**
  * Obtiene todas las checklists/observaciones guardadas.
  */
 export async function getChecklists(params = {}) {

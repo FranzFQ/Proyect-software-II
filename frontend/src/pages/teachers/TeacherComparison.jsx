@@ -6,10 +6,8 @@ import { API_URL } from '../../services/global_URL';
 // Mapeo de campos del backend a etiquetas legibles
 const CRITERIOS = [
   { key: 'puntaje_evaluacion_estudiantes', label: 'Eval. Estudiantes' },
-  { key: 'puntaje_autoevaluacion',         label: 'Autoevaluación'    },
   { key: 'puntaje_coordinador',            label: 'Coordinador'       },
-  { key: 'puntaje_ceat',                   label: 'CEAT'              },
-  { key: 'puntaje_apoyo_universitario',    label: 'Apoyo Univ.'       },
+  { key: 'ceat',                           label: 'CEAT'              },
   { key: 'puntaje_checklist',              label: 'Checklist'         },
 ];
 
@@ -46,8 +44,17 @@ const DocenteComparacion = () => {
         setDocente(docenteData);
         setSemestres(listaSem);
 
-        if (listaSem.length >= 1) setSemActualId(String(listaSem[0].id));
-        if (listaSem.length >= 2) setSemAnterId(String(listaSem[1].id));
+        // Identificar el semestre activo para carga
+        const activo = listaSem.find(s => s.activo_para_carga);
+        const otros  = listaSem.filter(s => !s.activo_para_carga);
+
+        if (activo) {
+          setSemActualId(String(activo.id));
+          if (otros.length > 0) setSemAnterId(String(otros[0].id));
+        } else {
+          if (listaSem.length >= 1) setSemActualId(String(listaSem[0].id));
+          if (listaSem.length >= 2) setSemAnterId(String(listaSem[1].id));
+        }
       } catch (e) {
         setError(e.message);
       } finally {
@@ -84,6 +91,11 @@ const DocenteComparacion = () => {
     return s ? `${s.anio} - Semestre ${s.ciclo}` : '—';
   };
 
+  const isSemActivo = (semId) => {
+    const s = semestres.find(s => String(s.id) === String(semId));
+    return s?.activo_para_carga || false;
+  };
+
   const punteoActual   = evalActual   ? parseFloat(evalActual.puntaje_final)   : null;
   const punteoAnterior = evalAnterior ? parseFloat(evalAnterior.puntaje_final) : null;
 
@@ -91,7 +103,7 @@ const DocenteComparacion = () => {
     ? (punteoActual - punteoAnterior).toFixed(1)
     : null;
 
-  // Construir desglose por criterio a partir de los campos del backend
+  // Construir desglose por criterio
   const desgloseActual   = CRITERIOS.map(c => ({
     label: c.label,
     score: evalActual   ? parseFloat(evalActual[c.key]   ?? 0) : null,
@@ -137,8 +149,12 @@ const DocenteComparacion = () => {
 
   const hayCriterios = evalActual || evalAnterior;
 
+  // Determinar etiquetas Actual/Anterior dinámicamente
+  const labelDerecha = isSemActivo(semActualId) ? 'Actual' : 'Seleccionado A';
+  const labelIzquierda = isSemActivo(semAnterId) ? 'Actual' : 'Seleccionado B';
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pb-10">
 
       <div className="mb-2">
         <button onClick={() => navigate(`/teachers/${id}`)} className="text-gray-500 hover:text-url-blue font-semibold flex items-center gap-2 transition mb-4">
@@ -158,7 +174,7 @@ const DocenteComparacion = () => {
             onChange={e => setSemAnterId(e.target.value)}
           >
             {semestres.map(s => (
-              <option key={s.id} value={String(s.id)}>{s.anio} - Semestre {s.ciclo}</option>
+              <option key={s.id} value={String(s.id)}>{s.anio} - Semestre {s.ciclo} {s.activo_para_carga ? '(Actual)' : ''}</option>
             ))}
           </select>
           <span className="text-url-yellow">VS</span>
@@ -168,7 +184,7 @@ const DocenteComparacion = () => {
             onChange={e => setSemActualId(e.target.value)}
           >
             {semestres.map(s => (
-              <option key={s.id} value={String(s.id)}>{s.anio} - Semestre {s.ciclo}</option>
+              <option key={s.id} value={String(s.id)}>{s.anio} - Semestre {s.ciclo} {s.activo_para_carga ? '(Actual)' : ''}</option>
             ))}
           </select>
         </div>
@@ -182,11 +198,12 @@ const DocenteComparacion = () => {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {/* Semestre anterior */}
+            {/* Semestre izquierda (anterior por defecto) */}
             <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm flex flex-col items-center justify-center">
-              <span className="text-gray-500 font-bold uppercase mb-4 text-center tracking-widest text-sm">
+              <span className="text-gray-500 font-bold uppercase mb-2 text-center tracking-widest text-sm">
                 {getSemNombre(semAnterId).replace(' - ', '\n')}
               </span>
+              <span className="text-xs font-bold text-gray-400 mb-4 uppercase">Créditos: {evalAnterior?.total_creditos ?? 0}</span>
               {punteoAnterior !== null ? (
                 <>
                   <span className="text-8xl font-bold text-[#8b9bb4] mb-2">{punteoAnterior.toFixed(1)}</span>
@@ -195,7 +212,7 @@ const DocenteComparacion = () => {
               ) : (
                 <span className="text-4xl text-gray-300 mb-6 font-semibold">Sin datos</span>
               )}
-              <span className="bg-gray-100 text-gray-500 border border-gray-300 px-8 py-2 rounded-lg font-bold text-sm">Anterior</span>
+              <span className="bg-gray-100 text-gray-500 border border-gray-300 px-8 py-2 rounded-lg font-bold text-sm">{labelIzquierda}</span>
             </div>
 
             {/* Gráfica comparativa por criterio */}
@@ -236,13 +253,13 @@ const DocenteComparacion = () => {
                     {evalActual && (
                       <span className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-url-blue rounded-sm shadow-sm" />
-                        Actual ({getSemNombre(semActualId)})
+                        A ({getSemNombre(semActualId)})
                       </span>
                     )}
                     {evalAnterior && (
                       <span className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-[#cbd5e1] rounded-sm shadow-sm" />
-                        Anterior ({getSemNombre(semAnterId)})
+                        B ({getSemNombre(semAnterId)})
                       </span>
                     )}
                   </div>
@@ -266,11 +283,12 @@ const DocenteComparacion = () => {
               )}
             </div>
 
-            {/* Semestre actual */}
+            {/* Semestre derecha (actual por defecto) */}
             <div className="bg-white border-2 border-url-blue rounded-xl p-8 shadow-sm flex flex-col items-center justify-center border-r-4">
-              <span className="text-url-yellow font-bold uppercase mb-4 text-center tracking-widest text-sm">
+              <span className="text-url-yellow font-bold uppercase mb-2 text-center tracking-widest text-sm">
                 {getSemNombre(semActualId).replace(' - ', '\n')}
               </span>
+              <span className="text-xs font-bold text-gray-400 mb-4 uppercase">Créditos: {evalActual?.total_creditos ?? 0}</span>
               {punteoActual !== null ? (
                 <>
                   <span className="text-8xl font-bold text-url-blue mb-2">{punteoActual.toFixed(1)}</span>
@@ -280,7 +298,7 @@ const DocenteComparacion = () => {
                 <span className="text-4xl text-gray-300 mb-6 font-semibold">Sin datos</span>
               )}
               <span className="bg-yellow-50 text-yellow-700 px-8 py-2 rounded-lg font-bold text-sm border border-yellow-200">
-                Actual {variacion !== null ? `${parseFloat(variacion) >= 0 ? '▲' : '▼'} ${Math.abs(parseFloat(variacion)).toFixed(1)}` : ''}
+                {labelDerecha} {variacion !== null ? `${parseFloat(variacion) >= 0 ? '▲' : '▼'} ${Math.abs(parseFloat(variacion)).toFixed(1)}` : ''}
               </span>
             </div>
           </div>
@@ -289,7 +307,7 @@ const DocenteComparacion = () => {
           {hayCriterios && evalActual && evalAnterior && (
             <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm mb-8">
               <h4 className="text-url-blue font-bold mb-6 text-lg">Variación por Criterio:</h4>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {CRITERIOS.map((c, idx) => {
                   const scoreActual   = desgloseActual[idx].score   ?? 0;
                   const scoreAnterior = desgloseAnterior[idx].score ?? 0;

@@ -42,7 +42,7 @@ function ScoreButton({ value, score, onChange }) {
 }
 
 // ─── Modal agregar docente ────────────────────────────────────────────────────
-function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
+function ModalAgregarDocente({ checklistId, semestre, onAgregar, onCerrar }) {
   const [docentes,    setDocentes]    = useState([]);
   const [cursosDados, setCursosDados] = useState([]);
   const [docenteId,   setDocenteId]   = useState('');
@@ -69,7 +69,11 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
     if (!docenteId) { setCursosDados([]); setCursoDadoId(''); return; }
     const fetchCursos = async () => {
       try {
-        const res = await fetch(`${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`, {
+        let url = `${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`;
+        if (semestre?.id) {
+          url += `&semestre=${semestre.id}`;
+        }
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` },
         });
         if (res.ok) {
@@ -79,7 +83,7 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
       } catch { setCursosDados([]); }
     };
     fetchCursos();
-  }, [docenteId]);
+  }, [docenteId, semestre]);
 
   const cursoDadoSeleccionado = cursosDados.find(c => String(c.id) === String(cursoDadoId));
   const docenteSeleccionado   = docentes.find(d => String(d.id) === String(docenteId));
@@ -117,12 +121,12 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Curso</label>
             <select className={sel} value={cursoDadoId} onChange={e => setCursoDadoId(e.target.value)} disabled={!docenteId}>
               <option value="">{docenteId ? 'Seleccionar curso...' : 'Primero selecciona docente'}</option>
-              {cursosDados.map(c => <option key={c.id} value={c.id}>{c.CursosNombre}</option>)}
+              {cursosDados.map(c => <option key={c.id} value={c.id}>{c.CursosNombre} (Sección: {c.seccion})</option>)}
             </select>
           </div>
           {cursoDadoSeleccionado && (
             <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-600">
-              Sección: <strong>{cursoDadoSeleccionado.seccion}</strong>
+              Sección seleccionada: <strong>{cursoDadoSeleccionado.seccion}</strong>
             </div>
           )}
         </div>
@@ -147,7 +151,7 @@ function ModalAgregarDocente({ checklistId, onAgregar, onCerrar }) {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, onCancelar }) {
+export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, onGuardar, onCancelar }) {
   const [criterios, setCriterios] = useState(checklist.criteriosList ?? []);
 
   const buildInitialEval = () => {
@@ -160,7 +164,7 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
   const [evaluaciones,  setEvaluaciones]  = useState(buildInitialEval);
   const [observaciones, setObservaciones] = useState(checklist.datos?.observaciones ?? '');
 
-  const [docentesObservados, setDocentesObservados] = useState(checklist.docentesObservados ?? []);
+  const [docentesObservados, setDocentesObservados] = useState([]);
   const [showModalDocente,   setShowModalDocente]   = useState(false);
   const [paginaDocentes,     setPaginaDocentes]     = useState(1);
   const [docenteActivo,      setDocenteActivo]      = useState(null);
@@ -177,29 +181,66 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
   const nuevoCriterioRef = useRef(null);
   const editInputRef     = useRef(null);
 
+  // 1. Cargar docentes observados de este semestre/checklist desde la BD
   useEffect(() => {
-    if (!docentesObservados.length || !checklist.id) return;
-    const token = sessionStorage.getItem('auth_token');
-    const ids = [...new Set(docentesObservados.map(d => d.docenteId).filter(Boolean))];
-    ids.forEach(async (docenteId) => {
+    const fetchObservados = async () => {
+      if (!checklist.id || !semestre?.id) {
+        setDocentesObservados([]);
+        setPunteosPorDocente({});
+        return;
+      }
+      
+      const token = sessionStorage.getItem('auth_token');
       try {
-        const res = await fetch(
-          `${API_URL}evaluaciones/checklist-observaciones/?docente=${docenteId}&checklist=${checklist.id}&limit=100`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.results ?? []);
-        if (list.length > 0) {
-          const latest = list.reduce((prev, curr) => ((curr.id ?? 0) > (prev.id ?? 0) ? curr : prev));
-          const punteo = parseFloat(latest.punteo ?? 0);
-          if (punteo > 0) {
-            setPunteosPorDocente(prev => ({ ...prev, [docenteId]: punteo }));
-          }
+        // Filtramos estrictamente por el checklist actual Y el semestre activo para carga
+        const url = `${API_URL}evaluaciones/checklist-observaciones/?checklist=${checklist.id}&semestre=${semestre.id}&limit=500`;
+        
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.results ?? []);
+          
+          // Mapear al formato que usa el componente
+          const observadosMap = list.map(obs => ({
+            id:            obs.id,
+            docenteId:     obs.DocenteId,
+            cursoDadoId:   obs.curso_dado,
+            docente:       obs.DocenteNombre,
+            codigoDocente: obs.CodigoDocente,
+            nombreCurso:   obs.NombreCurso,
+            seccion:       obs.datos?.seccion || '',
+            punteo:        obs.punteo,
+            fecha:         obs.fecha_observacion
+          }));
+
+          // FILTRAR DUPLICADOS: Solo queremos la ÚLTIMA observación de cada docente en cada curso
+          // para este semestre y esta checklist.
+          const uniqueMap = new Map();
+          
+          // Como la lista ya viene ordenada por fecha DESC (del backend),
+          // el primer elemento que encontremos de cada par (Docente, Curso) es el más reciente.
+          observadosMap.forEach(obs => {
+             const key = `${obs.docenteId}-${obs.cursoDadoId}`;
+             if (!uniqueMap.has(key)) {
+               uniqueMap.set(key, obs);
+             }
+          });
+
+          const uniqueList = Array.from(uniqueMap.values());
+
+          setDocentesObservados(uniqueList);
+          
+          // Mapeamos punteos por observación ID para mayor precisión en la tabla
+          const scores = {};
+          uniqueList.forEach(obs => { scores[obs.id] = obs.punteo; });
+          setPunteosPorDocente(scores);
         }
-      } catch { /* silencioso */ }
-    });
-  }, [docentesObservados, checklist.id]);
+      } catch (error) {
+        console.error("Error al cargar docentes observados:", error);
+      }
+    };
+    fetchObservados();
+  }, [checklist.id, semestre?.id]);
 
   useEffect(() => { if (mostrarNuevo) nuevoCriterioRef.current?.focus(); }, [mostrarNuevo]);
   useEffect(() => { if (editandoIdx !== null) editInputRef.current?.focus(); }, [editandoIdx]);
@@ -577,8 +618,8 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {docsPagina.map((d, i) => {
-                        const p = punteosPorDocente[d.docenteId] ?? null;
-                        const isActivo = docenteActivo?.docenteId === d.docenteId;
+                        const p = punteosPorDocente[d.id] ?? null;
+                        const isActivo = docenteActivo?.id === d.id;
                         return (
                           <tr
                             key={i}
@@ -663,6 +704,7 @@ export default function ChecklistEjecucion({ checklist, modoEdicion, onGuardar, 
       {showModalDocente && (
         <ModalAgregarDocente
           checklistId={checklist.id}
+          semestre={semestre}
           onAgregar={handleAgregarDocente}
           onCerrar={() => setShowModalDocente(false)}
         />

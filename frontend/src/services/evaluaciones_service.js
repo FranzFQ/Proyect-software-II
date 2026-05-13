@@ -64,6 +64,11 @@ export async function getAnalisisTexto(params = {}) {
 }
 
 // 
+export async function getDashboardResumen() {
+  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/dashboard/resumen/`);
+  return response.json();
+}
+
 export async function getDashboardEstadisticas() {
   const response = await fetchWithAuth(`${BASE_URL}evaluaciones/dashboard/estadisticas/`);
   return response.json();
