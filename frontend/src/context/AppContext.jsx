@@ -29,11 +29,11 @@ export const AppProvider = ({ children }) => {
         try {
             const s = await getSemestreActivo();
             if (s) {
-              setSemestreActivo(`${s.anio} - Ciclo ${s.ciclo}`);
+              setSemestreActivo(`${s.ciclo} - ${s.anio}`);
             }
         } catch (error) {
             console.error("No se pudo cargar el semestre activo:", error);
-            setSemestreActivo("Semestre I — 2025"); // Fallback
+            setSemestreActivo("1 - 2025"); // Fallback
         }
     };
     fetchActiveSemester();
@@ -66,9 +66,9 @@ export const AppProvider = ({ children }) => {
         // Buscamos el activo
         const activo = results.find(s => s.activo_para_carga);
         if (activo) {
-          setSemestreActivo(`Ciclo ${activo.ciclo} — ${activo.anio}`);
+          setSemestreActivo(`${activo.ciclo} - ${activo.anio}`);
         } else if (results.length > 0 && !semestreActivo) {
-          setSemestreActivo(`Ciclo ${results[0].ciclo} — ${results[0].anio}`);
+          setSemestreActivo(`${results[0].ciclo} - ${results[0].anio}`);
         }
       } catch (error) {
         console.error("Error al cargar semestres iniciales:", error);
