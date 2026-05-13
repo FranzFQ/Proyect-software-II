@@ -106,7 +106,7 @@ function normalizeChecklist(raw) {
     criterios:    (datos.criteriosList ?? []).length,
     criteriosList:datos.criteriosList ?? [],
     datos,
-    docentesObservados: datos.docentesObservados ?? [],
+    semestreId:   raw.semestre,
   };
 }
 
@@ -241,34 +241,40 @@ export default function Checklist() {
           datos: {
             ...(ejecutandoChecklist.datos ?? {}),
             criteriosList,
-            docentesObservados,
           },
         }),
       });
+// 2. Crear o Actualizar ChecklistObservation por cada docente observado
+for (const doc of docentesObservados) {
+  const obsPayload = {
+    curso_dado: doc.cursoDadoId,
+    checklist:  ejecutandoChecklist.id,
+    usuario:    currentUser?.id ?? null,
+    punteo:     punteoCalculado,
+    datos: {
+      criteriosList,
+      evaluaciones,
+      observaciones,
+      docente:       doc.docente,
+      codigoDocente: doc.codigoDocente,
+      nombreCurso:   doc.nombreCurso,
+      seccion:       doc.seccion,
+      punteo_final:  punteoCalculado,
+    },
+  };
 
-      for (const doc of docentesObservados) {
-        const obsPayload = {
-          curso_dado: doc.cursoDadoId,
-          checklist:  ejecutandoChecklist.id,
-          usuario:    currentUser?.id ?? null,
-          punteo:     punteoCalculado,
-          datos: {
-            criteriosList,
-            evaluaciones,
-            observaciones,
-            docente:       doc.docente,
-            codigoDocente: doc.codigoDocente,
-            nombreCurso:   doc.nombreCurso,
-            seccion:       doc.seccion,
-            punteo_final:  punteoCalculado,
-          },
-        };
-        await fetchWithAuth(`${API_URL}evaluaciones/checklist-observaciones/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(obsPayload),
-        });
-      }
+  const method = doc.id ? 'PATCH' : 'POST';
+  const url = doc.id 
+    ? `${API_URL}evaluaciones/checklist-observaciones/${doc.id}/`
+    : `${API_URL}evaluaciones/checklist-observaciones/`;
+
+  await fetchWithAuth(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(obsPayload),
+  });
+}
+
 
       await fetchData();
     } catch (error) {

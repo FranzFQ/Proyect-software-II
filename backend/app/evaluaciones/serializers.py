@@ -121,6 +121,7 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
     CursoDadoStr  = serializers.CharField(source='curso_dado.__str__', read_only=True)
     UsuarioNombre = serializers.CharField(source='usuario.username', read_only=True)
     DocenteNombre = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
+    DocenteId     = serializers.IntegerField(source='curso_dado.docente.id', read_only=True)
     NombreCurso   = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
     ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
 
@@ -129,7 +130,7 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'curso_dado', 'CursoDadoStr',
-            'DocenteNombre', 'NombreCurso',
+            'DocenteId', 'DocenteNombre', 'NombreCurso',
             'checklist', 'ChecklistTitulo',
             'usuario', 'UsuarioNombre',
             'fecha_observacion',
@@ -141,6 +142,7 @@ class ChecklistObservationSerializer(serializers.ModelSerializer):
 
 class ChecklistObservationListSerializer(serializers.ModelSerializer):
     DocenteNombre   = serializers.CharField(source='curso_dado.docente.nombre_completo', read_only=True)
+    DocenteId       = serializers.IntegerField(source='curso_dado.docente.id', read_only=True)
     NombreCurso     = serializers.CharField(source='curso_dado.curso.nombre_curso', read_only=True)
     CodigoDocente   = serializers.CharField(source='curso_dado.docente.codigo_docente', read_only=True)
     ChecklistTitulo = serializers.CharField(source='checklist.titulo', read_only=True)
@@ -149,7 +151,7 @@ class ChecklistObservationListSerializer(serializers.ModelSerializer):
         model = ChecklistObservation
         fields = [
             'id',
-            'DocenteNombre', 'NombreCurso', 'CodigoDocente',
+            'DocenteId', 'DocenteNombre', 'NombreCurso', 'CodigoDocente',
             'checklist', 'ChecklistTitulo',
             'fecha_observacion',
             'punteo',

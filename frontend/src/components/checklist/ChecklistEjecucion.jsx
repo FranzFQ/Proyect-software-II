@@ -164,7 +164,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
   const [evaluaciones,  setEvaluaciones]  = useState(buildInitialEval);
   const [observaciones, setObservaciones] = useState(checklist.datos?.observaciones ?? '');
 
-  const [docentesObservados, setDocentesObservados] = useState(checklist.docentesObservados ?? []);
+  const [docentesObservados, setDocentesObservados] = useState([]);
   const [showModalDocente,   setShowModalDocente]   = useState(false);
   const [paginaDocentes,     setPaginaDocentes]     = useState(1);
   const [docenteActivo,      setDocenteActivo]      = useState(null);
@@ -181,29 +181,66 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
   const nuevoCriterioRef = useRef(null);
   const editInputRef     = useRef(null);
 
+  // 1. Cargar docentes observados de este semestre/checklist desde la BD
   useEffect(() => {
-    if (!docentesObservados.length || !checklist.id) return;
-    const token = sessionStorage.getItem('auth_token');
-    const ids = [...new Set(docentesObservados.map(d => d.docenteId).filter(Boolean))];
-    ids.forEach(async (docenteId) => {
+    const fetchObservados = async () => {
+      if (!checklist.id || !semestre?.id) {
+        setDocentesObservados([]);
+        setPunteosPorDocente({});
+        return;
+      }
+      
+      const token = sessionStorage.getItem('auth_token');
       try {
-        const res = await fetch(
-          `${API_URL}evaluaciones/checklist-observaciones/?docente=${docenteId}&checklist=${checklist.id}&limit=100`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.results ?? []);
-        if (list.length > 0) {
-          const latest = list.reduce((prev, curr) => ((curr.id ?? 0) > (prev.id ?? 0) ? curr : prev));
-          const punteo = parseFloat(latest.punteo ?? 0);
-          if (punteo > 0) {
-            setPunteosPorDocente(prev => ({ ...prev, [docenteId]: punteo }));
-          }
+        // Filtramos estrictamente por el checklist actual Y el semestre activo para carga
+        const url = `${API_URL}evaluaciones/checklist-observaciones/?checklist=${checklist.id}&semestre=${semestre.id}&limit=500`;
+        
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.results ?? []);
+          
+          // Mapear al formato que usa el componente
+          const observadosMap = list.map(obs => ({
+            id:            obs.id,
+            docenteId:     obs.DocenteId,
+            cursoDadoId:   obs.curso_dado,
+            docente:       obs.DocenteNombre,
+            codigoDocente: obs.CodigoDocente,
+            nombreCurso:   obs.NombreCurso,
+            seccion:       obs.datos?.seccion || '',
+            punteo:        obs.punteo,
+            fecha:         obs.fecha_observacion
+          }));
+
+          // FILTRAR DUPLICADOS: Solo queremos la ÚLTIMA observación de cada docente en cada curso
+          // para este semestre y esta checklist.
+          const uniqueMap = new Map();
+          
+          // Como la lista ya viene ordenada por fecha DESC (del backend),
+          // el primer elemento que encontremos de cada par (Docente, Curso) es el más reciente.
+          observadosMap.forEach(obs => {
+             const key = `${obs.docenteId}-${obs.cursoDadoId}`;
+             if (!uniqueMap.has(key)) {
+               uniqueMap.set(key, obs);
+             }
+          });
+
+          const uniqueList = Array.from(uniqueMap.values());
+
+          setDocentesObservados(uniqueList);
+          
+          // Mapeamos punteos por observación ID para mayor precisión en la tabla
+          const scores = {};
+          uniqueList.forEach(obs => { scores[obs.id] = obs.punteo; });
+          setPunteosPorDocente(scores);
         }
-      } catch { /* silencioso */ }
-    });
-  }, [docentesObservados, checklist.id]);
+      } catch (error) {
+        console.error("Error al cargar docentes observados:", error);
+      }
+    };
+    fetchObservados();
+  }, [checklist.id, semestre?.id]);
 
   useEffect(() => { if (mostrarNuevo) nuevoCriterioRef.current?.focus(); }, [mostrarNuevo]);
   useEffect(() => { if (editandoIdx !== null) editInputRef.current?.focus(); }, [editandoIdx]);
@@ -581,8 +618,8 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {docsPagina.map((d, i) => {
-                        const p = punteosPorDocente[d.docenteId] ?? null;
-                        const isActivo = docenteActivo?.docenteId === d.docenteId;
+                        const p = punteosPorDocente[d.id] ?? null;
+                        const isActivo = docenteActivo?.id === d.id;
                         return (
                           <tr
                             key={i}
