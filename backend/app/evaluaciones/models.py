@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class CriterioEvaluacion(models.Model):
     ALCANCE_CHOICES = [
@@ -71,16 +72,47 @@ class AnalisisTexto(models.Model):
 
 class Checklist(models.Model):
     titulo = models.CharField(max_length=255)
-    datos = models.JSONField(default=dict) # Aquí se guarda la estructura (criterios)
+    datos = models.JSONField(default=dict)
     activo = models.BooleanField(default=True)
+    punteo = models.FloatField(default=0.0)
+
+    usuario_creador = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='checklists_creadas',
+    )
+    
+    semestre = models.ForeignKey(
+        'academico.Semestre',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='checklists',
+    )
 
     def __str__(self):
         return self.titulo
 
+
 class ChecklistObservation(models.Model):
-    curso_dado = models.ForeignKey('evaluaciones.CursoDado', on_delete=models.CASCADE, related_name='checklists_realizadas')
-    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='observaciones', null=True)
-    usuario = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True)
+    curso_dado = models.ForeignKey(
+        'evaluaciones.CursoDado',
+        on_delete=models.CASCADE,
+        related_name='checklists_realizadas',
+    )
+    checklist = models.ForeignKey(
+        Checklist,
+        on_delete=models.CASCADE,
+        related_name='observaciones',
+        null=True,
+    )
+    usuario = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     fecha_observacion = models.DateTimeField(auto_now_add=True)
     punteo = models.FloatField(default=0.0)
     datos = models.JSONField(default=dict)

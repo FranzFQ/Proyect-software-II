@@ -87,10 +87,15 @@ const TeacherProfile = () => {
 
   // Lógica del backend para el promedio
   const promedioGeneral = useMemo(() => {
+    // Si el backend ya nos da un puntaje_final (que ahora es ponderado), lo usamos
+    if (evaluacion && evaluacion.puntaje_final !== undefined && evaluacion.puntaje_final > 0) {
+        return Number(evaluacion.puntaje_final);
+    }
+    // Fallback al promedio simple si no hay puntaje_final
     if (chartData.length === 0) return null;
     const suma = chartData.reduce((acc, item) => acc + item.value, 0);
     return suma / chartData.length;
-  }, [chartData]);
+  }, [chartData, evaluacion]);
 
   const totalPages      = Math.ceil(cursos.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);

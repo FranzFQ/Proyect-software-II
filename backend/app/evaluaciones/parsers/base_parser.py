@@ -57,12 +57,8 @@ class BaseParser:
                 docente = Docente.objects.filter(nombre_completo__icontains=nombre_docente_str).first()
             
             if not docente:
-                docente = Docente.objects.create(
-                    codigo_docente=final_codigo if final_codigo else f"TEMP-{nombre_docente_str[:10]}",
-                    nombre_completo=nombre_docente_str,
-                    facultad=facultad_default
-                )
-                print(f"  [+] Docente creado (no encontrado): {nombre_docente_str}")
+                print(f"  [!] Docente no encontrado en BD: {nombre_docente_str} ({final_codigo}). Se ignorará su registro.")
+                return 
 
         if not docente: return 
 
@@ -87,34 +83,19 @@ class BaseParser:
                         curso_obj = c
                         break
             
-            # Si el curso no existe, lo creamos usando estructuras EXISTENTES
+            # Si el curso no existe, NO lo creamos (debe venir del pensum)
             if not curso_obj:
-                pensum = Pensum.objects.first()
-                if not pensum:
-                    carrera, _ = Carrera.objects.get_or_create(
-                        nombre="Carrera Ingeniería", 
-                        defaults={'facultad': facultad_default}
-                    )
-                    pensum, _ = Pensum.objects.get_or_create(
-                        nombre="Pensum General", 
-                        carrera=carrera
-                    )
-                
-                curso_obj, _ = Curso.objects.get_or_create(
-                    nombre_curso=nombre_curso_limpio,
-                    pensum=pensum,
-                    defaults={'creditos': 0}
+                print(f"  [!] Curso no encontrado en BD: {nombre_curso_limpio}. No se guardará la evaluación específica de este curso.")
+            else:
+                # Buscamos o creamos el CursoDado
+                sec_str = str(seccion).split('.')[0].strip() if seccion and not pd.isna(seccion) else "A"
+                curso_dado, created = CursoDado.objects.get_or_create(
+                    docente=docente,
+                    curso=curso_obj,
+                    semestre=semestre,
+                    seccion=sec_str
                 )
-            
-            # Buscamos o creamos el CursoDado
-            sec_str = str(seccion).split('.')[0].strip() if seccion and not pd.isna(seccion) else "A"
-            curso_dado, created = CursoDado.objects.get_or_create(
-                docente=docente,
-                curso=curso_obj,
-                semestre=semestre,
-                seccion=sec_str
-            )
-            if created: print(f"  [+] Curso registrado: {nombre_curso_limpio} ({sec_str})")
+                if created: print(f"  [+] Curso registrado: {nombre_curso_limpio} ({sec_str})")
 
         # 3. GUARDAR NOTA DIRECTA
         if nota is None or pd.isna(nota): return

@@ -15,10 +15,11 @@ class ChecklistPagination(pagination.LimitOffsetPagination):
 
 class ChecklistObservationFilter(django_filters.FilterSet):
     docente = django_filters.NumberFilter(field_name='curso_dado__docente__id')
+    semestre = django_filters.NumberFilter(field_name='curso_dado__semestre__id')
 
     class Meta:
         model = ChecklistObservation
-        fields = ['curso_dado', 'usuario', 'docente', 'checklist']
+        fields = ['curso_dado', 'usuario', 'docente', 'checklist', 'semestre']
 
 
 class ChecklistObservationViewSet(viewsets.ModelViewSet):
