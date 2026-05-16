@@ -31,12 +31,20 @@ class ChecklistViewSet(viewsets.ModelViewSet):
     ordering = ['titulo']
 
     def get_queryset(self):
-        # Para asegurar que "simplemente funcionen", devolvemos todas las checklists
-        # El frontend puede filtrar por semestre si lo desea pasando el parámetro ?semestre=ID
-        qs = Checklist.objects.select_related('semestre', 'usuario_creador').all()
-        
-        # Si el usuario pide un semestre específico, el FilterSet ya lo maneja.
-        # Quitamos la lógica de filtrado automático que podía estar ocultando registros.
+        user = self.request.user
+
+        semestre_activo = Semestre.objects.filter(activo_para_carga=True).first()
+
+        qs = Checklist.objects.select_related('semestre', 'usuario_creador')
+
+        if user.is_authenticated:
+            qs = qs.filter(usuario_creador=user)
+        else:
+            return qs.none()
+
+        if semestre_activo:
+            qs = qs.filter(semestre=semestre_activo)
+
         return qs
 
     @decorators.action(detail=False, methods=['get'])
