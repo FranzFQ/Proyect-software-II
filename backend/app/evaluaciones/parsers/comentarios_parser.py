@@ -137,16 +137,10 @@ class ComentariosParser(BaseParser):
             else:
                 print(f"  [~] Comentarios ya existentes en la BD.")
             
-            status = SummaryState.objects.filter(
-                evaluacion = EvaluacionConsolidada.objects.filter(docente=curso_obj.docente, semestre=semestre).first(),
+            status, created = SummaryState.objects.get_or_create(
                 analisis = analisis
-            ).first()
-            if not status:
-                SummaryState.objects.create(
-                    evaluacion = EvaluacionConsolidada.objects.filter(docente=curso_obj.docente, semestre=semestre).first(),
-                    analisis = analisis,
-                    status = SummaryState.Status.PENDING
-                )
+            )
+            if created:
                 generar_resumen(analisis.id)
 
         
