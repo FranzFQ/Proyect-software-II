@@ -2,10 +2,8 @@
 import json
 import logging
 from background_task import background
-from evaluaciones.models import AnalisisTexto, EvaluacionConsolidada
+from evaluaciones.models import AnalisisTexto, EvaluacionConsolidada, Tipo
 from ai.models import SummaryState
-
-
 
 
 logger = logging.getLogger(__name__)
@@ -14,13 +12,17 @@ logger = logging.getLogger(__name__)
 # The `schedule` parameter means "run this X seconds from now".
 # schedule=0 means "as soon as the worker picks it up" — i.e., immediately.
 @background(schedule=0)
-def generar_resumen(analisis_id: int):
+def generar_resumen(analisis_id: int, task_type: int = 2):
     """
     Background task that fetches comments from a saved AnalisisTexto,
     sends them to Ollama for summarization, and stores the result.
     """
     # Importing here avoids potential circular import issues in Django
-    from ai.services.summarizer import summarize_comments
+    from ai.services.comment_processing import get_suggestions, get_summary
+
+    type_function = {
+        2: get_suggestions,
+    }
 
 
     # We wrap everything in try/except so a failure updates the status
@@ -42,22 +44,28 @@ def generar_resumen(analisis_id: int):
 
 
         # This is the slow part — calling your Ollama/Mistral summarizer
-        raw_response = summarize_comments(analisis.contenido)
+        raw_response = type_function[task_type](analisis.contenido)
 
 
         # Your summarizer should return JSON, but Mistral isn't always reliable,
         # so we parse safely and fall back to raw text if needed
         try:
             result = json.loads(raw_response)
-            summary_text = result.get("summary", raw_response)
+            output = result.get("summary", raw_response)
         except json.JSONDecodeError:
-            summary_text = raw_response
+            output = raw_response
 
 
         # Store the summary and mark as done
-        evaluacion.resumen_ia = summary_text
-        evaluacion.save(update_fields=['resumen_ia'])
+        analisis, created = AnalisisTexto.objects.update_or_create(
+            curso_dado=analisis.curso_dado,
+            tipo=Tipo.objects.get(id=task_type),
+            defaults={'contenido': output}
+        )
+        print(analisis, created)
 
+#        evaluacion.resumen_ia = output
+#        evaluacion.save(update_fields=['resumen_ia'])
 
         status.status = SummaryState.Status.COMPLETED
         status.save(update_fields=['status'])

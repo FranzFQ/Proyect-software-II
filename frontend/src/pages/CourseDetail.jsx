@@ -30,8 +30,10 @@ const CourseDetail = () => {
           ? (evalsData.reduce((acc, curr) => acc + curr.puntaje_curso, 0) / evalsData.length).toFixed(1)
           : "N/A";
 
-        const analisis = await getAnalisisTexto({ curso_dado: cursoDado.id, tipo__nombre: 'COMENTARIOS' });
+        const analisis = await getAnalisisTexto({ tipo: 1, curso_dado: cursoDado.id });
         const comentarios = analisis.flatMap(a => a.contenido);
+
+        const sugerencia = await getAnalisisTexto({ curso_dado: cursoDado.id, tipo: 2 });
 
         setData({
           nombreDocente: cursoDado.DocenteNombre,
@@ -43,7 +45,7 @@ const CourseDetail = () => {
           creditos: cursoDado.CreditosCurso || 0,
           punteoFinal: punteoFinal,
           comentarios: comentarios.length > 0 ? comentarios : ["No hay comentarios registrados para este curso aún."],
-          sugerencia: cursoDado.resumen_ia || "El sistema aún no ha generado una sugerencia automatizada para este docente en este curso."
+          sugerencia: sugerencia[0]?.contenido || "El sistema aún no ha generado una sugerencia automatizada para este docente en este curso."
         });
 
       } catch (err) {
