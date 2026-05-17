@@ -19,6 +19,15 @@ export async function getEvaluacionesCurso(params = {}) {
   return response.json();
 }
 
+export async function createCursoDado(data) {
+  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/cursos-dados/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
+
 // --- CURSOS DADOS (AGENDA DOCENTE) ---
 export async function getCursosDados(params = {}) {
   const queryString = new URLSearchParams(params).toString();

@@ -5,7 +5,7 @@ import ChecklistEjecucion from '../components/checklist/ChecklistEjecucion';
 import Button from '../components/common/Button';
 
 import { getSemestres } from '../services/academico_service';
-import { getChecklists, getChecklistById, deleteChecklist as deleteChecklistService } from '../services/checklist_service';
+import { getChecklists, getChecklistById, deleteChecklist as deleteChecklistService, updateChecklist, createChecklist } from '../services/checklist_service';
 import { API_URL } from '../services/global_URL';
 import { fetchWithAuth } from '../services/auth_service';
 
@@ -131,17 +131,23 @@ export default function Checklist() {
     setLoading(true);
     try {
       const offset = (currentPage - 1) * itemsPerPage;
-      const [data, semRes] = await Promise.all([
-        getChecklists({ limit: itemsPerPage, offset }),
-        getSemestres(),
-      ]);
+
+      // Primero obtenemos el semestre activo
+      const semRes = await getSemestres();
+      const semList = Array.isArray(semRes) ? semRes : semRes.results ?? [];
+      const semestreActivo = semList.find(e => e.activo_para_carga);
+      setSemestre(semestreActivo);
+
+      // Filtrar checklists por el usuario actual y el semestre activo
+      const checklistParams = { limit: itemsPerPage, offset };
+      if (currentUser?.id) checklistParams.usuario_creador = currentUser.id;
+      if (semestreActivo?.id) checklistParams.semestre = semestreActivo.id;
+
+      const data = await getChecklists(checklistParams);
 
       const list = Array.isArray(data) ? data : (data.results ?? []);
       setChecklists(list.map(normalizeChecklist));
       setTotalChecklists(data.count ?? list.length);
-
-      const semList = Array.isArray(semRes) ? semRes : semRes.results ?? [];
-      setSemestre(semList.find(e => e.activo_para_carga));
     } catch (error) {
       console.error('Error al cargar checklists:', error);
     } finally {
@@ -185,14 +191,8 @@ export default function Checklist() {
   };
 
   const handleToggleActivo = async (checklist) => {
-    try {
-      const res = await fetchWithAuth(`${API_URL}evaluaciones/checklists/${checklist.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activo: !checklist.activo }),
-      });
-      if (res.ok) await fetchData();
-    } catch (e) { console.error('Error al cambiar estado:', e); }
+    try { await updateChecklist(checklist.id, { activo: checklist.activo ? false : true }); }
+    catch (e) { console.error('Error al actualizar estado de checklist:', e); }
   };
 
   const handleGuardarChecklist = async (data) => {
@@ -206,17 +206,9 @@ export default function Checklist() {
     };
     try {
       if (editingChecklist) {
-        await fetchWithAuth(`${API_URL}evaluaciones/checklists/${editingChecklist.id}/`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await updateChecklist(editingChecklist.id, payload);
       } else {
-        await fetchWithAuth(`${API_URL}evaluaciones/checklists/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await createChecklist(payload);
       }
       await fetchData();
     } catch (e) { console.error('Error guardando checklist:', e); }
@@ -224,63 +216,21 @@ export default function Checklist() {
     setEditingChecklist(null);
   };
 
+  // Este handler solo se llama en modo edición (cambios de criterios de la checklist)
+  // El guardado de observaciones por docente ahora ocurre directamente en ChecklistEjecucion
   const handleGuardarEjecucion = async (resultado) => {
-    const { criteriosList, evaluaciones, observaciones, docentesObservados } = resultado;
-
-    const completadas = evaluaciones.filter(e => e.completado && e.score !== null);
-    const punteoCalculado = completadas.length
-      ? parseFloat((completadas.reduce((a, e) => a + e.score, 0) / completadas.length).toFixed(1))
-      : ejecutandoChecklist.punteo;
-
+    const { criteriosList } = resultado;
     try {
-      await fetchWithAuth(`${API_URL}evaluaciones/checklists/${ejecutandoChecklist.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          punteo: punteoCalculado,
-          datos: {
-            ...(ejecutandoChecklist.datos ?? {}),
-            criteriosList,
-          },
-        }),
+      await updateChecklist(ejecutandoChecklist.id, {
+        datos: {
+          ...(ejecutandoChecklist.datos ?? {}),
+          criteriosList,
+        },
       });
-// 2. Crear o Actualizar ChecklistObservation por cada docente observado
-for (const doc of docentesObservados) {
-  const obsPayload = {
-    curso_dado: doc.cursoDadoId,
-    checklist:  ejecutandoChecklist.id,
-    usuario:    currentUser?.id ?? null,
-    punteo:     punteoCalculado,
-    datos: {
-      criteriosList,
-      evaluaciones,
-      observaciones,
-      docente:       doc.docente,
-      codigoDocente: doc.codigoDocente,
-      nombreCurso:   doc.nombreCurso,
-      seccion:       doc.seccion,
-      punteo_final:  punteoCalculado,
-    },
-  };
-
-  const method = doc.id ? 'PATCH' : 'POST';
-  const url = doc.id 
-    ? `${API_URL}evaluaciones/checklist-observaciones/${doc.id}/`
-    : `${API_URL}evaluaciones/checklist-observaciones/`;
-
-  await fetchWithAuth(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(obsPayload),
-  });
-}
-
-
       await fetchData();
     } catch (error) {
-      console.error('Error al guardar ejecución:', error);
+      console.error('Error al guardar criterios:', error);
     }
-
     setEjecutandoChecklist(null);
     setModoEdicion(false);
   };

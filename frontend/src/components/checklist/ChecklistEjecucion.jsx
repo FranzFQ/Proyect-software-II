@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import { API_URL } from '../../services/global_URL';
+import { AppContext } from '../../context/AppContext';
 
 // ─── Helpers de color ──────────────────────────────────────────────────────────
 function getColorBarra(score) {
@@ -70,9 +71,7 @@ function ModalAgregarDocente({ checklistId, semestre, onAgregar, onCerrar }) {
     const fetchCursos = async () => {
       try {
         let url = `${API_URL}evaluaciones/cursos-dados/?docente=${docenteId}`;
-        if (semestre?.id) {
-          url += `&semestre=${semestre.id}`;
-        }
+        if (semestre?.id) url += `&semestre=${semestre.id}`;
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` },
         });
@@ -152,25 +151,26 @@ function ModalAgregarDocente({ checklistId, semestre, onAgregar, onCerrar }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, onGuardar, onCancelar }) {
+  const { currentUser } = useContext(AppContext);
+
   const [criterios, setCriterios] = useState(checklist.criteriosList ?? []);
 
-  const buildInitialEval = () => {
-    const guardadas = checklist.datos?.evaluaciones ?? [];
-    return (checklist.criteriosList ?? []).map((_, i) =>
-      guardadas[i] ?? { completado: false, score: null }
-    );
-  };
+  const buildInitialEval = () =>
+    (checklist.criteriosList ?? []).map(() => ({ completado: false, score: null }));
 
   const [evaluaciones,  setEvaluaciones]  = useState(buildInitialEval);
-  const [observaciones, setObservaciones] = useState(checklist.datos?.observaciones ?? '');
+  const [observaciones, setObservaciones] = useState('');
 
   const [docentesObservados, setDocentesObservados] = useState([]);
   const [showModalDocente,   setShowModalDocente]   = useState(false);
   const [paginaDocentes,     setPaginaDocentes]     = useState(1);
+  // El docente que está siendo calificado ahora mismo
   const [docenteActivo,      setDocenteActivo]      = useState(null);
-  const [docenteReejecutar,  setDocenteReejecutar]  = useState(null);
-  const [punteosPorDocente,  setPunteosPorDocente]  = useState({});
-  // Reducido a 3 por página para que observaciones sean más visibles
+  // ID de la observación existente del docente activo (para PATCH)
+  const [obsIdActivo,        setObsIdActivo]        = useState(null);
+  const [guardando,          setGuardando]          = useState(false);
+  const [mensajeGuardado,    setMensajeGuardado]    = useState('');
+
   const DOCENTES_POR_PAGINA = 3;
 
   const [editandoIdx,   setEditandoIdx]   = useState(null);
@@ -181,87 +181,68 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
   const nuevoCriterioRef = useRef(null);
   const editInputRef     = useRef(null);
 
-  // 1. Cargar docentes observados de este semestre/checklist desde la BD
-  useEffect(() => {
-    const fetchObservados = async () => {
-      if (!checklist.id || !semestre?.id) {
-        setDocentesObservados([]);
-        setPunteosPorDocente({});
-        return;
+  // ── Cargar docentes observados desde la BD ────────────────────────────────
+  const fetchObservados = async () => {
+    if (!checklist.id || !semestre?.id) {
+      setDocentesObservados([]);
+      return;
+    }
+    const token = sessionStorage.getItem('auth_token');
+    try {
+      const url = `${API_URL}evaluaciones/checklist-observaciones/?checklist=${checklist.id}&semestre=${semestre.id}&limit=500`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.results ?? []);
+
+        // Mapear al formato interno
+        const mapped = list.map(obs => ({
+          id:            obs.id,
+          docenteId:     obs.DocenteId,
+          cursoDadoId:   obs.curso_dado,
+          docente:       obs.DocenteNombre,
+          codigoDocente: obs.CodigoDocente,
+          nombreCurso:   obs.NombreCurso,
+          seccion:       obs.datos?.seccion || '',
+          punteo:        obs.punteo,
+          fecha:         obs.fecha_observacion,
+        }));
+
+        // Solo la más reciente por par (docente, curso)
+        const uniqueMap = new Map();
+        mapped.forEach(obs => {
+          const key = `${obs.docenteId}-${obs.cursoDadoId}`;
+          if (!uniqueMap.has(key)) uniqueMap.set(key, obs);
+        });
+
+        setDocentesObservados(Array.from(uniqueMap.values()));
       }
-      
-      const token = sessionStorage.getItem('auth_token');
-      try {
-        // Filtramos estrictamente por el checklist actual Y el semestre activo para carga
-        const url = `${API_URL}evaluaciones/checklist-observaciones/?checklist=${checklist.id}&semestre=${semestre.id}&limit=500`;
-        
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data) ? data : (data.results ?? []);
-          
-          // Mapear al formato que usa el componente
-          const observadosMap = list.map(obs => ({
-            id:            obs.id,
-            docenteId:     obs.DocenteId,
-            cursoDadoId:   obs.curso_dado,
-            docente:       obs.DocenteNombre,
-            codigoDocente: obs.CodigoDocente,
-            nombreCurso:   obs.NombreCurso,
-            seccion:       obs.datos?.seccion || '',
-            punteo:        obs.punteo,
-            fecha:         obs.fecha_observacion
-          }));
+    } catch (err) {
+      console.error('Error al cargar docentes observados:', err);
+    }
+  };
 
-          // FILTRAR DUPLICADOS: Solo queremos la ÚLTIMA observación de cada docente en cada curso
-          // para este semestre y esta checklist.
-          const uniqueMap = new Map();
-          
-          // Como la lista ya viene ordenada por fecha DESC (del backend),
-          // el primer elemento que encontremos de cada par (Docente, Curso) es el más reciente.
-          observadosMap.forEach(obs => {
-             const key = `${obs.docenteId}-${obs.cursoDadoId}`;
-             if (!uniqueMap.has(key)) {
-               uniqueMap.set(key, obs);
-             }
-          });
-
-          const uniqueList = Array.from(uniqueMap.values());
-
-          setDocentesObservados(uniqueList);
-          
-          // Mapeamos punteos por observación ID para mayor precisión en la tabla
-          const scores = {};
-          uniqueList.forEach(obs => { scores[obs.id] = obs.punteo; });
-          setPunteosPorDocente(scores);
-        }
-      } catch (error) {
-        console.error("Error al cargar docentes observados:", error);
-      }
-    };
-    fetchObservados();
-  }, [checklist.id, semestre?.id]);
-
+  useEffect(() => { fetchObservados(); }, [checklist.id, semestre?.id]);
   useEffect(() => { if (mostrarNuevo) nuevoCriterioRef.current?.focus(); }, [mostrarNuevo]);
   useEffect(() => { if (editandoIdx !== null) editInputRef.current?.focus(); }, [editandoIdx]);
 
-  const completados = evaluaciones.filter(e => e.completado).length;
-  const total       = criterios.length;
-  const punteoActual = completados > 0
-    ? (evaluaciones.filter(e => e.completado && e.score !== null).reduce((a, e) => a + e.score, 0) / evaluaciones.filter(e => e.completado && e.score !== null).length) || null
+  // ── Cálculo de punteo del docente activo ─────────────────────────────────
+  const completados  = evaluaciones.filter(e => e.completado).length;
+  const total        = criterios.length;
+  const evalConScore = evaluaciones.filter(e => e.completado && e.score !== null);
+  const punteoActual = evalConScore.length > 0
+    ? parseFloat((evalConScore.reduce((a, e) => a + e.score, 0) / evalConScore.length).toFixed(1))
     : null;
 
-  const toggle = (i) => {
+  // ── Handlers de criterios ─────────────────────────────────────────────────
+  const toggle   = (i) => {
     if (!docenteActivo) return;
     setEvaluaciones(prev =>
-      prev.map((e, idx) =>
-        idx === i ? { completado: !e.completado, score: !e.completado ? 5 : null } : e
-      )
+      prev.map((e, idx) => idx === i ? { completado: !e.completado, score: !e.completado ? 5 : null } : e)
     );
   };
-  const setScore = (i, val) => {
+  const setScore = (i, val) =>
     setEvaluaciones(prev => prev.map((e, idx) => idx === i ? { ...e, score: val } : e));
-  };
 
   const iniciarEdicion   = (i) => { setEditandoIdx(i); setEditandoTexto(criterios[i]); };
   const cancelarEdicion  = ()  => { setEditandoIdx(null); setEditandoTexto(''); };
@@ -270,54 +251,116 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
     setCriterios(prev => prev.map((c, i) => i === editandoIdx ? editandoTexto.trim() : c));
     setEditandoIdx(null); setEditandoTexto('');
   };
-  const handleEditKeyDown = (e) => {
-    if (e.key === 'Enter') confirmarEdicion();
-    if (e.key === 'Escape') cancelarEdicion();
-  };
-  const eliminarCriterio = (i) => {
+  const handleEditKeyDown  = (e) => { if (e.key === 'Enter') confirmarEdicion(); if (e.key === 'Escape') cancelarEdicion(); };
+  const eliminarCriterio   = (i) => {
     setCriterios(prev    => prev.filter((_, idx) => idx !== i));
     setEvaluaciones(prev => prev.filter((_, idx) => idx !== i));
   };
-  const agregarCriterio = () => {
+  const agregarCriterio  = () => {
     if (!nuevoCriterio.trim()) return;
     setCriterios(prev    => [...prev, nuevoCriterio.trim()]);
     setEvaluaciones(prev => [...prev, { completado: false, score: null }]);
     setNuevoCriterio('');
     nuevoCriterioRef.current?.focus();
   };
-  const cancelarNuevo      = () => { setNuevoCriterio(''); setMostrarNuevo(false); };
-  const handleNuevoKeyDown = (e) => {
-    if (e.key === 'Enter') agregarCriterio();
-    if (e.key === 'Escape') cancelarNuevo();
+  const cancelarNuevo    = () => { setNuevoCriterio(''); setMostrarNuevo(false); };
+  const handleNuevoKeyDown = (e) => { if (e.key === 'Enter') agregarCriterio(); if (e.key === 'Escape') cancelarNuevo(); };
+
+  // ── Seleccionar docente desde la tabla (para editar su calificación) ──────
+  const handleSeleccionarDocenteTabla = (doc) => {
+    if (modoEdicion) return;
+    // Si ya está activo, deseleccionar
+    if (docenteActivo?.id === doc.id) {
+      setDocenteActivo(null);
+      setObsIdActivo(null);
+      setEvaluaciones(buildInitialEval());
+      setObservaciones('');
+      return;
+    }
+    setDocenteActivo(doc);
+    setObsIdActivo(doc.id); // el id de ChecklistObservation
+    // Pre-cargar evaluaciones si existen en datos guardados
+    setEvaluaciones(buildInitialEval());
+    setObservaciones('');
   };
 
+  // ── Agregar docente nuevo desde el modal ──────────────────────────────────
   const handleAgregarDocente = (datos) => {
-    setDocenteActivo(datos);
+    setDocenteActivo({ ...datos, id: null }); // sin id de observación aún
+    setObsIdActivo(null);
     setEvaluaciones(buildInitialEval());
     setObservaciones('');
     setShowModalDocente(false);
-    setDocenteReejecutar(null);
   };
 
-  const handleSeleccionarDocenteTabla = (docente) => {
-    if (docenteActivo?.docenteId === docente.docenteId && !docenteReejecutar) {
-      setDocenteActivo(null);
-      setEvaluaciones(buildInitialEval());
-      setObservaciones('');
-      setDocenteReejecutar(null);
-      return;
+  // ── GUARDAR OBSERVACIÓN DEL DOCENTE ACTIVO (sin salir de la vista) ────────
+  const handleGuardarDocente = async () => {
+    if (!docenteActivo || punteoActual === null) return;
+    setGuardando(true);
+    setMensajeGuardado('');
+
+    const token = sessionStorage.getItem('auth_token');
+
+    try {
+      const obsPayload = {
+        curso_dado: docenteActivo.cursoDadoId,
+        checklist:  checklist.id,
+        usuario:    currentUser?.id ?? null,
+        punteo:     punteoActual,
+        datos: {
+          criteriosList: criterios,
+          evaluaciones,
+          observaciones,
+          docente:       docenteActivo.docente,
+          codigoDocente: docenteActivo.codigoDocente,
+          nombreCurso:   docenteActivo.nombreCurso,
+          seccion:       docenteActivo.seccion,
+          punteo_final:  punteoActual,
+        },
+      };
+
+      // Si tiene obsIdActivo → PATCH (actualizar solo ese docente)
+      // Si no → POST (nueva observación)
+      const method = obsIdActivo ? 'PATCH' : 'POST';
+      const url    = obsIdActivo
+        ? `${API_URL}evaluaciones/checklist-observaciones/${obsIdActivo}/`
+        : `${API_URL}evaluaciones/checklist-observaciones/`;
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(obsPayload),
+      });
+
+      if (res.ok) {
+        const saved = await res.json();
+        // Actualizar el id de la observación en caso de POST
+        setObsIdActivo(saved.id);
+        // Actualizar el docenteActivo con el nuevo id de observación
+        setDocenteActivo(prev => ({ ...prev, id: saved.id, punteo: punteoActual }));
+        // Refrescar tabla de docentes sin salir
+        await fetchObservados();
+        setMensajeGuardado('✓ Guardado');
+        setTimeout(() => setMensajeGuardado(''), 2500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error('Error al guardar observación:', err);
+        setMensajeGuardado('Error al guardar');
+      }
+    } catch (err) {
+      console.error('Error al guardar observación:', err);
+      setMensajeGuardado('Error al guardar');
+    } finally {
+      setGuardando(false);
     }
-    setDocenteReejecutar(docente);
-    setDocenteActivo(docente);
-    setEvaluaciones(buildInitialEval());
-    setObservaciones('');
   };
 
-  const handleGuardar = () => {
-    const docentes = docenteActivo
-      ? [docenteActivo, ...docentesObservados.filter(d => d.docenteId !== docenteActivo.docenteId)]
-      : docentesObservados;
-    onGuardar({ criteriosList: criterios, evaluaciones, observaciones, docentesObservados: docentes });
+  // ── GUARDAR MODO EDICIÓN (solo criterios de la checklist) ────────────────
+  const handleGuardarEdicion = () => {
+    onGuardar({ criteriosList: criterios, evaluaciones, observaciones, docentesObservados });
   };
 
   const checklistNombre = checklist.titulo || checklist.nombre || '';
@@ -331,6 +374,8 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
   const iniciales = docenteActivo?.docente
     ? docenteActivo.docente.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
     : null;
+
+  const puedeGuardar = !modoEdicion && docenteActivo && punteoActual !== null && !guardando;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 min-h-[calc(100vh-4rem)] pb-10 px-2 sm:px-0">
@@ -379,10 +424,10 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                 <p className="text-gray-500 font-medium text-sm truncate">
                   {docenteActivo.docente}
                   {docenteActivo.nombreCurso && <> · <span className="text-gray-400">{docenteActivo.nombreCurso}{docenteActivo.seccion ? ` — Sec. ${docenteActivo.seccion}` : ''}</span></>}
-                  {docenteReejecutar && <span className="ml-2 bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Re-ejecutando</span>}
+                  {obsIdActivo && <span className="ml-2 bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Editando</span>}
                 </p>
               ) : (
-                <p className="text-gray-400 text-sm">{modoEdicion ? 'Editando parámetros del checklist' : 'Selecciona un docente para comenzar'}</p>
+                <p className="text-gray-400 text-sm">{modoEdicion ? 'Editando parámetros del checklist' : 'Selecciona un docente para comenzar o calificar'}</p>
               )}
 
               <div className="flex flex-wrap gap-2 mt-3">
@@ -415,18 +460,20 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                 <span className={`text-3xl sm:text-4xl font-black leading-none ${punteoActual !== null ? (punteoActual >= 9 ? 'text-green-600' : punteoActual >= 7 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-300'}`}>
                   {punteoActual !== null ? punteoActual.toFixed(1) : '—'}
                 </span>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Punteo</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                  {docenteActivo ? docenteActivo.docente.split(' ')[0] : 'Punteo'}
+                </span>
               </div>
             </div>
 
-            {/* Botones de acción — Guardar y Cancelar juntos */}
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
+            {/* Botones de acción */}
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end items-center">
               {!modoEdicion && (
                 <button
                   onClick={() => setShowModalDocente(true)}
                   className="px-4 py-2 rounded-md font-bold text-xs bg-[#112240] text-white hover:bg-[#1a365d] transition-colors shadow-sm flex-1 sm:flex-none"
                 >
-                  + Observar Docente
+                  + Observar docente
                 </button>
               )}
               {modoEdicion && (
@@ -437,19 +484,37 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                   + Agregar criterio
                 </button>
               )}
-              {/* Guardar y Cancelar juntos */}
-              <button
-                onClick={handleGuardar}
-                disabled={!modoEdicion && !docenteActivo}
-                className="px-4 py-2 rounded-md font-bold text-xs bg-[#112240] text-white hover:bg-[#1a365d] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex-1 sm:flex-none"
-              >
-                {modoEdicion ? 'Guardar cambios' : 'Guardar'}
-              </button>
+
+              {/* Guardar — comportamiento distinto según modo */}
+              {modoEdicion ? (
+                <button
+                  onClick={handleGuardarEdicion}
+                  className="px-4 py-2 rounded-md font-bold text-xs bg-[#112240] text-white hover:bg-[#1a365d] transition-colors shadow-sm flex-1 sm:flex-none"
+                >
+                  Guardar cambios
+                </button>
+              ) : (
+                <button
+                  onClick={handleGuardarDocente}
+                  disabled={!puedeGuardar}
+                  className="px-4 py-2 rounded-md font-bold text-xs bg-[#112240] text-white hover:bg-[#1a365d] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex-1 sm:flex-none"
+                >
+                  {guardando ? 'Guardando…' : obsIdActivo ? 'Actualizar docente' : 'Guardar docente'}
+                </button>
+              )}
+
+              {/* Mensaje de confirmación */}
+              {mensajeGuardado && (
+                <span className={`text-xs font-bold px-3 py-2 rounded-md ${mensajeGuardado.startsWith('✓') ? 'text-green-600 bg-green-50 border border-green-200' : 'text-red-600 bg-red-50 border border-red-200'}`}>
+                  {mensajeGuardado}
+                </span>
+              )}
+
               <button
                 onClick={onCancelar}
                 className="px-4 py-2 rounded-md font-bold text-xs border-2 border-gray-300 text-gray-500 hover:border-[#112240] hover:text-[#112240] transition-colors flex-1 sm:flex-none"
               >
-                Cancelar
+                Volver
               </button>
             </div>
           </div>
@@ -590,7 +655,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
         {/* Panel derecho */}
         <div className="flex flex-col gap-4 sm:gap-5">
 
-          {/* ── Tabla docentes observados (arriba, compacta) ── */}
+          {/* ── Tabla docentes observados ── */}
           <div>
             <h3 className="font-bold text-base sm:text-lg text-[#112240] mb-3">
               Docentes Observados
@@ -605,7 +670,6 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
               </div>
             ) : (
               <>
-                {/* Tabla compacta */}
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                   <table className="w-full text-xs">
                     <thead>
@@ -618,7 +682,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {docsPagina.map((d, i) => {
-                        const p = punteosPorDocente[d.id] ?? null;
+                        const p = d.punteo ?? null;
                         const isActivo = docenteActivo?.id === d.id;
                         return (
                           <tr
@@ -643,7 +707,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                             </td>
                             <td className="px-2 py-2 text-center">
                               <span className={`font-black text-sm ${p !== null ? (p >= 9 ? 'text-green-600' : p >= 7 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-300'}`}>
-                                {p !== null ? p.toFixed(1) : '—'}
+                                {p !== null ? parseFloat(p).toFixed(1) : '—'}
                               </span>
                             </td>
                             {!modoEdicion && (
@@ -660,7 +724,6 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                   </table>
                 </div>
 
-                {/* Paginación */}
                 {totalPaginasDoc > 1 && (
                   <div className="flex justify-between items-center mt-2 text-xs text-[#112240] font-bold">
                     <button
@@ -684,7 +747,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
             )}
           </div>
 
-          {/* ── Observaciones (abajo de la tabla) ── */}
+          {/* ── Observaciones ── */}
           <div>
             <h3 className="font-bold text-base sm:text-lg text-[#112240] mb-3">Observaciones generales</h3>
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-3 sm:p-4">
