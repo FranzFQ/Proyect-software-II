@@ -473,7 +473,7 @@ export default function ChecklistEjecucion({ checklist, semestre, modoEdicion, o
                   onClick={() => setShowModalDocente(true)}
                   className="px-4 py-2 rounded-md font-bold text-xs bg-[#112240] text-white hover:bg-[#1a365d] transition-colors shadow-sm flex-1 sm:flex-none"
                 >
-                  + Observar Docente
+                  + Observar docente
                 </button>
               )}
               {modoEdicion && (

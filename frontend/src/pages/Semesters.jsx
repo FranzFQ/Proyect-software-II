@@ -32,7 +32,7 @@ const Semesters = () => {
   const [semestreSeleccionado, setSemestreSeleccionado] = useState(null);
 
   // Estados del Formulario
-  const [nuevoCiclo, setNuevoCiclo] = useState(1);
+  const [nuevosemeste, setnuevosemeste] = useState(1);
   const [nuevoAnio, setNuevoAnio] = useState(new Date().getFullYear());
   const [nuevaFecha, setNuevaFecha] = useState('');
 
@@ -65,7 +65,7 @@ const Semesters = () => {
     try {
       const payload = {
         anio: parseInt(nuevoAnio),
-        ciclo: parseInt(nuevoCiclo),
+        ciclo: parseInt(nuevosemeste),
         fecha: nuevaFecha || null,
         visible: false,
         activo_para_carga: false,
@@ -82,7 +82,7 @@ const Semesters = () => {
 
   const abrirEdicion = (sem) => {
     setSemestreSeleccionado(sem);
-    setNuevoCiclo(sem.ciclo);
+    setnuevosemeste(sem.ciclo);
     setNuevoAnio(sem.anio);
     setNuevaFecha(sem.fecha ? sem.fecha.substring(0, 16) : '');
     setIsEditModalOpen(true);
@@ -93,7 +93,7 @@ const Semesters = () => {
     try {
       const payload = {
         anio: parseInt(nuevoAnio),
-        ciclo: parseInt(nuevoCiclo),
+        ciclo: parseInt(nuevosemeste),
         fecha: nuevaFecha || null
       };
       await updateSemestre(semestreSeleccionado.id, payload);
@@ -182,7 +182,7 @@ const Semesters = () => {
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${getStatusColor(sem.estado)}`}><ClockIcon className="w-6 h-6" /></div>
                   <div>
-                    <h3 className="font-bold text-url-blue text-lg leading-tight">Ciclo {sem.ciclo}</h3>
+                    <h3 className="font-bold text-url-blue text-lg leading-tight">Semestre {sem.ciclo}</h3>
                     <p className="text-sm font-black text-gray-400 uppercase tracking-widest">Año {sem.anio}</p>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ const Semesters = () => {
             <table className="w-full text-center border-collapse whitespace-nowrap">
               <thead className="bg-[#112240] text-white">
                 <tr>
-                  <th className="py-4 px-6 font-semibold text-sm">Ciclo</th>
+                  <th className="py-4 px-6 font-semibold text-sm">Semestre</th>
                   <th className="py-4 px-6 font-semibold text-sm">Año</th>
                   <th className="py-4 px-6 font-semibold text-sm">Estado</th>
                   <th className="py-4 px-6 font-semibold text-sm">Acciones</th>
@@ -223,7 +223,7 @@ const Semesters = () => {
                   <tr><td colSpan="4" className="py-10 text-center text-gray-400 italic">No hay historial disponible.</td></tr>
                 ) : semestresHistoricos.map((sem, index) => (
                   <tr key={sem.id} className={`border-b border-gray-100 hover:bg-gray-50 transition ${index % 2 !== 0 ? 'bg-gray-50/50' : ''}`}>
-                    <td className="py-4 px-6 font-bold text-url-blue">Ciclo {sem.ciclo}</td>
+                    <td className="py-4 px-6 font-bold text-url-blue">Semestre {sem.ciclo}</td>
                     <td className="py-4 px-6 font-bold text-url-blue">{sem.anio}</td>
                     <td className="py-4 px-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusColor(sem.estado)}`}>{sem.estado}</span>
@@ -263,10 +263,10 @@ const Semesters = () => {
         <form onSubmit={agregarSemestre} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase">Ciclo</label>
-              <select className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-url-blue" value={nuevoCiclo} onChange={(e) => setNuevoCiclo(parseInt(e.target.value))}>
-                <option value={1}>Ciclo I</option>
-                <option value={2}>Ciclo II</option>
+              <label className="text-xs font-bold text-gray-500 uppercase">Semestre</label>
+              <select className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-url-blue" value={nuevosemeste} onChange={(e) => setnuevosemeste(parseInt(e.target.value))}>
+                <option value={1}>Semestre I</option>
+                <option value={2}>Semestre II</option>
               </select>
             </div>
             <div className="flex flex-col gap-1">
@@ -291,10 +291,10 @@ const Semesters = () => {
         <form onSubmit={guardarEdicion} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-500 uppercase">Ciclo</label>
-              <select className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-url-blue" value={nuevoCiclo} onChange={(e) => setNuevoCiclo(parseInt(e.target.value))}>
-                <option value={1}>Ciclo I</option>
-                <option value={2}>Ciclo II</option>
+              <label className="text-xs font-bold text-gray-500 uppercase">Semestre</label>
+              <select className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-url-blue" value={nuevosemeste} onChange={(e) => setnuevosemeste(parseInt(e.target.value))}>
+                <option value={1}>Semestre I</option>
+                <option value={2}>Semestre II</option>
               </select>
             </div>
             <div className="flex flex-col gap-1">
@@ -317,7 +317,7 @@ const Semesters = () => {
       <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Eliminar Periodo">
          <div className="flex flex-col items-center text-center gap-4 py-4">
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center"><TrashIcon className="w-10 h-10" /></div>
-            <h2 className="text-xl font-bold text-[#112240]">¿Eliminar Ciclo {semestreSeleccionado?.ciclo} {semestreSeleccionado?.anio}?</h2>
+            <h2 className="text-xl font-bold text-[#112240]">¿Eliminar Semestre {semestreSeleccionado?.ciclo} {semestreSeleccionado?.anio}?</h2>
             <p className="text-gray-500 text-sm px-4">Esta acción no se puede deshacer. Se borrarán todos los datos asociados a este periodo.</p>
             <div className="flex justify-center gap-3 w-full mt-4">
                <Button variant="secondary" className="w-full" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
@@ -331,7 +331,7 @@ const Semesters = () => {
          <div className="flex flex-col items-center text-center gap-4 py-4">
             <h2 className="text-2xl font-bold text-[#112240] font-serif px-8">¿Confirmar cambio de estado?</h2>
             <div className="mt-2 bg-gray-50 px-8 py-4 rounded-xl border border-gray-100">
-               <h3 className="text-xl font-bold text-url-blue">Ciclo {semestreSeleccionado?.ciclo} {semestreSeleccionado?.anio}</h3>
+               <h3 className="text-xl font-bold text-url-blue">Semestre {semestreSeleccionado?.ciclo} {semestreSeleccionado?.anio}</h3>
                <p className="text-xs text-gray-400 font-bold uppercase mt-1">
                  Acción: {semestreSeleccionado?.activo_para_carga ? 'Finalizar Periodo' : 'Activar para Carga'}
                </p>

@@ -44,6 +44,8 @@ const Coordinators = () => {
   const [formFacultadId, setFormFacultadId] = useState('');
   const [formCarreraId, setFormCarreraId] = useState('');
 
+  const [searchFocused, setSearchFocused] = useState(false);
+
   useEffect(() => {
     const cargarCatalogos = async () => {
       try {
@@ -219,15 +221,18 @@ const Coordinators = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex w-full md:w-1/2 shadow-sm rounded-lg overflow-hidden border border-gray-200">
+        <div className={`flex w-full md:w-1/2 rounded-lg border transition-all duration-200 overflow-hidden ${searchFocused ? 'border-url-blue ring-2 ring-url-blue' : 'border-gray-200'}`}>
           <input
             type="text"
             placeholder="Búsqueda por nombre, usuario, email o carrera..."
             className="w-full px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#112240]"
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
           />
-          <button className="bg-[#112240] text-white font-bold px-6 py-2 hover:bg-blue-900 transition-colors">
+          <button className="bg-[#e2e8f0] text-[#112240] font-bold px-6 py-2 border-l border-gray-200 hover:bg-gray-300 transition-colors shrink-0">
             Buscar
           </button>
         </div>

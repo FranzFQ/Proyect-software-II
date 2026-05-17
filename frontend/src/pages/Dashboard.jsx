@@ -125,7 +125,7 @@ const Dashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-[#112240] mb-2">Dashboard</h1>
-          <p className="text-gray-500 font-medium">Visualización de métricas para semestre: {semestreActivo}</p>
+          <p className="text-gray-500 font-medium">Visualización de métricas para el semestre: {semestreActivo}</p>
         </div>
       </div>
 
@@ -167,29 +167,61 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
-
         <div className="lg:col-span-1">
           <Card title="Distribución de Rendimiento">
             <div className="h-80 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distributionData}
-                    cx="50%" cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {distributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36}/>
-                </PieChart>
-              </ResponsiveContainer>
+              {(() => {
+                const filteredDist = distributionData.filter(d => d.value > 0);
+                const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value, index }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 28;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  const isRight = x > cx;
+
+                  // Color según el nombre
+                  const labelColor = 
+                    name === 'Excelente' ? '#10B981' :
+                    name === 'Buena'     ? '#F59E0B' :
+                    name === 'Deficiente'? '#EF4444' : '#475569';
+
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill={labelColor}
+                      textAnchor={isRight ? 'start' : 'end'}
+                      dominantBaseline="central"
+                      fontSize={11}
+                      fontWeight="700"
+                    >
+                      {`${name}: ${value}`}
+                    </text>
+                  );
+                };
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 20, right: 50, bottom: 20, left: 50 }}>
+                      <Pie
+                        data={filteredDist}
+                        cx="50%" cy="45%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={renderCustomLabel}
+                        labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                      >
+                        {filteredDist.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </Card>
         </div>

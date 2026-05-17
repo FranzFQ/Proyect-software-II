@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { getDocenteById } from '../../services/docente_service';
+import { getChecklistsObservationByDocente } from '../../services/checklist_service';
 import { API_URL } from '../../services/global_URL';
 import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
@@ -206,18 +208,11 @@ const TeacherChecklists = () => {
     const fetchData = async () => {
       setLoading(true); setError(null);
       try {
-        const [docenteRes, obsRes] = await Promise.all([
-          fetch(`${API_URL}usuarios/docentes/${id}/`, { headers: authHeaders() }),
-          fetch(`${API_URL}evaluaciones/checklist-observaciones/?docente=${id}&limit=100`, { headers: authHeaders() }),
-        ]);
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        setDocente(await docenteRes.json());
-        if (obsRes.ok) {
-          const data = await obsRes.json();
+          setDocente(await getDocenteById(id));
+          const data = await getChecklistsObservationByDocente(id);
           const list = Array.isArray(data) ? data : (data.results ?? []);
           const sorted = [...list].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
           setObservations(deduplicarPorChecklist(sorted));
-        }
       } catch (e) { setError(e.message); }
       finally { setLoading(false); }
     };

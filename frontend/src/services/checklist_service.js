@@ -41,6 +41,22 @@ export async function getChecklists(params = {}) {
 }
 
 /**
+ * Obtiene una checklist específica por ID.
+ */
+export async function getChecklistById(id) {
+  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/checklists/${id}/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function getChecklistsObservationByDocente(docenteId) {
+  const url = `${BASE_URL}evaluaciones/checklist-observaciones/?docente=${docenteId}&limit=100`;
+  const response = await fetchWithAuth(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+/**
  * Guarda una nueva observación de checklist.
  * @param {object} data - Contiene docente, curso, y las observaciones JSON.
  */
@@ -54,22 +70,21 @@ export async function createChecklist(data) {
 }
 
 /**
- * Obtiene una checklist específica por ID.
- */
-export async function getChecklistById(id) {
-  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/checklists/${id}/`, {
-    headers: authHeaders(),
-  });
-  return handleResponse(response);
-}
-
-/**
  * Elimina una observación.
  */
 export async function deleteChecklist(id) {
   const response = await fetchWithAuth(`${BASE_URL}evaluaciones/checklists/${id}/`, {
     method: "DELETE",
     headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function updateChecklist(id, data) {
+  const response = await fetchWithAuth(`${BASE_URL}evaluaciones/checklists/${id}/`, {
+    method: "PATCH",
+    headers: authHeaders(true),
+    body: JSON.stringify(data),
   });
   return handleResponse(response);
 }

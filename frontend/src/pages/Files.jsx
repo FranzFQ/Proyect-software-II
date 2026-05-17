@@ -71,7 +71,7 @@ const Files = () => {
   };
 
   // Solo 3 categorías principales requeridas para el 100% de la barra de progreso
-  const categoriasPrincipalesIds = ['estudiantil', 'coordinador', 'ceat'];
+  const categoriasPrincipalesIds = ['estudiantil', 'coordinador', 'ceat', 'comentarios'];
   const completadasPrincipales = documentos.filter(d => d.estado === 'subido' && categoriasPrincipalesIds.includes(d.id)).length;
 
   const abrirModalCarga = (idCategoria) => { 
@@ -157,7 +157,7 @@ const Files = () => {
     setCargando(false);
 
     if (exitos > 0) {
-      const porcentaje = Math.round((completadasPrincipales / 3) * 100);
+      const porcentaje = Math.round((completadasPrincipales / documentosGrid.length) * 100);
       setEvaluacionesCompletadas(`${porcentaje}%`);
       showToast(`¡Proceso completado! Archivos procesados con éxito: ${exitos}`, "success");
       if (errores.length > 0) showToast("Se guardaron algunos archivos pero otros tuvieron errores.", "error");
@@ -189,7 +189,7 @@ const Files = () => {
     <div className="flex flex-col gap-8 min-h-[calc(100vh-4rem)] pb-12">
       <div>
         <h1 className="text-3xl font-bold text-[#112240] mb-2">Carga de Archivos e Información</h1>
-        <p className="text-gray-500 font-medium">{semestreActivo || 'Cargando semestre...'} · {completadasPrincipales} de 3 archivos cargados</p>
+        <p className="text-gray-500 font-medium">Carga de archivos para el semestre: {semestreActivo || 'Cargando semestre...'} · {completadasPrincipales} de {documentosGrid.length} archivos cargados</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -304,7 +304,7 @@ const Files = () => {
           </label>
           <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => { setIsUploadModalOpen(false); setArchivoTemporal(null); }}>Cancelar</Button>
-            <Button variant="primary" onClick={procesarCargaArchivo} className="bg-[#112240] text-white hover:bg-blue-900 border-none shadow-sm">Cargar Archivo</Button>
+            <Button variant="primary" onClick={procesarCargaArchivo} className="bg-[#112240] hover:bg-blue-900 border-none shadow-sm">Cargar Archivo</Button>
           </div>
         </div>
       </Modal>
