@@ -30,19 +30,12 @@ class DocenteViewSet(viewsets.ModelViewSet):
         # 3. Solo promediamos y contamos si hay un semestre activo
         # Usamos coalese para evitar nulos y mejorar consistencia
         from django.db.models.functions import Coalesce
-        from django.db.models import OuterRef, Subquery
         if semestre:
-            # Subquery para obtener el puntaje consolidado TOTAL (donde criterio es NULL)
-            puntaje_consolidado = Subquery(
-                EvaluacionConsolidada.objects.filter(
-                    docente=OuterRef('pk'),
-                    semestre=semestre,
-                    criterio__isnull=True
-                ).values('puntaje_final')[:1]
-            )
-
             queryset = queryset.annotate(
-                promedio_punteo=Coalesce(puntaje_consolidado, 0.0),
+                promedio_punteo=Coalesce(Avg(
+                    'asignaciones__evaluacioncurso__puntaje_curso',
+                    filter=Q(asignaciones__semestre=semestre)
+                ), 0.0),
                 conteo_cursos=Count(
                     'asignaciones',
                     filter=Q(asignaciones__semestre=semestre),

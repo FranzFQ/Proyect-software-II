@@ -54,21 +54,6 @@ export const AppProvider = ({ children }) => {
     { id: 'comentarios',   titulo: 'Comentarios del Ingeniero',estado: 'pendiente', nombreArchivo: '' }
   ]);
 
-  // Resetear documentos cuando cambia el semestre activo
-  useEffect(() => {
-    setDocumentos([
-      { id: 'pensum',        titulo: 'Carga de Pensum',          estado: 'pendiente', nombreArchivo: '' },
-      { id: 'nomina',        titulo: 'Carga de Nómina',          estado: 'pendiente', nombreArchivo: '' },
-      { id: 'estudiantil',   titulo: 'Evaluación Estudiantil',   estado: 'pendiente', nombreArchivo: '' },
-      { id: 'autoevaluacion',titulo: 'Autoevaluaciones',         estado: 'pendiente', nombreArchivo: '' },
-      { id: 'coordinador',   titulo: 'Criterios de Coordinador', estado: 'pendiente', nombreArchivo: '' },
-      { id: 'ceat',          titulo: 'Evaluaciones CEAT',        estado: 'pendiente', nombreArchivo: '' },
-      { id: 'apoyo',         titulo: 'Apoyo y Colaboración',     estado: 'pendiente', nombreArchivo: '' },
-      { id: 'comentarios',   titulo: 'Comentarios del Ingeniero',estado: 'pendiente', nombreArchivo: '' }
-    ]);
-    setEvaluacionesCompletadas("0%");
-  }, [semestreActivo]);
-
   // Cargar semestres desde el backend
   useEffect(() => {
     const fetchSemestres = async () => {
