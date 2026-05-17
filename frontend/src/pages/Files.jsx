@@ -46,7 +46,7 @@ const Files = () => {
       }
     };
     fetchCount();
-  }, []);
+  }, [semestreActivo]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

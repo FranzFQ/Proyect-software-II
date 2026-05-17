@@ -19,7 +19,7 @@ import {
 
 const Semesters = () => {
   const navigate = useNavigate();
-  const { showToast } = useContext(AppContext);
+  const { showToast, setSemestreActivo } = useContext(AppContext);
   
   const [listaSemestres, setListaSemestres] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,12 +128,18 @@ const Semesters = () => {
 
   const confirmarCambioEstado = async () => {
     try {
+      const isActivating = !semestreSeleccionado.activo_para_carga;
       // Si está activo, lo finalizamos. Si está finalizado (y es visible), lo activamos.
       const payload = {
-        activo_para_carga: !semestreSeleccionado.activo_para_carga,
+        activo_para_carga: isActivating,
         finalizado: semestreSeleccionado.activo_para_carga ? true : false
       };
       await updateSemestre(semestreSeleccionado.id, payload);
+      
+      if (isActivating) {
+        setSemestreActivo(`${semestreSeleccionado.ciclo} - ${semestreSeleccionado.anio}`);
+      }
+
       setIsStatusModalOpen(false);
       showToast("Estado actualizado.", 'success');
       fetchSemestres();
