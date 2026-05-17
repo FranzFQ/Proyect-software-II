@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_URL } from '../../services/global_URL';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getDocenteById, getDocenteHistorial } from '../../services/docente_service';
 
 const TeacherHistory = () => {
   const navigate = useNavigate();
@@ -21,16 +22,9 @@ const TeacherHistory = () => {
       setLoading(true);
       setError(null);
       try {
-        const [docenteRes, historialRes] = await Promise.all([
-          fetch(`${API_URL}usuarios/docentes/${id}/`),
-          fetch(`${API_URL}usuarios/docentes/${id}/historial/`),
-        ]);
 
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        if (!historialRes.ok) throw new Error('No se pudo cargar el historial');
-
-        const docenteData    = await docenteRes.json();
-        const historial      = await historialRes.json();
+        const docenteData    = await getDocenteById(id);
+        const historial      = await getDocenteHistorial(id);
 
         setDocente(docenteData);
 

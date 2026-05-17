@@ -50,6 +50,13 @@ export async function getTopDocentes() {
     return handleResponse(response);
 }
 
+export async function getDocenteHistorial(Id) {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/${Id}/historial/`, {
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
 /**
  * Permite actualizar datos del docente (si es necesario).
  */
@@ -58,6 +65,30 @@ export async function updateDocente(id, data) {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function createDocente(data) {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/`, {
+    method: "POST",
+    headers: authHeaders(true),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteDocente(id) {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/${id}/`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function getDocenteComparative(id, semActualId, semAnterId) {
+  const response = await fetchWithAuth(`${BASE_URL}usuarios/docentes/${id}/comparacion/?semestre_a=${semActualId}&semestre_b=${semAnterId}`, {
+    headers: authHeaders(),
   });
   return handleResponse(response);
 }
@@ -71,6 +102,7 @@ export function normalizeDocente(d) {
     nombre: d.nombre_completo || `${d.first_name} ${d.last_name}`,
     codigo: d.codigo_docente || d.id,
     facultad: d.FacultadNombre || "N/A",
+    carrera: d.CarreraNombre || "N/A",
     correo: d.email || "Sin correo",
     // Agrega aquí más campos según lo que devuelva tu serializer
   };

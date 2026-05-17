@@ -41,6 +41,11 @@ export async function getCarreras(params = {}) {
   return handleResponse(response);
 }
 
+export async function getCarrerasWithoutParams() {
+  const response = await fetchWithAuth(`${BASE_URL}academico/carreras/`, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
 // --- SEMESTRES ---
 export async function getSemestres(params = {}) {
   const queryString = new URLSearchParams(params).toString();
@@ -59,7 +64,7 @@ export async function createSemestre(data) {
 }
 
 export async function updateSemestre(id, data) {
-  const response = await fetch(`${BASE_URL}academico/semestres/${id}/`, {
+  const response = await fetchWithAuth(`${BASE_URL}academico/semestres/${id}/`, {
     method: "PATCH",
     headers: authHeaders(true),
     body: JSON.stringify(data),
@@ -87,6 +92,11 @@ export async function getCursos(params = {}) {
   const queryString = new URLSearchParams(params).toString();
   const url = `${BASE_URL}academico/cursos/${queryString ? `?${queryString}` : ""}`;
   const response = await fetchWithAuth(url, { headers: authHeaders() });
+  return handleResponse(response);
+}
+
+export async function getCursosWithoutParams() {
+  const response = await fetchWithAuth(`${BASE_URL}academico/cursos/`, { headers: authHeaders() });
   return handleResponse(response);
 }
 

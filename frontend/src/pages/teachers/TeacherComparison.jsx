@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronUpIcon, ChevronDownIcon, MinusIcon } from '@heroicons/react/24/outline';
+import { getDocenteById, getDocenteComparative } from '../../services/docente_service';
+import { getSemestres } from '../../services/academico_service'; 
 import { API_URL } from '../../services/global_URL';
 
 // Mapeo de campos del backend a etiquetas legibles
@@ -30,15 +32,9 @@ const DocenteComparacion = () => {
       setLoading(true);
       setError(null);
       try {
-        const [docenteRes, semRes] = await Promise.all([
-          fetch(`${API_URL}usuarios/docentes/${id}/`),
-          fetch(`${API_URL}academico/semestres/`),
-        ]);
-        if (!docenteRes.ok) throw new Error('No se pudo cargar el docente');
-        if (!semRes.ok)     throw new Error('No se pudo cargar los semestres');
 
-        const docenteData = await docenteRes.json();
-        const semData     = await semRes.json();
+        const docenteData = await getDocenteById(id);
+        const semData     = await getSemestres();
         const listaSem    = Array.isArray(semData) ? semData : semData.results ?? [];
 
         setDocente(docenteData);
@@ -69,10 +65,7 @@ const DocenteComparacion = () => {
     const fetchEvals = async () => {
       setLoadingComp(true);
       try {
-        const res = await fetch(`${API_URL}usuarios/docentes/${id}/comparacion/?semestre_a=${semActualId}&semestre_b=${semAnterId}`);
-        if (!res.ok) throw new Error('Error al obtener la comparativa');
-        
-        const data = await res.json();
+        const data = await getDocenteComparative(id, semActualId, semAnterId);
         setEvalActual(data.semestre_a);
         setEvalAnterior(data.semestre_b);
       } catch (e) {

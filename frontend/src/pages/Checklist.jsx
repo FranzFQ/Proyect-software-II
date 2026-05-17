@@ -5,7 +5,7 @@ import ChecklistEjecucion from '../components/checklist/ChecklistEjecucion';
 import Button from '../components/common/Button';
 
 import { getSemestres } from '../services/academico_service';
-import { getChecklists, getChecklistById, deleteChecklist as deleteChecklistService } from '../services/checklist_service';
+import { getChecklists, getChecklistById, deleteChecklist as deleteChecklistService, updateChecklist, createChecklist } from '../services/checklist_service';
 import { API_URL } from '../services/global_URL';
 import { fetchWithAuth } from '../services/auth_service';
 
@@ -191,14 +191,8 @@ export default function Checklist() {
   };
 
   const handleToggleActivo = async (checklist) => {
-    try {
-      const res = await fetchWithAuth(`${API_URL}evaluaciones/checklists/${checklist.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activo: !checklist.activo }),
-      });
-      if (res.ok) await fetchData();
-    } catch (e) { console.error('Error al cambiar estado:', e); }
+    try { await updateChecklist(checklist.id, { activo: checklist.activo ? false : true }); }
+    catch (e) { console.error('Error al actualizar estado de checklist:', e); }
   };
 
   const handleGuardarChecklist = async (data) => {
@@ -212,17 +206,9 @@ export default function Checklist() {
     };
     try {
       if (editingChecklist) {
-        await fetchWithAuth(`${API_URL}evaluaciones/checklists/${editingChecklist.id}/`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await updateChecklist(editingChecklist.id, payload);
       } else {
-        await fetchWithAuth(`${API_URL}evaluaciones/checklists/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await createChecklist(payload);
       }
       await fetchData();
     } catch (e) { console.error('Error guardando checklist:', e); }
@@ -235,15 +221,11 @@ export default function Checklist() {
   const handleGuardarEjecucion = async (resultado) => {
     const { criteriosList } = resultado;
     try {
-      await fetchWithAuth(`${API_URL}evaluaciones/checklists/${ejecutandoChecklist.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          datos: {
-            ...(ejecutandoChecklist.datos ?? {}),
-            criteriosList,
-          },
-        }),
+      await updateChecklist(ejecutandoChecklist.id, {
+        datos: {
+          ...(ejecutandoChecklist.datos ?? {}),
+          criteriosList,
+        },
       });
       await fetchData();
     } catch (error) {

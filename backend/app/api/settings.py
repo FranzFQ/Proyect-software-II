@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
 import environ
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -18,18 +19,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Inicializar environ
 env = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'), overwrite=False)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1y#i7l-bnf#k2gmjb#jaa-&-exvoqvr9ku=#8l)h70d4r3g5t+'
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-1y#i7l-bnf#k2gmjb#jaa-&-exvoqvr9ku=#8l)h70d4r3g5t+')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.render.com', 'localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -53,7 +54,6 @@ INSTALLED_APPS = [
     'usuarios',
     'academico',
     'ai',
-
     'background_task',
 
 ]
@@ -63,8 +63,8 @@ AUTH_USER_MODEL = 'usuarios.Usuario'
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -97,16 +97,26 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('SUPABASE_NAME'),                           
-        'USER': env('SUPABASE_USER'),                           
-        'PASSWORD': env('SUPABASE_PASSWORD'),    
-        'HOST': env('SUPABASE_HOST'),
-        'PORT': env('SUPABASE_PORT'),                               
+if env('DATABASE_URL', default=None):
+    # En Render usará la URI única que le daremos
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=env('DATABASE_URL'),
+            conn_max_age=600
+        )
     }
-}
+else:
+    # En tu PC seguirá usando tus variables tradicionales del .env
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('SUPABASE_NAME', default=''),                           
+            'USER': env('SUPABASE_USER', default=''),                           
+            'PASSWORD': env('SUPABASE_PASSWORD', default=''),    
+            'HOST': env('SUPABASE_HOST', default=''),
+            'PORT': env('SUPABASE_PORT', default=''),                               
+        }
+    }
 
 
 # Password validation
@@ -161,20 +171,5 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOW_ALL_ORIGINS = True
-
-
-LOGGING = {
-    'version': 1,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-    },
-}
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

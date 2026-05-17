@@ -6,8 +6,9 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import { EyeIcon, TrashIcon, UserPlusIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { API_URL } from '../services/global_URL';
-import { getDocentes, updateDocente } from '../services/docente_service';
-import { getFacultades } from '../services/academico_service';
+import { getDocentes, updateDocente, createDocente, deleteDocente } from '../services/docente_service';
+import { getFacultades, getSemestreActivo, getCursosWithoutParams, getCarrerasWithoutParams } from '../services/academico_service';
+import { createCursoDado, getCursosDados } from '../services/evaluaciones_service';
 
 const Teachers = () => {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ const Teachers = () => {
   const [totalDocentes,      setTotalDocentes]      = useState(0);
   const [loading,            setLoading]            = useState(true);
   const [saving,             setSaving]             = useState(false);
+  const [semestreActivo,     setSemestreActivo]     = useState(null);
+  const [seccionCurso,       setSeccionCurso]       = useState('');
 
   const [filtroTexto,  setFiltroTexto]  = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -37,29 +40,28 @@ const Teachers = () => {
   const [formCarrera,  setFormCarrera]  = useState('');
   
   const [cursosForm, setCursosForm] = useState([]);
-  
+
+  const [searchFocused, setSearchFocused] = useState(false);
+
   // --- ESTADOS PARA LOS COMBO BOX EN SEGUNDO PLANO ---
   const [cursosDisponibles, setCursosDisponibles] = useState([]);
   const [carreras, setCarreras] = useState([]);
   const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState('');
+  const [cursosDados, setCursosDados] = useState([]);
 
   // 1. Carga de datos base (SOLO UNA VEZ AL MONTAR)
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
-    
+    getSemestreActivo()
+      .then(data => setSemestreActivo(data))
+      .catch(err => console.error("Error al cargar semestre activo:", err));
+
     // Cargar Cursos
-    fetch(`${API_URL}academico/cursos/`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.ok ? res.json() : [])
+    getCursosWithoutParams()
     .then(data => setCursosDisponibles(Array.isArray(data) ? data : data.results ?? []))
     .catch(err => console.error("Error al cargar combo de cursos:", err));
 
     // Cargar Carreras
-    fetch(`${API_URL}academico/carreras/`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.ok ? res.json() : [])
+    getCarrerasWithoutParams()
     .then(data => setCarreras(Array.isArray(data) ? data : data.results ?? []))
     .catch(err => console.error("Error al cargar combo de carreras:", err));
 
@@ -67,6 +69,10 @@ const Teachers = () => {
     getFacultades()
     .then(data => setFacultades(Array.isArray(data) ? data : data.results ?? []))
     .catch(err => console.error("Error al cargar facultades:", err));
+
+    getCursosDados()
+    .then(data => setCursosDados(Array.isArray(data) ? data : data.results ?? []))
+    .catch(err => console.error("Error al cargar cursos dados:", err));
 
   }, []);
 
@@ -157,10 +163,7 @@ const Teachers = () => {
 
   const ejecutarEliminacion = async () => {
     try {
-      const response = await fetch(`${API_URL}usuarios/docentes/${docenteActual.id}/`, { 
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${sessionStorage.getItem('auth_token')}` }
-      });
+      const response = await deleteDocente(docenteActual.id);
       
       if (response.ok || response.status === 204) {
         setDocentes(prev => prev.filter(d => d.id !== docenteActual.id));
@@ -184,7 +187,25 @@ const Teachers = () => {
     setFormFacultad(String(doc?.facultad ?? ''));
     setFormCarrera(String(doc?.carrera ?? ''));
     
-    setCursosForm([]);
+    if (doc){
+      // Filtrar los cursos dados por este docente en el semestre activo
+      const cursosDelDocente = cursosDados.filter(cd =>
+        String(cd.docente) === String(doc.id) &&
+        (semestreActivo ? String(cd.semestre) === String(semestreActivo.id) : true)
+      );
+ 
+      const cursosYaAsignados = cursosDelDocente.map(cd => ({
+        cursoId:     String(cd.curso),
+        nombre:      cd.CursosNombre ?? `Curso ${cd.curso}`,
+        seccion:     cd.seccion ?? '',
+        esExistente: true,
+      }));
+
+      setCursosForm(cursosYaAsignados);
+      
+    } else {
+      setCursosForm([]);
+    }
     setCursoSeleccionadoId(''); 
     setIsFormModalOpen(true);
   };
@@ -194,10 +215,14 @@ const Teachers = () => {
   const agregarCursoAlFormulario = () => {
     if (cursoSeleccionadoId !== '') { 
       const cursoObj = cursosDisponibles.find(c => String(c.id) === String(cursoSeleccionadoId));
-      if (cursoObj && !cursosForm.includes(cursoObj.nombre)) {
-        setCursosForm([...cursosForm, cursoObj.nombre]); 
+      if (cursoObj) {
+        const nombreCurso = cursoObj.nombre_curso || cursoObj.nombre;
+        if (!cursosForm.includes(nombreCurso)) {
+          setCursosForm([...cursosForm, { cursoId: cursoSeleccionadoId, nombre: nombreCurso, seccion: seccionCurso }]);
+        }
       }
-      setCursoSeleccionadoId(''); 
+      setCursoSeleccionadoId('')
+      setSeccionCurso(''); 
     }
   };
 
@@ -214,18 +239,23 @@ const Teachers = () => {
       carrera:         formCarrera  ? parseInt(formCarrera)  : null,
     };
     try {
+      let docenteId;
       if (docenteActual) {
         await updateDocente(docenteActual.id, payload);
+        docenteId = docenteActual.id;
       } else {
-        const res = await fetch(`${API_URL}usuarios/docentes/`, {
-          method: 'POST', 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
-          }, 
-          body: JSON.stringify(payload),
+        const docenteCreado = await createDocente(payload);
+        docenteId = docenteCreado.id;
+      }
+
+      for (const curso of cursosForm) {
+        await createCursoDado({
+          curso:    parseInt(curso.cursoId),
+          docente:  docenteId,
+          semestre: semestreActivo ? semestreActivo.id : null,
+          seccion:  curso.seccion,
+          jornada:  'Matutina',
         });
-        if (!res.ok) throw new Error("Error al crear docente");
       }
       
       await fetchInitialData();
@@ -255,19 +285,24 @@ const Teachers = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex w-full md:w-1/2">
-          <input
-            type="text"
-            placeholder="Búsqueda por nombre o código..."
-            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-url-blue"
-            value={filtroTexto}
-            onChange={e => setFiltroTexto(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
-          />
-          <button onClick={handleSearch} className="bg-[#e2e8f0] text-[#112240] font-bold px-6 py-2 rounded-r-lg border border-l-0 border-gray-200 hover:bg-gray-300 transition-colors">
-            Buscar
-          </button>
-        </div>
+          <div className={`flex w-full md:w-1/2 rounded-lg border transition-all duration-200 overflow-hidden ${searchFocused ? 'border-url-blue ring-2 ring-url-blue' : 'border-gray-200'}`}>
+            <input
+              type="text"
+              placeholder="Búsqueda por nombre o código..."
+              className="w-full px-4 py-2 bg-gray-50 focus:outline-none focus:bg-white"
+              value={filtroTexto}
+              onChange={e => setFiltroTexto(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
+            <button
+              onClick={handleSearch}
+              className="bg-[#e2e8f0] text-[#112240] font-bold px-6 py-2 border-l border-gray-200 hover:bg-gray-300 transition-colors shrink-0"
+            >
+              Buscar
+            </button>
+          </div>
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
           {[{ label: 'Deficiente', active: 'bg-red-600 text-white shadow-md', idle: 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-200' },
             { label: 'Buena', active: 'bg-yellow-500 text-white shadow-md', idle: 'bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200' },
@@ -355,7 +390,16 @@ const Teachers = () => {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Plan Docente</label>
-              <input type="text" placeholder="Ej. Plan Diario / Fin de semana" value={formTipoPlan} onChange={e => setFormTipoPlan(e.target.value)} className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue" required />
+              <select
+                value={formTipoPlan}
+                onChange={e => setFormTipoPlan(e.target.value)}
+                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                required
+              >
+                <option value="">Seleccionar plan...</option>
+                <option value="Diario">Diario</option>
+                <option value="Fin de semana">Fin de semana</option>
+              </select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Facultad</label>
@@ -391,34 +435,56 @@ const Teachers = () => {
 
           <hr className="border-gray-100 my-2" />
 
-          <div className="flex flex-col gap-3">
-             <label className="text-sm font-bold text-[#112240]">Cursos Asignados al Docente</label>
-             <div className="flex gap-2">
-                <select 
-                  className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
-                  value={cursoSeleccionadoId}
-                  onChange={(e) => setCursoSeleccionadoId(e.target.value)}
-                >
-                  <option value="">Seleccione un curso...</option>
-                  {cursosDisponibles.map(curso => (
-                    <option key={curso.id} value={curso.id}>{curso.nombre_curso || curso.nombre}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={agregarCursoAlFormulario} className="bg-[#112240] text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-900 transition shadow-sm flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4"/> Agregar</button>
-             </div>
-             
-             <div className="flex flex-wrap gap-2 mt-2">
-               {cursosForm.length > 0 ? (
-                 cursosForm.map((curso, index) => (
-                   <div key={index} className="flex items-center gap-2 bg-gray-100 border border-gray-300 px-3 py-1.5 rounded-full text-sm font-semibold text-gray-700 shadow-sm">
-                     <span>{curso}</span>
-                     <button type="button" onClick={() => eliminarCursoDelFormulario(index)} className="text-gray-400 hover:text-red-500 transition"><TrashIcon className="w-4 h-4" /></button>
-                   </div>
-                 ))
-               ) : (
-                 <p className="text-xs text-gray-400 italic">No hay cursos asignados aún.</p>
-               )}
-             </div>
+          <div className="w-full flex flex-col gap-3">
+            <label className="text-sm font-bold text-[#112240]">Cursos Asignados al Docente</label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <select
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+                value={cursoSeleccionadoId}
+                onChange={e => setCursoSeleccionadoId(e.target.value)}
+              >
+                <option value="">Seleccione un curso...</option>
+                {cursosDisponibles.map(curso => {
+                  const isAlreadyAdded = cursosForm.some(c => String(c.cursoId) === String(curso.id));
+                  return isAlreadyAdded ? null : <option key={curso.id} value={curso.id}>{curso.nombre_curso || curso.nombre}</option>;
+                })}
+              </select>
+              <input
+                type="text"
+                placeholder="Ingrese la sección"
+                value={seccionCurso}
+                onChange={e => setSeccionCurso(e.target.value)}
+                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-url-blue"
+              />
+
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={agregarCursoAlFormulario}
+                className="bg-[#112240] text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-900 transition shadow-sm flex items-center gap-1 text-sm"
+              >
+                <PlusIcon className="w-4 h-4"/> Agregar
+              </button>
+            </div>
+
+            {/* Lista de cursos agregados */}
+            <div className="flex flex-wrap gap-2 mt-1">
+              {cursosForm.length > 0 ? (
+                cursosForm.map((curso, index) => (
+                  <div key={index} className="flex items-center gap-2 bg-gray-100 border border-gray-300 px-3 py-1.5 rounded-full text-sm font-semibold text-gray-700 shadow-sm">
+                    <span>{curso.nombre} — Sec. {curso.seccion}</span>
+                    <button type="button" onClick={() => eliminarCursoDelFormulario(index)} className="text-gray-400 hover:text-red-500 transition">
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-400 italic">No hay cursos asignados aún.</p>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-start gap-3 mt-4 pt-4 border-t border-gray-100">
