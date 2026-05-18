@@ -63,10 +63,24 @@ const ModalPonderacion = ({ onClose }) => {
 
     setCargando(true);
     try {
-        // Guardamos directamente en la BD
-        await Promise.all(ponderacionesList.map(p => 
-            updatePonderacion(p.id, { porcentaje_asignado: p.porcentaje_asignado })
-        ));
+        // Obtenemos todas las ponderaciones originales de nuevo para limpiar las que no están en el mapping
+        const allData = await getPonderaciones();
+        
+        // Preparamos los updates
+        const updates = allData.map(originalItem => {
+            // Buscamos si este item está en nuestra lista editada
+            const editedItem = ponderacionesList.find(p => p.id === originalItem.id);
+            
+            if (editedItem) {
+                // Si está en la lista editada, enviamos el nuevo valor
+                return updatePonderacion(originalItem.id, { porcentaje_asignado: editedItem.porcentaje_asignado });
+            } else {
+                // Si NO está en la lista editada (es una categoría obsoleta o excluida), la ponemos a 0
+                return updatePonderacion(originalItem.id, { porcentaje_asignado: 0 });
+            }
+        });
+
+        await Promise.all(updates);
         showToast("¡Ponderaciones actualizadas correctamente!", 'success');
         onClose();
     } catch (error) {
