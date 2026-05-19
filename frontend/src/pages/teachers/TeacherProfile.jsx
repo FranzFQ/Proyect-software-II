@@ -126,7 +126,7 @@ const TeacherProfile = () => {
           &larr; Volver a {isHistorical ? 'Histórico de Semestres' : 'Docentes'}
         </button>
         {isHistorical && (
-          <Button variant="primary" onClick={() => navigate(`/teachers/${id}`)} className="bg-[#112240] text-white shadow-sm border-none flex items-center gap-1.5">
+          <Button variant="primary" onClick={() => navigate(`/teachers/${id}`)} className="bg-[#112240] shadow-sm border-none flex items-center gap-1.5">
             <SparklesIcon className="w-4 h-4"/> Volver al semestre actual
           </Button>
         )}
