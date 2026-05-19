@@ -2,6 +2,7 @@ from rest_framework import viewsets, response, decorators
 from django.db.models import Avg, Count, Q, OuterRef, Subquery
 from academico.models import Semestre
 from usuarios.models import Docente
+from usuarios.interface.viewsets.docente_viewset import calcular_punteo_ponderado
 from evaluaciones.models import (
     EvaluacionConsolidada, 
     CriterioEvaluacion, 
@@ -29,49 +30,41 @@ class DashboardViewSet(viewsets.ViewSet):
 
         # --- 1. DATOS BASE ---
         total_docentes = Docente.objects.count()
+        docentes_con_actividad = Docente.objects.filter(
+            asignaciones__semestre=semestre_activo
+        ).distinct()
         
-        # Obtenemos consolidados "Total" (criterio=None) del semestre activo una sola vez
-        consolidados_totales = EvaluacionConsolidada.objects.filter(
-            semestre=semestre_activo,
-            criterio__isnull=True
-        ).select_related('docente')
+        docentes_con_nota = 0
+        suma_punteos = 0
+        excelente = 0
+        buena = 0
+        deficiente = 0
+        
+        ponderaciones = list(ConfiguracionPonderacion.objects.filter(semestre=semestre_activo).select_related('criterio'))
+        
+        docentes_con_punteo_list = []
 
-        # KPI: Promedio General
-        res_avg = consolidados_totales.aggregate(avg=Avg('puntaje_final'))
-        promedio_general = res_avg['avg']
+        for d in docentes_con_actividad:
+            p = calcular_punteo_ponderado(d, semestre_activo, ponderaciones)
+            if p > 0:
+                docentes_con_nota += 1
+                suma_punteos += p
+                
+                if p >= 8: excelente += 1
+                elif p >= 6: buena += 1
+                else: deficiente += 1
+                
+                docentes_con_punteo_list.append({
+                    "id": d.id,
+                    "nombre": d.nombre_completo,
+                    "iniciales": "".join([n[0] for n in d.nombre_completo.split()[:2]]).upper(),
+                    "facultad": d.facultad.nombre if d.facultad else "",
+                    "ponderacion": p,
+                    "estado": "Excelente" if p >= 8 else "Buena" if p >= 6 else "Deficiente"
+                })
 
-        # Si no hay consolidados, calculamos desde EvaluacionCurso
-        if promedio_general is None:
-            promedio_general = EvaluacionCurso.objects.filter(
-                curso_dado__semestre=semestre_activo
-            ).aggregate(avg=Avg('puntaje_curso'))['avg'] or 0
-
-        if promedio_general > 10.1: promedio_general /= 10
-
-        # KPI: Riesgo y Distribución (Reutilizando consolidados si existen)
-        if consolidados_totales.exists():
-            # Filtramos en memoria o con sub-consultas rápidas
-            docentes_con_nota = consolidados_totales.count()
-            docentes_riesgo = consolidados_totales.filter(puntaje_final__lt=6).count()
-            
-            excelente = consolidados_totales.filter(puntaje_final__gte=8).count()
-            buena = consolidados_totales.filter(puntaje_final__gte=6, puntaje_final__lt=8).count()
-            deficiente = docentes_riesgo
-        else:
-            # Fallback a anotaciones por docente (Consulta más pesada, pero necesaria si no hay consolidación)
-            docentes_stats = Docente.objects.annotate(
-                avg_punteo=Avg('asignaciones__evaluacioncurso__puntaje_curso', filter=Q(asignaciones__semestre=semestre_activo))
-            ).filter(avg_punteo__isnull=False)
-            
-            docentes_con_nota = docentes_stats.count()
-            docentes_riesgo = docentes_stats.filter(Q(avg_punteo__lt=6) | Q(avg_punteo__lt=60, avg_punteo__gt=10)).count()
-            
-            excelente = docentes_stats.filter(Q(avg_punteo__gte=80) | Q(avg_punteo__gte=8, avg_punteo__lte=10)).count()
-            buena = docentes_stats.filter(
-                (Q(avg_punteo__gte=60) & Q(avg_punteo__lt=80)) | (Q(avg_punteo__gte=6) & Q(avg_punteo__lt=8))
-            ).count()
-            deficiente = docentes_riesgo
-
+        promedio_general = (suma_punteos / docentes_con_nota) if docentes_con_nota > 0 else 0
+        docentes_riesgo = deficiente
         progreso = f"{(docentes_con_nota / total_docentes * 100):.0f}%" if total_docentes > 0 else "0%"
 
         # --- 2. PROMEDIOS POR CATEGORÍA ---
@@ -85,7 +78,6 @@ class DashboardViewSet(viewsets.ViewSet):
             'visitas':                   'Checklists'
         }
         
-        # Combinamos promedios de consolidados y de cursos en una sola estructura
         promedios_data = {}
         
         # Agregamos consolidados por criterio
@@ -99,7 +91,7 @@ class DashboardViewSet(viewsets.ViewSet):
             if val > 10.1: val /= 10
             promedios_data[name] = round(val, 1)
 
-        # Agregamos cursos por criterio (si no estaban ya)
+        # Agregamos cursos por criterio
         qs_criterios_curs = EvaluacionCurso.objects.filter(
             curso_dado__semestre=semestre_activo
         ).values('criterio__nombre').annotate(v=Avg('puntaje_curso'))
@@ -112,11 +104,6 @@ class DashboardViewSet(viewsets.ViewSet):
                 promedios_data[name] = round(val, 1)
 
         # Checklists (Última observación por curso)
-        ultima_obs = ChecklistObservation.objects.filter(
-            curso_dado__semestre=semestre_activo
-        ).order_by('curso_dado', '-fecha_observacion').distinct('curso_dado')
-        
-        # Django no permite Avg en distinct querysets directamente de forma fácil, usamos subquery o lista
         avg_ch = ChecklistObservation.objects.filter(
             id__in=Subquery(
                 ChecklistObservation.objects.filter(
@@ -130,19 +117,9 @@ class DashboardViewSet(viewsets.ViewSet):
             promedios_data['Checklists'] = round(float(avg_ch), 1)
 
         # --- 3. TOP DOCENTES Y PONDERACIONES ---
-        top_docentes_qs = Docente.objects.select_related('facultad').annotate(
-            promedio=Avg('asignaciones__evaluacioncurso__puntaje_curso', filter=Q(asignaciones__semestre=semestre_activo))
-        ).filter(promedio__isnull=False).order_by('-promedio')[:4]
+        docentes_con_punteo_list.sort(key=lambda x: x['ponderacion'], reverse=True)
+        top_docentes = docentes_con_punteo_list[:4]
 
-        top_docentes = [{
-            "id": d.id, "nombre": d.nombre_completo,
-            "iniciales": "".join([n[0] for n in d.nombre_completo.split()[:2]]).upper(),
-            "facultad": d.facultad.nombre if d.facultad else "",
-            "ponderacion": round(d.promedio, 1),
-            "estado": "Excelente" if d.promedio >= 8 else "Buena" if d.promedio >= 6 else "Deficiente"
-        } for d in top_docentes_qs]
-
-        ponderaciones = ConfiguracionPonderacion.objects.filter(semestre=semestre_activo).select_related('criterio')
         data_ponderaciones = [{
             "id": p.id, "CriterioNombre": p.criterio.nombre, "porcentaje_asignado": p.porcentaje_asignado
         } for p in ponderaciones]
@@ -163,6 +140,7 @@ class DashboardViewSet(viewsets.ViewSet):
             "top_docentes": top_docentes,
             "data_ponderaciones": data_ponderaciones
         })
+
 
     @decorators.action(detail=False, methods=['get'])
     def estadisticas(self, request):
